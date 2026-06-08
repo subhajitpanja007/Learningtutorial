@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Language Basics — Python · Java · Spring Boot</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#080b12; --bg2:#0c1019; --panel:#10151f; --panel2:#0e131c;
+  --ink:#e8eef6; --muted:#8595ad; --faint:#5b6982;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.05);
+  --accent:#4B8BBE; --accent2:#FFD43B; --glow:rgba(75,139,190,.45);
+  --code-key:#ff7eb6; --code-str:#7ee787; --code-num:#ffa657; --code-fn:#d2a8ff;
+  --code-cls:#ffd866; --code-com:#5c6b85; --code-anno:#7ee0a8; --code-punc:#9fb0cc;
+  --warn:#ffb020;
+}
+body.lang-python{ --accent:#4B8BBE; --accent2:#FFD43B; --glow:rgba(75,139,190,.5); }
+body.lang-java  { --accent:#f89820; --accent2:#ff5b4a; --glow:rgba(248,152,32,.5); }
+body.lang-spring{ --accent:#6DB33F; --accent2:#bfe86a; --glow:rgba(109,179,63,.5); }
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:'Hanken Grotesk',sans-serif;line-height:1.65;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+.aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.aurora::before,.aurora::after{content:"";position:absolute;width:60vw;height:60vw;border-radius:50%;filter:blur(120px);opacity:.20;transition:background 1.2s ease}
+.aurora::before{top:-15vw;left:-10vw;background:var(--accent);animation:drift1 22s ease-in-out infinite}
+.aurora::after{bottom:-20vw;right:-12vw;background:var(--accent2);animation:drift2 28s ease-in-out infinite}
+@keyframes drift1{50%{transform:translate(8vw,10vh) scale(1.15)}}
+@keyframes drift2{50%{transform:translate(-10vw,-6vh) scale(1.1)}}
+.grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+.progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:100;background:linear-gradient(90deg,var(--accent),var(--accent2));box-shadow:0 0 14px var(--glow);transition:width .1s linear}
+.wrap{position:relative;z-index:2;max-width:1140px;margin:0 auto;padding:0 22px}
+
+header{position:sticky;top:0;z-index:60;backdrop-filter:blur(14px);background:rgba(8,11,18,.72);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:16px;max-width:1140px;margin:0 auto;padding:13px 22px}
+.brand{display:flex;align-items:center;gap:11px;font-family:'Bricolage Grotesque';font-weight:800;letter-spacing:-.02em}
+.brand .mark{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#06090f;font-size:15px;box-shadow:0 0 18px var(--glow);transition:.5s}
+.brand b{font-size:16px}
+.brand span{color:var(--faint);font-weight:600;font-size:11.5px;font-family:'JetBrains Mono';display:block;letter-spacing:0}
+
+.switch{display:flex;gap:6px;background:var(--panel);padding:5px;border-radius:13px;border:1px solid var(--line)}
+.pill{border:0;cursor:pointer;font-family:'JetBrains Mono';font-weight:500;font-size:12.5px;color:var(--muted);background:transparent;padding:7px 13px;border-radius:9px;display:flex;align-items:center;gap:7px;transition:.25s;white-space:nowrap}
+.pill .dot{width:8px;height:8px;border-radius:50%}
+.pill[data-l="python"] .dot{background:#4B8BBE}.pill[data-l="java"] .dot{background:#f89820}.pill[data-l="spring"] .dot{background:#6DB33F}
+.pill:hover{color:var(--ink)}
+.pill.on{color:#06090f;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 4px 16px var(--glow);font-weight:700}
+.pill.on .dot{background:#06090f}
+
+.hero{padding:78px 0 40px;text-align:center}
+.kick{display:inline-flex;align-items:center;gap:9px;font-family:'JetBrains Mono';font-size:12px;color:var(--accent2);border:1px solid var(--line);background:var(--panel);padding:7px 15px;border-radius:30px;margin-bottom:26px;opacity:0;animation:up .7s .05s forwards}
+.kick .ping{width:7px;height:7px;border-radius:50%;background:var(--accent2);box-shadow:0 0 0 0 var(--glow);animation:ping 2s infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 var(--glow)}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+h1{font-family:'Bricolage Grotesque';font-weight:800;letter-spacing:-.035em;line-height:1.02;font-size:clamp(36px,6.6vw,68px);opacity:0;animation:up .8s .12s forwards}
+h1 .g{background:linear-gradient(115deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;transition:.5s}
+.sub{max-width:660px;margin:22px auto 0;color:var(--muted);font-size:clamp(15px,2vw,18px);opacity:0;animation:up .8s .22s forwards}
+.sub code{font-family:'JetBrains Mono';color:var(--ink);background:var(--panel);padding:1px 7px;border-radius:6px;font-size:.85em;border:1px solid var(--line)}
+
+.pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-top:46px}
+.pillar{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 16px;text-align:left;position:relative;overflow:hidden;opacity:0;animation:up .7s forwards;transition:.3s}
+.pillar:nth-child(1){animation-delay:.34s}.pillar:nth-child(2){animation-delay:.42s}.pillar:nth-child(3){animation-delay:.5s}.pillar:nth-child(4){animation-delay:.58s}
+.pillar:hover{transform:translateY(-6px);border-color:var(--accent);box-shadow:0 14px 40px -18px var(--glow)}
+.pillar::after{content:"";position:absolute;inset:0;background:radial-gradient(120px 80px at 80% 0,var(--glow),transparent 70%);opacity:.4}
+.pillar .ic{font-size:24px;display:block;margin-bottom:11px}
+.pillar h4{font-family:'Bricolage Grotesque';font-size:15px;font-weight:700;letter-spacing:-.01em}
+.pillar p{font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.5}
+
+.legend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin:54px auto 0;font-size:12.5px;color:var(--muted);font-family:'JetBrains Mono';opacity:0;animation:up .7s .66s forwards}
+.legend .it{display:flex;align-items:center;gap:7px}
+.lv{font-family:'JetBrains Mono';font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.03em;text-transform:uppercase}
+.lv.b{color:#7ee787;background:rgba(126,231,135,.12);border:1px solid rgba(126,231,135,.3)}
+.lv.i{color:#ffd866;background:rgba(255,216,102,.12);border:1px solid rgba(255,216,102,.3)}
+.lv.p{color:#ff7eb6;background:rgba(255,126,182,.12);border:1px solid rgba(255,126,182,.3)}
+
+.section{padding:30px 0;opacity:0;transform:translateY(28px);transition:.7s cubic-bezier(.22,1,.36,1)}
+.section.in{opacity:1;transform:none}
+
+/* Spring-specific sections render ONLY on the Spring Boot tab */
+.spring-only{display:none}
+body.lang-spring .spring-only{display:block}
+body.lang-spring .spring-only.section,
+body.lang-spring .spring-only .section{opacity:1;transform:none}
+
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:22px;overflow:hidden;margin-bottom:26px;position:relative}
+.card::before{content:"";position:absolute;left:0;top:0;height:100%;width:3px;background:linear-gradient(var(--accent),var(--accent2));transition:.5s;box-shadow:0 0 18px var(--glow)}
+.card-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.18fr)}
+.cinfo{padding:30px 30px 30px 34px;border-right:1px solid var(--line)}
+.cnum{font-family:'JetBrains Mono';font-size:12px;color:var(--accent2);font-weight:700;letter-spacing:.1em}
+.chead{display:flex;align-items:center;gap:12px;margin:8px 0 14px;flex-wrap:wrap}
+.chead h3{font-family:'Bricolage Grotesque';font-size:24px;font-weight:800;letter-spacing:-.02em}
+.blurb{color:var(--muted);font-size:14.5px}
+
+.glance{margin-top:22px;border-top:1px dashed var(--line);padding-top:18px}
+.glance .t{font-family:'JetBrains Mono';font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);margin-bottom:11px}
+.chips{display:flex;flex-direction:column;gap:8px}
+.chip{display:flex;align-items:center;gap:10px;font-size:11.5px;padding:8px 11px;border-radius:11px;border:1px solid var(--line2);background:rgba(255,255,255,.02);transition:.3s;font-family:'JetBrains Mono'}
+.chip .nm{font-weight:700;width:60px;flex:none;display:flex;align-items:center;gap:6px}
+.chip .nm i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.chip[data-l="python"] .nm i{background:#4B8BBE}.chip[data-l="java"] .nm i{background:#f89820}.chip[data-l="spring"] .nm i{background:#6DB33F}
+.chip .vl{color:var(--muted)}
+.chip.act{border-color:var(--accent);background:var(--glow);box-shadow:0 0 0 1px var(--accent)}
+.chip.act .vl{color:var(--ink)}
+
+.note{margin-top:18px;display:flex;gap:11px;background:var(--glow);border:1px solid var(--accent);border-radius:13px;padding:13px 15px;transition:.25s}
+.note .b{font-size:17px;line-height:1.3;flex:none}
+.note .x{font-size:13px;color:var(--ink)}
+.note .x b{color:var(--accent2)}
+.note.warn{margin-top:12px;background:rgba(255,176,32,.10);border:1px solid var(--warn)}
+.note.warn .x b{color:#ffd166}
+.note.warn code{font-family:'JetBrains Mono';font-size:.86em;color:#ffd166;background:rgba(255,176,32,.12);padding:1px 5px;border-radius:5px}
+
+.cpane{background:#0a0e16;display:flex;flex-direction:column;min-width:0}
+.cbar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:#0c111b}
+.dots{display:flex;gap:6px}
+.dots i{width:11px;height:11px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}
+.fname{font-family:'JetBrains Mono';font-size:12px;color:var(--muted);margin-left:4px}
+.fname b{color:var(--accent2);transition:.25s}
+.copy{margin-left:auto;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;font-family:'JetBrains Mono';font-size:11px;padding:5px 11px;border-radius:8px;transition:.2s;display:flex;gap:6px;align-items:center}
+.copy:hover{color:var(--ink);border-color:var(--accent);background:var(--glow)}
+.copy.done{color:#28c840;border-color:#28c840}
+pre{margin:0;overflow:auto;padding:20px 22px;flex:1}
+pre code{font-family:'JetBrains Mono'!important;font-size:12.7px;line-height:1.72;background:none!important;white-space:pre;tab-size:4}
+.swapping pre,.swapping .fname b{opacity:0;transform:translateY(6px)}
+pre,.fname b{transition:opacity .2s,transform .2s}
+
+code[class*="language-"],pre[class*="language-"]{color:var(--ink);text-shadow:none}
+.token.comment,.token.prolog,.token.doctype,.token.cdata{color:var(--code-com);font-style:italic}
+.token.punctuation{color:var(--code-punc)}
+.token.keyword,.token.boolean,.token.operator{color:var(--code-key)}
+.token.string,.token.char,.token.attr-value{color:var(--code-str)}
+.token.number{color:var(--code-num)}
+.token.function,.token.method{color:var(--code-fn)}
+.token.class-name,.token.builtin{color:var(--code-cls)}
+.token.decorator,.token.annotation{color:var(--code-anno);font-weight:700;text-shadow:0 0 14px rgba(126,224,168,.35)}
+.token.annotation .token.punctuation{color:var(--code-anno)}
+.token.triple-quoted-string{color:var(--code-str)}
+
+.stitle{text-align:center;margin:22px 0 30px}
+.stitle .e{font-family:'JetBrains Mono';font-size:12px;color:var(--accent2);letter-spacing:.14em;text-transform:uppercase}
+.stitle h2{font-family:'Bricolage Grotesque';font-weight:800;font-size:clamp(28px,4.5vw,40px);letter-spacing:-.03em;margin-top:8px}
+.stitle p{color:var(--muted);max-width:600px;margin:10px auto 0;font-size:14.5px}
+
+.gloss{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}
+.gitem{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px 15px;transition:.25s}
+.gitem:hover{border-color:#6DB33F;background:rgba(109,179,63,.06);transform:translateY(-3px)}
+.gitem .a{font-family:'JetBrains Mono';font-weight:700;font-size:12.5px;color:#7ee0a8;flex:none;text-shadow:0 0 12px rgba(126,224,168,.3)}
+.gitem .d{font-size:12.5px;color:var(--muted)}
+
+.tablewrap{border:1px solid var(--line);border-radius:18px;overflow:hidden;overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:680px;font-size:13.5px}
+th,td{text-align:left;padding:12px 18px;border-bottom:1px solid var(--line)}
+thead th{font-family:'JetBrains Mono';font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;background:var(--panel)}
+thead th:nth-child(2){color:#4B8BBE}thead th:nth-child(3){color:#f89820}thead th:nth-child(4){color:#6DB33F}
+tbody tr{transition:.2s}tbody tr:hover{background:var(--glow)}
+tbody td:first-child{font-family:'Bricolage Grotesque';font-weight:700;color:var(--ink)}
+td code,th code{font-family:'JetBrains Mono';font-size:12px;color:var(--ink)}
+tbody td:not(:first-child){font-family:'JetBrains Mono';font-size:11.5px;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+
+footer{text-align:center;padding:50px 0 60px;color:var(--faint);font-size:13px;border-top:1px solid var(--line);margin-top:30px}
+footer b{color:var(--accent2)}
+@keyframes up{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+::selection{background:var(--accent);color:#06090f}
+pre::-webkit-scrollbar,.tablewrap::-webkit-scrollbar{height:8px;width:8px}
+pre::-webkit-scrollbar-thumb,.tablewrap::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
+
+@media(max-width:820px){
+  .card-grid{grid-template-columns:1fr}
+  .cinfo{border-right:0;border-bottom:1px solid var(--line)}
+  .pillars{grid-template-columns:repeat(2,1fr)}
+  .gloss{grid-template-columns:1fr}
+  .brand span{display:none}
+  .bar{padding:11px 16px}.switch{padding:4px}.pill{padding:7px 9px;font-size:11px}
+}
+</style>
+</head>
+<body class="lang-python">
+
+<div class="aurora"></div>
+<div class="grain"></div>
+<div class="progress" id="prog"></div>
+
+<header>
+  <div class="bar">
+    <div class="brand">
+      <div class="mark">{ }</div>
+      <div><b>BASICS&nbsp;×&nbsp;3</b><span>python · java · spring</span></div>
+    </div>
+    <div class="switch" id="switch">
+      <button class="pill on" data-l="python"><span class="dot"></span>Python</button>
+      <button class="pill" data-l="java"><span class="dot"></span>Java</button>
+      <button class="pill" data-l="spring"><span class="dot"></span>Spring&nbsp;Boot</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="kick"><span class="ping"></span>variables · operators · if · loops · functions · strings · switch · main</div>
+    <h1>Language Basics<br><span class="g">the building blocks</span></h1>
+    <p class="sub">The week-one fundamentals — <b>same concept, different syntax</b> — in <b>Python</b>, <b>Java</b> &amp; <b>Spring Boot</b>. Since Spring Boot is <b>Java + a framework</b>, the basics are pure Java; the only Spring-specific bits are <code>@Value</code>, <code>@Bean</code> and <code>@SpringBootApplication</code>, which appear on the Spring tab.</p>
+
+    <div class="pillars">
+      <div class="pillar"><span class="ic">🔤</span><h4>Variables &amp; Types</h4><p>Dynamic vs static typing.</p></div>
+      <div class="pillar"><span class="ic">🔀</span><h4>Control Flow</h4><p>if · loops · switch.</p></div>
+      <div class="pillar"><span class="ic">🧩</span><h4>Functions</h4><p>Params, defaults, returns.</p></div>
+      <div class="pillar"><span class="ic">🚀</span><h4>Entry &amp; Structure</h4><p>How a program starts.</p></div>
+    </div>
+
+    <div class="legend">
+      <div class="it">Difficulty:</div>
+      <div class="it"><span class="lv b">Beginner</span></div>
+      <div class="it"><span class="lv i">Intermediate</span></div>
+      <div class="it"><span class="lv p">Pro</span></div>
+      <div class="it" style="color:var(--faint)">— ⚠️ marks a common gotcha</div>
+    </div>
+  </section>
+
+  <div id="concepts"></div>
+
+  <!-- GLOSSARY (Spring tab only) -->
+  <section class="section spring-only" id="glossary">
+    <div class="stitle">
+      <div class="e">📖 reference</div>
+      <h2>The Spring basics annotations</h2>
+      <p>The handful of Spring-specific annotations used above.</p>
+    </div>
+    <div class="gloss" id="gloss"></div>
+  </section>
+
+  <!-- COMPARISON TABLE (always) -->
+  <section class="section" id="compare">
+    <div class="stitle">
+      <div class="e">⚡ side by side</div>
+      <h2>Every basic on one screen</h2>
+      <p>Same idea, three syntaxes. Screenshot this one.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Basic</th><th>Python</th><th>Java</th><th>Spring Boot</th></tr></thead>
+        <tbody>
+          <tr><td>Variable</td><td><code>x = 5</code></td><td><code>int x = 5;</code></td><td><code>@Value</code> injects config</td></tr>
+          <tr><td>Typing</td><td>dynamic</td><td>static (<code>var</code> infers)</td><td>static (Java)</td></tr>
+          <tr><td>Int division</td><td><code>7 // 2</code></td><td><code>7 / 2</code> (int!)</td><td>pure Java</td></tr>
+          <tr><td>Power</td><td><code>2 ** 3</code></td><td><code>Math.pow(2,3)</code></td><td>pure Java</td></tr>
+          <tr><td>Logical</td><td><code>and / or / not</code></td><td><code>&amp;&amp; || !</code></td><td>pure Java</td></tr>
+          <tr><td>Equality</td><td><code>==</code></td><td><code>.equals()</code></td><td>pure Java</td></tr>
+          <tr><td>If / else</td><td><code>if / elif / else</code></td><td><code>if / else if / else</code></td><td>pure Java</td></tr>
+          <tr><td>Ternary</td><td><code>a if c else b</code></td><td><code>c ? a : b</code></td><td>pure Java</td></tr>
+          <tr><td>For loop</td><td><code>for i in range()</code></td><td><code>for(int i=0;...)</code></td><td>pure Java</td></tr>
+          <tr><td>Function</td><td><code>def f(x, y=1)</code></td><td>overloads (no defaults)</td><td><code>@Bean</code> method</td></tr>
+          <tr><td>String format</td><td><code>f"{x}"</code></td><td><code>String.format()</code></td><td>pure Java</td></tr>
+          <tr><td>Switch</td><td><code>match / case</code></td><td><code>switch ... -&gt;</code></td><td>pure Java</td></tr>
+          <tr><td>Entry point</td><td><code>if __name__ == "__main__"</code></td><td><code>static void main</code></td><td><code>@SpringBootApplication</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  Part 4 of the series — the fundamentals beneath OOP, data structures &amp; advanced topics.<br>
+  Toggle a language up top. <b>Spring Boot is Java + a framework</b> — so the basics are just Java. 🚀
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+
+<script>
+/* ===== DATA: language fundamentals, three languages ===== */
+const CONCEPTS = [
+{
+  id:"vars", n:"01", title:"Variables & Data Types", level:"b",
+  blurb:"A name that holds a value. Python figures out the type for you; Java fixes the type when you declare it.",
+  glance:{ python:"age = 25", java:"int age = 25;", spring:'@Value("${...}")' },
+  file:{ python:"vars.py", java:"Vars.java", spring:"AppInfo.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"No type keyword - Python infers it, and a variable can even change type later (<b>dynamic typing</b>).",
+    java:"The type is written and <b>locked at compile time</b> (<b>static typing</b>). <b>var</b> lets the compiler infer it.",
+    spring:"Variables are plain Java. Spring's twist: <b>@Value</b> reads a value from <code>application.properties</code> (a <code>key=value</code> file) into a field; the <code>:default</code> after the key is the fallback used if the key is missing."
+  },
+  warn:{
+    python:"Python is <b>dynamically typed</b> - a variable can change type at runtime. Flexible, but Java locks the type so mistakes are caught earlier."
+  },
+  code:{
+python:
+`name = "Aarav"          # str   (type is inferred)
+age = 25                # int
+price = 49.99           # float
+active = True           # bool
+nothing = None          # NoneType
+
+age = "twenty-five"     # allowed - types can change
+print(type(age))        # <class 'str'>`,
+java:
+`String name = "Aarav";   // the type is fixed (static)
+int age = 25;
+double price = 49.99;
+boolean active = true;
+String nothing = null;
+
+// age = "twenty-five";  // compile error - type is locked
+var city = "Hyderabad";  // 'var' infers String (Java 10+)`,
+spring:
+`// application.properties  (your config file):
+//     app.name=Acme Store
+//     server.port=9090
+
+// Java reads those values with @Value:
+@Component
+public class AppInfo {
+
+    @Value("\${app.name:MyApp}")     // -> "Acme Store"  (else "MyApp")
+    private String name;
+
+    @Value("\${server.port:8080}")   // -> 9090  (else 8080)
+    private int port;
+}`
+  }
+},
+{
+  id:"ops", n:"02", title:"Operators", level:"b",
+  blurb:"Do arithmetic, compare values, and combine booleans. Mostly the same — with a few traps worth knowing.",
+  glance:{ python:"** , // , and/or", java:"Math.pow , && , .equals", spring:"pure Java + @Service" },
+  file:{ python:"ops.py", java:"Ops.java", spring:"Calculator.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"<b>/</b> always gives a float; <b>//</b> is floor division, <b>**</b> is power, and booleans use words <b>and/or/not</b>.",
+    java:"<b>/</b> on two ints is integer division; there is no <b>**</b> (use <b>Math.pow</b>); booleans use <b>&amp;&amp; || !</b>.",
+    spring:"Operators are <b>pure Java</b> - Spring changes nothing. Here they just live inside a <b>@Service</b>."
+  },
+  warn:{
+    java:"Two classic Java traps: <code>7 / 2</code> is <b>3</b> (integer division - use <code>7.0 / 2</code> for 3.5), and you compare text with <code>.equals()</code>, never <code>==</code> (which checks object identity)."
+  },
+  code:{
+python:
+`print(7 + 2)      # 9
+print(7 / 2)      # 3.5   (true division)
+print(7 // 2)     # 3     (floor division)
+print(7 % 2)      # 1     (remainder)
+print(2 ** 3)     # 8     (power)
+
+print(3 > 2 and 5 < 9)    # True   (and / or / not)
+print("a" == "a")         # True   (== compares values)`,
+java:
+`System.out.println(7 + 2);          // 9
+System.out.println(7 / 2);          // 3    (integer division!)
+System.out.println(7.0 / 2);        // 3.5  (need a double)
+System.out.println(7 % 2);          // 1
+System.out.println(Math.pow(2, 3)); // 8.0  (no ** operator)
+
+System.out.println(3 > 2 && 5 < 9);   // true   (&& || !)
+System.out.println("a".equals("a"));  // true   (.equals, not ==)`,
+spring:
+`// Operators are pure Java - Spring changes nothing.
+@Service
+public class Calculator {
+    public int add(int a, int b)         { return a + b; }
+    public double power(double b, int e) { return Math.pow(b, e); }
+    public boolean inRange(int x)        { return x > 0 && x < 100; }
+}`
+  }
+},
+{
+  id:"cond", n:"03", title:"Conditionals", level:"b",
+  blurb:"Run different code depending on a condition. Same logic everywhere; the keyword for \u201Celse-if\u201D differs.",
+  glance:{ python:"if / elif / else", java:"if / else if / else", spring:"pure Java + @Service" },
+  file:{ python:"grade.py", java:"Grade.java", spring:"Grader.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"Blocks are defined by <b>indentation</b>; the else-if keyword is <b>elif</b>. Ternary reads <b>a if cond else b</b>.",
+    java:"Blocks use <b>{ }</b> and conditions need <b>( )</b>; else-if is <b>else if</b>. Ternary is <b>cond ? a : b</b>.",
+    spring:"Conditionals are <b>pure Java</b> - identical inside a <b>@Service</b>."
+  },
+  code:{
+python:
+`score = 82
+
+if score >= 90:
+    grade = "A"
+elif score >= 80:        # elif
+    grade = "B"
+else:
+    grade = "C"
+
+# ternary (one-liner)
+status = "pass" if score >= 50 else "fail"`,
+java:
+`int score = 82;
+String grade;
+
+if (score >= 90) {
+    grade = "A";
+} else if (score >= 80) {    // else if
+    grade = "B";
+} else {
+    grade = "C";
+}
+
+// ternary
+String status = score >= 50 ? "pass" : "fail";`,
+spring:
+`// Conditionals are pure Java - identical inside a @Service.
+@Service
+public class Grader {
+    public String grade(int score) {
+        if (score >= 90)      return "A";
+        else if (score >= 80) return "B";
+        else                  return "C";
+    }
+}`
+  }
+},
+{
+  id:"loops", n:"04", title:"Loops", level:"b",
+  blurb:"Repeat work. Python loops over sequences; Java also has the classic C-style counter loop.",
+  glance:{ python:"for i in range()", java:"for(int i=0;...)", spring:"pure Java + @Service" },
+  file:{ python:"loops.py", java:"Loops.java", spring:"Printer.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"<b>for</b> always walks a sequence (<b>range()</b>, a list...). Decrement with <b>n -= 1</b>.",
+    java:"The C-style <b>for(init; cond; step)</b> plus a <b>for-each</b> (<b>for (T x : items)</b>). Decrement with <b>n--</b>.",
+    spring:"Loops are <b>pure Java</b> - identical inside a <b>@Service</b>."
+  },
+  code:{
+python:
+`# count 0..4
+for i in range(5):
+    print(i)
+
+# iterate items directly
+for item in ["a", "b", "c"]:
+    print(item)
+
+# while loop
+n = 3
+while n > 0:
+    print(n)
+    n -= 1`,
+java:
+`// count 0..4
+for (int i = 0; i < 5; i++) {
+    System.out.println(i);
+}
+
+// enhanced for-each
+for (String item : List.of("a", "b", "c")) {
+    System.out.println(item);
+}
+
+// while loop
+int n = 3;
+while (n > 0) {
+    System.out.println(n);
+    n--;
+}`,
+spring:
+`// Loops are pure Java - identical inside a @Service.
+@Service
+public class Printer {
+    public void countTo(int max) {
+        for (int i = 0; i < max; i++) {
+            System.out.println(i);
+        }
+    }
+}`
+  }
+},
+{
+  id:"func", n:"05", title:"Functions / Methods", level:"i",
+  blurb:"A reusable block that takes inputs and returns a result. Python has default arguments; Java uses overloads instead.",
+  glance:{ python:"def f(x, y=1)", java:"overloads", spring:"@Bean method" },
+  file:{ python:"funcs.py", java:"Funcs.java", spring:"AppConfig.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"<b>def</b> with optional type hints. Supports <b>default arguments</b> and <b>*args</b> for variable inputs.",
+    java:"Types are required. No default args - write <b>overloaded</b> methods (one calls the next). <b>int...</b> is varargs.",
+    spring:"In Spring a <b>@Bean</b> method is a factory function - Spring calls it once and manages the returned object."
+  },
+  warn:{
+    java:"Java has <b>no default parameter values</b> - you provide several overloaded methods, and the short one delegates to the full one."
+  },
+  code:{
+python:
+`def greet(name: str, greeting: str = "Hi") -> str:   # default arg
+    return f"{greeting}, {name}!"
+
+print(greet("Aarav"))             # Hi, Aarav!
+print(greet("Bela", "Hello"))     # Hello, Bela!
+
+def total(*nums):                 # variable arguments
+    return sum(nums)`,
+java:
+`// no default args - use overloads instead
+String greet(String name) {
+    return greet(name, "Hi");
+}
+String greet(String name, String greeting) {
+    return greeting + ", " + name + "!";
+}
+
+int total(int... nums) {          // varargs
+    int s = 0;
+    for (int n : nums) s += n;
+    return s;
+}`,
+spring:
+`// A @Bean method is a "function" whose result Spring manages.
+@Configuration
+public class AppConfig {
+
+    @Bean                         // registers the returned object as a bean
+    public Greeter greeter() {
+        return new Greeter("Hi");
+    }
+}`
+  }
+},
+{
+  id:"str", n:"06", title:"Strings & Formatting", level:"i",
+  blurb:"Build and shape text. The idea is identical; the formatting syntax and method names differ.",
+  glance:{ python:'f"{x}"', java:"String.format()", spring:"pure Java + @Service" },
+  file:{ python:"text.py", java:"Text.java", spring:"Formatter.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"<b>f-strings</b> (<b>f\"{name}\"</b>) are the modern way. Methods: <b>upper()</b>, <b>split()</b>, <b>strip()</b>.",
+    java:"Use <b>+</b>, <b>String.format(\"%s\")</b>, or <b>.formatted()</b> (15+). Methods: <b>toUpperCase()</b>, <b>split()</b>, <b>strip()</b>.",
+    spring:"Strings are <b>pure Java</b> - Spring changes nothing."
+  },
+  code:{
+python:
+`name, age = "Aarav", 25
+
+s = "Hi " + name                # concatenation
+s = f"{name} is {age}"          # f-string (best)
+s = "{} is {}".format(name, age)
+
+print(name.upper())             # AARAV
+print("a,b,c".split(","))       # ['a', 'b', 'c']
+print("  hi  ".strip())         # 'hi'`,
+java:
+`String name = "Aarav"; int age = 25;
+
+String s = "Hi " + name;                   // concatenation
+s = String.format("%s is %d", name, age);  // format
+s = "%s is %d".formatted(name, age);       // Java 15+
+
+System.out.println(name.toUpperCase());    // AARAV
+"a,b,c".split(",");                        // ["a", "b", "c"]
+"  hi  ".strip();                          // "hi"`,
+spring:
+`// Strings are pure Java - Spring changes nothing.
+@Service
+public class Formatter {
+    public String describe(String name, int age) {
+        return "%s is %d".formatted(name, age);
+    }
+}`
+  }
+},
+{
+  id:"switch", n:"07", title:"Switch / Match", level:"i",
+  blurb:"Pick a branch by matching a value. Both languages added a modern, expression form that returns a value.",
+  glance:{ python:"match / case", java:"switch ... ->", spring:"pure Java + @Service" },
+  file:{ python:"days.py", java:"Days.java", spring:"Scheduler.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"<b>match / case</b> (3.10+). Combine values with <b>|</b>; <b>case _</b> is the default.",
+    java:"Arrow <b>switch</b> expression (14+). Group values with commas; <b>default</b> handles the rest. It returns a value.",
+    spring:"<b>switch</b> is <b>pure Java</b> - identical inside a <b>@Service</b>."
+  },
+  code:{
+python:
+`day = 3   # 1 = Mon ... 7 = Sun
+
+match day:
+    case 6 | 7:           # multiple values
+        kind = "weekend"
+    case _:               # default
+        kind = "weekday"
+
+print(kind)               # weekday`,
+java:
+`int day = 3;   // 1 = Mon ... 7 = Sun
+
+// switch EXPRESSION (Java 14+) - returns a value
+String kind = switch (day) {
+    case 6, 7 -> "weekend";
+    default   -> "weekday";
+};
+
+System.out.println(kind);   // weekday`,
+spring:
+`// switch is pure Java - identical inside a @Service.
+@Service
+public class Scheduler {
+    public String kindOf(int day) {
+        return switch (day) {
+            case 6, 7 -> "weekend";
+            default   -> "weekday";
+        };
+    }
+}`
+  }
+},
+{
+  id:"main", n:"08", title:"Program Entry Point", level:"p",
+  blurb:"Where execution begins. This is the one basic where Spring genuinely differs — one annotation boots the whole framework.",
+  glance:{ python:'if __name__ == "__main__"', java:"public static void main", spring:"@SpringBootApplication" },
+  file:{ python:"app.py", java:"App.java", spring:"Application.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"The <b>if __name__ == \"__main__\"</b> guard runs <b>main()</b> only when the file is executed directly (not imported).",
+    java:"A fixed signature: <b>public static void main(String[] args)</b>. The JVM calls it to start the program.",
+    spring:"<b>@SpringBootApplication</b> on the main class boots the whole app (auto-config, component scan, embedded server) via <b>SpringApplication.run(...)</b>."
+  },
+  code:{
+python:
+`# app.py
+def main():
+    print("App started")
+
+if __name__ == "__main__":   # runs only when executed directly
+    main()`,
+java:
+`// App.java  (public class name matches the file name)
+public class App {
+    public static void main(String[] args) {   // fixed entry signature
+        System.out.println("App started");
+    }
+}
+// run:  javac App.java && java App`,
+spring:
+`// One annotation boots the entire framework + embedded server.
+@SpringBootApplication   // = @Configuration + @ComponentScan + @EnableAutoConfiguration
+public class Application {
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+}`
+  }
+}
+];
+
+/* ===== Spring basics annotations (glossary) ===== */
+const GLOSS = [
+["@Value","Inject a value from application.properties into a field."],
+["@Component","Register a class as a Spring-managed bean."],
+["@Service","A @Component for business-logic classes."],
+["@Configuration","A class that declares @Bean methods."],
+["@Bean","A method whose returned object Spring manages as a bean."],
+["@SpringBootApplication","The main-class annotation that boots the whole app."],
+["@ComponentScan","Find and register beans (bundled into @SpringBootApplication)."],
+["SpringApplication.run()","Starts the application context and embedded server."]
+];
+
+/* ===== Render engine ===== */
+let LANG = "python";
+const LANGS = ["python","java","spring"];
+function levelTag(l){ return '<span class="lv '+l+'">'+({b:"Beginner",i:"Intermediate",p:"Pro"}[l])+'</span>'; }
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function highlight(el){ if(window.Prism){ try{ Prism.highlightElement(el); }catch(e){} } }
+
+function buildCards(){
+  const root = document.getElementById('concepts');
+  CONCEPTS.forEach(c=>{
+    const sec = document.createElement('section');
+    sec.className = 'section';
+    sec.innerHTML = `
+      <div class="card">
+        <div class="card-grid">
+          <div class="cinfo">
+            <div class="cnum">${c.n}</div>
+            <div class="chead"><h3>${c.title}</h3>${levelTag(c.level)}</div>
+            <div class="blurb">${c.blurb}</div>
+            <div class="glance">
+              <div class="t">at a glance</div>
+              <div class="chips">
+                ${LANGS.map(l=>`
+                  <div class="chip" data-l="${l}" data-cl="${l}">
+                    <span class="nm"><i></i>${l==='spring'?'Spring':l[0].toUpperCase()+l.slice(1)}</span>
+                    <span class="vl">${esc(c.glance[l])}</span>
+                  </div>`).join('')}
+              </div>
+            </div>
+            <div class="note"><span class="b">💡</span><span class="x" data-note></span></div>
+            <div class="note warn" data-warnbox style="display:none"><span class="b">⚠️</span><span class="x" data-warn></span></div>
+          </div>
+          <div class="cpane">
+            <div class="cbar">
+              <span class="dots"><i></i><i></i><i></i></span>
+              <span class="fname"><b data-fname></b></span>
+              <button class="copy" data-copy>⧉ Copy</button>
+            </div>
+            <pre><code data-code class="language-python"></code></pre>
+          </div>
+        </div>
+      </div>`;
+    root.appendChild(sec);
+    sec._concept = c;
+  });
+}
+
+function buildGloss(){
+  document.getElementById('gloss').innerHTML =
+    GLOSS.map(g=>`<div class="gitem"><span class="a">${esc(g[0])}</span><span class="d">${g[1]}</span></div>`).join('');
+}
+
+function paint(animate){
+  document.querySelectorAll('#concepts .section').forEach(sec=>{
+    const c = sec._concept;
+    const card = sec.querySelector('.card');
+    const codeEl = card.querySelector('[data-code]');
+    const fname = card.querySelector('[data-fname]');
+    const note = card.querySelector('[data-note]');
+    const warnBox = card.querySelector('[data-warnbox]');
+    const warnEl = card.querySelector('[data-warn]');
+    const apply = ()=>{
+      codeEl.className = 'language-'+c.lang[LANG];
+      codeEl.textContent = c.code[LANG];
+      highlight(codeEl);
+      fname.textContent = c.file[LANG];
+      note.innerHTML = c.note[LANG];
+      const w = (c.warn && c.warn[LANG]) ? c.warn[LANG] : '';
+      if(w){ warnEl.innerHTML = w; warnBox.style.display='flex'; }
+      else { warnBox.style.display='none'; }
+      card.querySelectorAll('.chip').forEach(ch=>ch.classList.toggle('act', ch.dataset.cl===LANG));
+    };
+    if(animate){
+      card.querySelector('.cpane').classList.add('swapping');
+      setTimeout(()=>{ apply(); card.querySelector('.cpane').classList.remove('swapping'); }, 190);
+    } else apply();
+  });
+}
+
+function setLang(l){
+  if(l===LANG) return;
+  LANG=l;
+  document.body.className='lang-'+l;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('on', p.dataset.l===l));
+  paint(true);
+}
+document.getElementById('switch').addEventListener('click',e=>{
+  const b=e.target.closest('.pill'); if(b) setLang(b.dataset.l);
+});
+
+document.addEventListener('click', e=>{
+  const btn = e.target.closest('[data-copy]');
+  if(!btn) return;
+  const code = btn.closest('.cpane').querySelector('[data-code]').textContent;
+  const ok = ()=>{ btn.classList.add('done'); btn.textContent='✓ Copied'; setTimeout(()=>{btn.classList.remove('done');btn.textContent='⧉ Copy';},1400); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(code).then(ok).catch(()=>fallback(code,ok));
+  } else fallback(code,ok);
+});
+function fallback(text,ok){
+  const t=document.createElement('textarea'); t.value=text; t.style.position='fixed'; t.style.opacity=0;
+  document.body.appendChild(t); t.select();
+  try{ document.execCommand('copy'); ok(); }catch(e){}
+  document.body.removeChild(t);
+}
+
+const io = new IntersectionObserver((es)=>{ es.forEach(en=>{ if(en.isIntersecting) en.target.classList.add('in'); }); },{threshold:.1});
+function onScroll(){ const h=document.documentElement; const sc=(h.scrollTop)/(h.scrollHeight-h.clientHeight)*100; document.getElementById('prog').style.width=sc+'%'; }
+window.addEventListener('scroll',onScroll,{passive:true});
+
+function boot(){
+  buildCards();
+  buildGloss();
+  paint(false);
+  document.querySelectorAll('.section').forEach(s=>io.observe(s));
+  onScroll();
+}
+if(window.Prism) boot();
+else window.addEventListener('load', boot);
+</script>
+</body>
+</html>

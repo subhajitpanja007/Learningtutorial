@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Structures &amp; Methods — Python · Java · Spring Boot</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#080b12; --bg2:#0c1019; --panel:#10151f; --panel2:#0e131c;
+  --ink:#e8eef6; --muted:#8595ad; --faint:#5b6982;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.05);
+  --accent:#4B8BBE; --accent2:#FFD43B; --glow:rgba(75,139,190,.45);
+  --code-key:#ff7eb6; --code-str:#7ee787; --code-num:#ffa657; --code-fn:#d2a8ff;
+  --code-cls:#ffd866; --code-com:#5c6b85; --code-anno:#7ee0a8; --code-punc:#9fb0cc;
+  --warn:#ffb020;
+}
+body.lang-python{ --accent:#4B8BBE; --accent2:#FFD43B; --glow:rgba(75,139,190,.5); }
+body.lang-java  { --accent:#f89820; --accent2:#ff5b4a; --glow:rgba(248,152,32,.5); }
+body.lang-spring{ --accent:#6DB33F; --accent2:#bfe86a; --glow:rgba(109,179,63,.5); }
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:'Hanken Grotesk',sans-serif;line-height:1.65;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+.aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.aurora::before,.aurora::after{content:"";position:absolute;width:60vw;height:60vw;border-radius:50%;filter:blur(120px);opacity:.20;transition:background 1.2s ease}
+.aurora::before{top:-15vw;left:-10vw;background:var(--accent);animation:drift1 22s ease-in-out infinite}
+.aurora::after{bottom:-20vw;right:-12vw;background:var(--accent2);animation:drift2 28s ease-in-out infinite}
+@keyframes drift1{50%{transform:translate(8vw,10vh) scale(1.15)}}
+@keyframes drift2{50%{transform:translate(-10vw,-6vh) scale(1.1)}}
+.grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+.progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:100;background:linear-gradient(90deg,var(--accent),var(--accent2));box-shadow:0 0 14px var(--glow);transition:width .1s linear}
+
+.wrap{position:relative;z-index:2;max-width:1140px;margin:0 auto;padding:0 22px}
+
+header{position:sticky;top:0;z-index:60;backdrop-filter:blur(14px);background:rgba(8,11,18,.72);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:16px;max-width:1140px;margin:0 auto;padding:13px 22px}
+.brand{display:flex;align-items:center;gap:11px;font-family:'Bricolage Grotesque';font-weight:800;letter-spacing:-.02em}
+.brand .mark{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#06090f;font-size:16px;box-shadow:0 0 18px var(--glow);transition:.5s}
+.brand b{font-size:16px}
+.brand span{color:var(--faint);font-weight:600;font-size:11.5px;font-family:'JetBrains Mono';display:block;letter-spacing:0}
+
+.switch{display:flex;gap:6px;background:var(--panel);padding:5px;border-radius:13px;border:1px solid var(--line)}
+.pill{border:0;cursor:pointer;font-family:'JetBrains Mono';font-weight:500;font-size:12.5px;color:var(--muted);background:transparent;padding:7px 13px;border-radius:9px;display:flex;align-items:center;gap:7px;transition:.25s;white-space:nowrap}
+.pill .dot{width:8px;height:8px;border-radius:50%}
+.pill[data-l="python"] .dot{background:#4B8BBE}.pill[data-l="java"] .dot{background:#f89820}.pill[data-l="spring"] .dot{background:#6DB33F}
+.pill:hover{color:var(--ink)}
+.pill.on{color:#06090f;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 4px 16px var(--glow);font-weight:700}
+.pill.on .dot{background:#06090f}
+
+.hero{padding:78px 0 40px;text-align:center}
+.kick{display:inline-flex;align-items:center;gap:9px;font-family:'JetBrains Mono';font-size:12px;color:var(--accent2);border:1px solid var(--line);background:var(--panel);padding:7px 15px;border-radius:30px;margin-bottom:26px;opacity:0;animation:up .7s .05s forwards}
+.kick .ping{width:7px;height:7px;border-radius:50%;background:var(--accent2);box-shadow:0 0 0 0 var(--glow);animation:ping 2s infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 var(--glow)}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+h1{font-family:'Bricolage Grotesque';font-weight:800;letter-spacing:-.035em;line-height:1.02;font-size:clamp(36px,6.6vw,68px);opacity:0;animation:up .8s .12s forwards}
+h1 .g{background:linear-gradient(115deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;transition:.5s}
+.sub{max-width:660px;margin:22px auto 0;color:var(--muted);font-size:clamp(15px,2vw,18px);opacity:0;animation:up .8s .22s forwards}
+.sub code{font-family:'JetBrains Mono';color:var(--ink);background:var(--panel);padding:1px 7px;border-radius:6px;font-size:.85em;border:1px solid var(--line)}
+
+.pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-top:46px}
+.pillar{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 16px;text-align:left;position:relative;overflow:hidden;opacity:0;animation:up .7s forwards;transition:.3s}
+.pillar:nth-child(1){animation-delay:.34s}.pillar:nth-child(2){animation-delay:.42s}.pillar:nth-child(3){animation-delay:.5s}.pillar:nth-child(4){animation-delay:.58s}
+.pillar:hover{transform:translateY(-6px);border-color:var(--accent);box-shadow:0 14px 40px -18px var(--glow)}
+.pillar::after{content:"";position:absolute;inset:0;background:radial-gradient(120px 80px at 80% 0,var(--glow),transparent 70%);opacity:.4}
+.pillar .ic{font-size:24px;display:block;margin-bottom:11px}
+.pillar h4{font-family:'Bricolage Grotesque';font-size:15.5px;font-weight:700;letter-spacing:-.01em}
+.pillar p{font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.5}
+
+.legend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin:54px auto 0;font-size:12.5px;color:var(--muted);font-family:'JetBrains Mono';opacity:0;animation:up .7s .66s forwards}
+.legend .it{display:flex;align-items:center;gap:7px}
+.lv{font-family:'JetBrains Mono';font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.03em;text-transform:uppercase}
+.lv.b{color:#7ee787;background:rgba(126,231,135,.12);border:1px solid rgba(126,231,135,.3)}
+.lv.i{color:#ffd866;background:rgba(255,216,102,.12);border:1px solid rgba(255,216,102,.3)}
+.lv.p{color:#ff7eb6;background:rgba(255,126,182,.12);border:1px solid rgba(255,126,182,.3)}
+
+.section{padding:30px 0;opacity:0;transform:translateY(28px);transition:.7s cubic-bezier(.22,1,.36,1)}
+.section.in{opacity:1;transform:none}
+
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:22px;overflow:hidden;margin-bottom:26px;position:relative}
+.card::before{content:"";position:absolute;left:0;top:0;height:100%;width:3px;background:linear-gradient(var(--accent),var(--accent2));transition:.5s;box-shadow:0 0 18px var(--glow)}
+.card-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.18fr)}
+.cinfo{padding:30px 30px 30px 34px;border-right:1px solid var(--line)}
+.cnum{font-family:'JetBrains Mono';font-size:12px;color:var(--accent2);font-weight:700;letter-spacing:.1em}
+.chead{display:flex;align-items:center;gap:12px;margin:8px 0 14px;flex-wrap:wrap}
+.chead h3{font-family:'Bricolage Grotesque';font-size:25px;font-weight:800;letter-spacing:-.02em}
+.blurb{color:var(--muted);font-size:14.5px}
+
+.glance{margin-top:22px;border-top:1px dashed var(--line);padding-top:18px}
+.glance .t{font-family:'JetBrains Mono';font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);margin-bottom:11px}
+.chips{display:flex;flex-direction:column;gap:8px}
+.chip{display:flex;align-items:center;gap:10px;font-size:12px;padding:8px 11px;border-radius:11px;border:1px solid var(--line2);background:rgba(255,255,255,.02);transition:.3s;font-family:'JetBrains Mono'}
+.chip .nm{font-weight:700;width:60px;flex:none;display:flex;align-items:center;gap:6px}
+.chip .nm i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.chip[data-l="python"] .nm i{background:#4B8BBE}.chip[data-l="java"] .nm i{background:#f89820}.chip[data-l="spring"] .nm i{background:#6DB33F}
+.chip .vl{color:var(--muted)}
+.chip.act{border-color:var(--accent);background:var(--glow);box-shadow:0 0 0 1px var(--accent)}
+.chip.act .vl{color:var(--ink)}
+
+.note{margin-top:18px;display:flex;gap:11px;background:var(--glow);border:1px solid var(--accent);border-radius:13px;padding:13px 15px;transition:.25s}
+.note .b{font-size:17px;line-height:1.3;flex:none}
+.note .x{font-size:13px;color:var(--ink)}
+.note .x b{color:var(--accent2)}
+.note.warn{margin-top:12px;background:rgba(255,176,32,.10);border:1px solid var(--warn)}
+.note.warn .x b{color:#ffd166}
+.note.warn code{font-family:'JetBrains Mono';font-size:.86em;color:#ffd166;background:rgba(255,176,32,.12);padding:1px 5px;border-radius:5px}
+
+.cpane{background:#0a0e16;display:flex;flex-direction:column;min-width:0}
+.cbar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:#0c111b}
+.dots{display:flex;gap:6px}
+.dots i{width:11px;height:11px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}
+.fname{font-family:'JetBrains Mono';font-size:12px;color:var(--muted);margin-left:4px}
+.fname b{color:var(--accent2);transition:.25s}
+.copy{margin-left:auto;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;font-family:'JetBrains Mono';font-size:11px;padding:5px 11px;border-radius:8px;transition:.2s;display:flex;gap:6px;align-items:center}
+.copy:hover{color:var(--ink);border-color:var(--accent);background:var(--glow)}
+.copy.done{color:#28c840;border-color:#28c840}
+pre{margin:0;overflow:auto;padding:20px 22px;flex:1}
+pre code{font-family:'JetBrains Mono'!important;font-size:12.8px;line-height:1.72;background:none!important;white-space:pre;tab-size:4}
+.swapping pre,.swapping .fname b{opacity:0;transform:translateY(6px)}
+pre,.fname b{transition:opacity .2s,transform .2s}
+
+code[class*="language-"],pre[class*="language-"]{color:var(--ink);text-shadow:none}
+.token.comment,.token.prolog,.token.doctype,.token.cdata{color:var(--code-com);font-style:italic}
+.token.punctuation{color:var(--code-punc)}
+.token.keyword,.token.boolean,.token.operator{color:var(--code-key)}
+.token.string,.token.char,.token.attr-value{color:var(--code-str)}
+.token.number{color:var(--code-num)}
+.token.function,.token.method{color:var(--code-fn)}
+.token.class-name,.token.builtin{color:var(--code-cls)}
+.token.decorator,.token.annotation{color:var(--code-anno);font-weight:700;text-shadow:0 0 14px rgba(126,224,168,.35)}
+.token.annotation .token.punctuation{color:var(--code-anno)}
+.token.triple-quoted-string{color:var(--code-str)}
+
+.stitle{text-align:center;margin:22px 0 30px}
+.stitle .e{font-family:'JetBrains Mono';font-size:12px;color:var(--accent2);letter-spacing:.14em;text-transform:uppercase}
+.stitle h2{font-family:'Bricolage Grotesque';font-weight:800;font-size:clamp(28px,4.5vw,40px);letter-spacing:-.03em;margin-top:8px}
+.stitle p{color:var(--muted);max-width:600px;margin:10px auto 0;font-size:14.5px}
+
+/* bypass matrix */
+.matrix{border:1px solid var(--warn);border-radius:18px;overflow:hidden;overflow-x:auto;box-shadow:0 0 50px -28px var(--warn)}
+.matrix table{border-collapse:collapse;width:100%;min-width:640px;font-size:13.5px}
+.matrix th,.matrix td{text-align:left;padding:14px 18px;border-bottom:1px solid var(--line)}
+.matrix thead th{font-family:'JetBrains Mono';font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;background:rgba(255,176,32,.08);color:var(--warn)}
+.matrix tbody td:first-child{font-family:'Bricolage Grotesque';font-weight:700;color:var(--ink)}
+.matrix tbody tr:last-child td{border-bottom:0}
+.matrix tbody tr:hover{background:rgba(255,176,32,.05)}
+.matrix .fix{color:var(--muted);font-family:'JetBrains Mono';font-size:12px}
+.matrix .fix code{color:#ffd166}
+.yes{color:#28c840;font-weight:700;font-family:'JetBrains Mono'}
+.no{color:#ff5f57;font-weight:700;font-family:'JetBrains Mono'}
+
+/* spring stack */
+.stack{display:grid;gap:14px}
+.layer{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:18px;overflow:hidden;position:relative;opacity:0;transform:translateY(20px);transition:.6s}
+.section.in .layer{opacity:1;transform:none}
+.section.in .layer:nth-child(1){transition-delay:.05s}.section.in .layer:nth-child(2){transition-delay:.13s}.section.in .layer:nth-child(3){transition-delay:.21s}.section.in .layer:nth-child(4){transition-delay:.29s}.section.in .layer:nth-child(5){transition-delay:.37s}
+.lhead{display:flex;align-items:center;gap:13px;padding:15px 20px;border-bottom:1px solid var(--line)}
+.lbadge{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-family:'Bricolage Grotesque';font-weight:800;color:#06090f;background:linear-gradient(135deg,#6DB33F,#bfe86a);box-shadow:0 0 16px rgba(109,179,63,.45);flex:none}
+.lhead .lt b{font-family:'Bricolage Grotesque';font-size:16px;display:block;letter-spacing:-.01em}
+.lhead .lt span{font-size:12px;color:var(--muted)}
+.ltag{margin-left:auto;font-family:'JetBrains Mono';font-size:11px;color:#6DB33F;background:rgba(109,179,63,.12);border:1px solid rgba(109,179,63,.3);padding:4px 10px;border-radius:20px}
+.layer pre{background:#0a0e16}
+.flowline{height:22px;display:grid;place-items:center}
+.flowline span{color:var(--faint);font-size:18px;animation:bob 1.8s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(4px)}}
+
+.tablewrap{border:1px solid var(--line);border-radius:18px;overflow:hidden;overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:680px;font-size:13.5px}
+th,td{text-align:left;padding:13px 18px;border-bottom:1px solid var(--line)}
+thead th{font-family:'JetBrains Mono';font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;background:var(--panel)}
+thead th:nth-child(2){color:#4B8BBE}thead th:nth-child(3){color:#f89820}thead th:nth-child(4){color:#6DB33F}
+tbody tr{transition:.2s}tbody tr:hover{background:var(--glow)}
+tbody td:first-child{font-family:'Bricolage Grotesque';font-weight:700;color:var(--ink)}
+td code,th code{font-family:'JetBrains Mono';font-size:12px;color:var(--ink)}
+tbody td:not(:first-child){font-family:'JetBrains Mono';font-size:11.5px;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+
+footer{text-align:center;padding:50px 0 60px;color:var(--faint);font-size:13px;border-top:1px solid var(--line);margin-top:30px}
+footer b{color:var(--accent2)}
+@keyframes up{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+::selection{background:var(--accent);color:#06090f}
+pre::-webkit-scrollbar,.tablewrap::-webkit-scrollbar,.matrix::-webkit-scrollbar{height:8px;width:8px}
+pre::-webkit-scrollbar-thumb,.tablewrap::-webkit-scrollbar-thumb,.matrix::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
+
+@media(max-width:820px){
+  .card-grid{grid-template-columns:1fr}
+  .cinfo{border-right:0;border-bottom:1px solid var(--line)}
+  .pillars{grid-template-columns:repeat(2,1fr)}
+  .brand span{display:none}
+  .bar{padding:11px 16px}.switch{padding:4px}.pill{padding:7px 9px;font-size:11px}
+}
+/* Spring-specific sections render ONLY on the Spring Boot tab */
+.spring-only{display:none}
+body.lang-spring .spring-only{display:block}
+body.lang-spring .spring-only.section,
+body.lang-spring .spring-only .section,
+body.lang-spring .spring-only .layer{opacity:1;transform:none}
+</style>
+</head>
+<body class="lang-python">
+
+<div class="aurora"></div>
+<div class="grain"></div>
+<div class="progress" id="prog"></div>
+
+<header>
+  <div class="bar">
+    <div class="brand">
+      <div class="mark">▤</div>
+      <div><b>DS&nbsp;×&nbsp;3</b><span>python · java · spring</span></div>
+    </div>
+    <div class="switch" id="switch">
+      <button class="pill on" data-l="python"><span class="dot"></span>Python</button>
+      <button class="pill" data-l="java"><span class="dot"></span>Java</button>
+      <button class="pill" data-l="spring"><span class="dot"></span>Spring&nbsp;Boot</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="kick"><span class="ping"></span>lists · tuples · arrays · sets · maps · queues · overloading</div>
+    <h1>Data Structures &amp; Methods<br><span class="g">across three worlds</span></h1>
+    <p class="sub">One theme — a tiny <b>online store</b> — rebuilt in <b>Python</b>, <b>Java</b> &amp; <b>Spring Boot</b>. Flip the toggle and watch every snippet morph. Wherever a language <b style="color:#ffd166">can't do something</b> (Python has no overloading, Java has no tuples), you'll get the idiomatic workaround.</p>
+
+    <div class="pillars">
+      <div class="pillar"><span class="ic">📑</span><h4>Lists &amp; Arrays</h4><p>Ordered, indexed collections.</p></div>
+      <div class="pillar"><span class="ic">🔑</span><h4>Sets &amp; Maps</h4><p>Unique items &amp; key→value.</p></div>
+      <div class="pillar"><span class="ic">🥞</span><h4>Stacks &amp; Queues</h4><p>LIFO &amp; FIFO ordering.</p></div>
+      <div class="pillar"><span class="ic">🔁</span><h4>Overloading</h4><p>One name, many signatures.</p></div>
+    </div>
+
+    <div class="legend">
+      <div class="it">Difficulty:</div>
+      <div class="it"><span class="lv b">Beginner</span></div>
+      <div class="it"><span class="lv i">Intermediate</span></div>
+      <div class="it"><span class="lv p">Pro</span></div>
+      <div class="it" style="color:var(--faint)">— ⚠️ marks a language-specific workaround</div>
+    </div>
+  </section>
+
+  <div id="concepts"></div>
+
+  <!-- BYPASS MATRIX -->
+  <section class="section" id="bypass">
+    <div class="stitle">
+      <div class="e">⚠️ when a language says NO</div>
+      <h2>Missing feature? Here's the workaround</h2>
+      <p>Not every language supports every concept. This is the cheat sheet for filling the gaps idiomatically.</p>
+    </div>
+    <div class="matrix">
+      <table>
+        <thead><tr><th>Feature</th><th>Python</th><th>Java</th><th>Idiomatic workaround</th></tr></thead>
+        <tbody>
+          <tr><td>Method / function overloading</td><td class="no">✘ no</td><td class="yes">✔ yes</td><td class="fix"><b>Python:</b> default args, <code>*args/**kwargs</code>, or <code>@singledispatch</code></td></tr>
+          <tr><td>Tuple type</td><td class="yes">✔ yes</td><td class="no">✘ no</td><td class="fix"><b>Java:</b> a <code>record</code> (immutable) or <code>Map.entry()</code></td></tr>
+          <tr><td>Fixed-size typed array</td><td class="no">~ no built-in</td><td class="yes">✔ yes</td><td class="fix"><b>Python:</b> <code>array.array</code>, NumPy, or just a list</td></tr>
+          <tr><td>Operator overloading</td><td class="yes">✔ yes</td><td class="no">✘ no</td><td class="fix"><b>Java:</b> use named methods like <code>.add()</code></td></tr>
+          <tr><td>Collection literals</td><td class="yes">✔ concise</td><td class="no">~ verbose</td><td class="fix"><b>Java:</b> <code>List.of()</code>, <code>Set.of()</code>, <code>Map.of()</code></td></tr>
+          <tr><td>Named tuples / data classes</td><td class="yes">✔ <code>@dataclass</code></td><td class="yes">✔ <code>record</code></td><td class="fix">Both are first-class — great as DTOs</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SPRING STACK -->
+  <section class="section spring-only" id="springstack">
+    <div class="stitle">
+      <div class="e">🍃 Spring Boot in action</div>
+      <h2>All of it, in one tiny REST app</h2>
+      <p>A product catalog that uses a <b>Map</b> store, returns a <b>List</b> of <b>record</b> DTOs (tuples), keeps <b>Set</b> tags, and shows real <b>overloading</b> — read top to bottom.</p>
+    </div>
+    <div class="stack" id="stack"></div>
+  </section>
+
+  <!-- CHEAT TABLE -->
+  <section class="section" id="compare">
+    <div class="stitle">
+      <div class="e">⚡ side by side</div>
+      <h2>Every structure on one screen</h2>
+      <p>Same data structure, three syntaxes. Screenshot this one.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Structure</th><th>Python</th><th>Java</th><th>Spring Boot use</th></tr></thead>
+        <tbody>
+          <tr><td>List</td><td><code>[1, 2, 3]</code></td><td><code>new ArrayList&lt;&gt;()</code></td><td><code>List&lt;T&gt;</code> → JSON array</td></tr>
+          <tr><td>Tuple</td><td><code>(a, b)</code></td><td><code>record</code> / <code>Map.entry</code></td><td>record DTO</td></tr>
+          <tr><td>Array</td><td><code>array('d', ...)</code></td><td><code>int[] a = {…}</code></td><td><code>@RequestParam int[]</code></td></tr>
+          <tr><td>Set</td><td><code>{1, 2}</code></td><td><code>new HashSet&lt;&gt;()</code></td><td><code>@ElementCollection Set&lt;&gt;</code></td></tr>
+          <tr><td>Map / Dict</td><td><code>{"k": v}</code></td><td><code>new HashMap&lt;&gt;()</code></td><td><code>Map&lt;&gt;</code> → JSON object</td></tr>
+          <tr><td>Stack (LIFO)</td><td><code>list</code> / <code>deque</code></td><td><code>ArrayDeque</code> push/pop</td><td><code>Deque</code> in a service</td></tr>
+          <tr><td>Queue (FIFO)</td><td><code>deque</code> popleft</td><td><code>ArrayDeque</code> offer/poll</td><td><code>Queue</code> in <code>@Service</code></td></tr>
+          <tr><td>Overloading</td><td>✘ default / <code>*args</code> / dispatch</td><td>✔ native</td><td><code>@…Mapping</code> variants</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  Built as one tutorial — an <b>online store</b> in Python, Java &amp; Spring Boot.<br>
+  Toggle a language up top to recolor every example. Ship it 🚀
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+
+<script>
+/* ===== DATA: one topic (online store), three languages ===== */
+const CONCEPTS = [
+{
+  id:"list", n:"01", title:"List", level:"b",
+  blurb:"An ordered, mutable collection that allows duplicates and grows on demand. Your everyday \u201Cbunch of things\u201D — like items in a shopping cart.",
+  glance:{ python:"['a', 'b', 'b']", java:"new ArrayList<>()", spring:"List<T> -> JSON array" },
+  file:{ python:"cart.py", java:"Cart.java", spring:"ProductController.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"Use <b>[]</b>. Append, insert, slice — fully dynamic. Indexing is <b>cart[0]</b>.",
+    java:"Use <b>ArrayList&lt;&gt;</b> behind the <b>List</b> interface. Indexing is <b>cart.get(0)</b>.",
+    spring:"Return a <b>List&lt;&gt;</b> straight from a controller and Spring serializes it to a JSON array. <b>List.of()</b> is immutable, so wrap it for edits."
+  },
+  code:{
+python:
+`# A list: ordered, mutable, duplicates allowed
+cart = ["Keyboard", "Mouse", "Mouse"]   # duplicates are fine
+
+cart.append("Monitor")        # add to the end
+cart.insert(0, "Webcam")      # insert at index 0
+cart.remove("Mouse")          # removes the FIRST "Mouse"
+
+print(cart[0])                # Webcam   (index access)
+print(len(cart))              # 4
+for item in cart:
+    print(item)`,
+java:
+`import java.util.ArrayList;
+import java.util.List;
+
+// ArrayList: a growable, ordered list
+List<String> cart = new ArrayList<>();
+cart.add("Keyboard");
+cart.add("Mouse");
+cart.add("Mouse");            // duplicates are fine
+
+cart.add(0, "Webcam");        // insert at index 0
+cart.remove("Mouse");         // removes the first "Mouse"
+
+System.out.println(cart.get(0));   // Webcam
+System.out.println(cart.size());   // 3
+for (String item : cart) {
+    System.out.println(item);
+}`,
+spring:
+`@RestController
+@RequestMapping("/products")
+public class ProductController {
+
+    private final List<String> catalog =
+            new ArrayList<>(List.of("Keyboard", "Mouse"));
+
+    @GetMapping                       // GET /products
+    public List<String> all() {
+        return catalog;               // -> JSON array
+    }
+
+    @PostMapping                      // POST /products
+    public List<String> add(@RequestBody String name) {
+        catalog.add(name);
+        return catalog;
+    }
+}`
+  }
+},
+{
+  id:"tuple", n:"02", title:"Tuple", level:"b",
+  blurb:"An ordered group that is IMMUTABLE — once created it can't change. Perfect for fixed records and returning several values at once.",
+  glance:{ python:"(name, price)", java:"record / Map.entry", spring:"record DTO -> JSON" },
+  file:{ python:"product.py", java:"Product.java", spring:"CatalogController.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"Use parentheses <b>( )</b>. Unpack with <b>a, b = t</b>. Immutable, so it's hashable and safe as a dict key.",
+    java:"Java has no tuple — model it as a <b>record</b> (immutable, auto getters/equals) or a quick <b>Map.entry</b> for two values.",
+    spring:"A <b>record</b> is the idiomatic Spring DTO: a named tuple that serializes straight to JSON."
+  },
+  warn:{
+    java:"Java has <b>no tuple type</b>. Clean fix: a <code>record</code> (Java 16+) for named fields, or <code>Map.entry(k, v)</code> for a quick pair."
+  },
+  code:{
+python:
+`# A tuple: ordered + IMMUTABLE (cannot be changed)
+product = ("Keyboard", 49.99, "electronics")
+
+name, price, category = product       # unpacking
+print(price)                          # 49.99
+
+# product[1] = 59.99    -> TypeError: tuples are immutable
+
+def resolution() -> tuple[int, int]:
+    return (1920, 1080)               # return MANY values at once
+
+w, h = resolution()`,
+java:
+`// Java has NO tuple. Modern fix = a record (Java 16+)
+public record Product(String name, double price, String category) {}
+
+Product p = new Product("Keyboard", 49.99, "electronics");
+System.out.println(p.price());        // 49.99   (auto getter)
+// records are immutable by design -> no setters
+
+// Need just a quick 2-value pair? use Map.entry:
+var pair = java.util.Map.entry("Keyboard", 49.99);
+System.out.println(pair.getValue());  // 49.99`,
+spring:
+`// A record = an immutable "tuple" with names -> JSON DTO
+public record ProductDto(String name, double price) {}
+
+@RestController
+class CatalogController {
+
+    @GetMapping("/featured")
+    public ProductDto featured() {
+        // serializes to {"name":"Keyboard","price":49.99}
+        return new ProductDto("Keyboard", 49.99);
+    }
+}`
+  }
+},
+{
+  id:"array", n:"03", title:"Array", level:"b",
+  blurb:"A fixed-size, single-type block of memory with fast index access. Think \u201Cexactly 7 daily sales numbers\u201D — the size is locked.",
+  glance:{ python:"array('d', […]) / list", java:"int[] a = {…}", spring:"@RequestParam int[]" },
+  file:{ python:"sales.py", java:"Sales.java", spring:"ReportController.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"For everyday work just use a <b>list</b> (it's dynamic). For a true typed array, the <b>array</b> module or NumPy.",
+    java:"A real array: <b>fixed length</b>, one type, very fast. Read its size with <b>.length</b> (a field, not a method).",
+    spring:"Spring binds a comma-separated query string (<b>?days=12,7,9</b>) directly into an <b>int[]</b>."
+  },
+  warn:{
+    python:"Python has <b>no fixed-size typed array</b> built in. Use a plain <code>list</code>, the <code>array.array</code> module, or NumPy for real numeric arrays."
+  },
+  code:{
+python:
+`# Python has no fixed-size typed array built in.
+# Day to day, just use a list:
+daily_sales = [12, 7, 9, 0, 4, 18, 22]    # 7 days
+print(daily_sales[5])                     # 18
+print(sum(daily_sales))                   # 72
+
+# Need a real typed array? use the 'array' module:
+from array import array
+prices = array('d', [49.99, 19.99, 99.0])  # 'd' = all doubles`,
+java:
+`// A real array: fixed size, single type, fast
+int[] dailySales = {12, 7, 9, 0, 4, 18, 22};   // length locked at 7
+System.out.println(dailySales[5]);             // 18
+System.out.println(dailySales.length);         // 7
+
+double[] prices = new double[3];               // {0.0, 0.0, 0.0}
+prices[0] = 49.99;
+
+// dailySales[7] = 5;  -> ArrayIndexOutOfBoundsException`,
+spring:
+`@RestController
+class ReportController {
+
+    // Arrays bind cleanly to query params:  /report?days=12,7,9
+    @GetMapping("/report")
+    public int total(@RequestParam int[] days) {
+        return java.util.Arrays.stream(days).sum();
+    }
+}`
+  }
+},
+{
+  id:"set", n:"04", title:"Set", level:"i",
+  blurb:"An unordered collection of UNIQUE items with lightning-fast membership tests. Great for tags, categories, or \u201Cseen already?\u201D checks.",
+  glance:{ python:"{1, 2, 3}", java:"new HashSet<>()", spring:"@ElementCollection Set<>" },
+  file:{ python:"tags.py", java:"Tags.java", spring:"Product.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"Use <b>{ }</b> or <b>set()</b>. Duplicates vanish automatically. Bonus: set math like <b>a &amp; b</b> (intersection), <b>a | b</b> (union).",
+    java:"Use <b>HashSet&lt;&gt;</b>. Re-adding an existing value is silently ignored. <b>Set.of()</b> for an immutable set.",
+    spring:"A <b>Set&lt;&gt;</b> on an entity with <b>@ElementCollection</b> stores unique values in their own table — no duplicate tags."
+  },
+  code:{
+python:
+`# A set: unique items, unordered, fast 'in' checks
+tags = {"sale", "new", "sale", "popular"}   # duplicate "sale" dropped
+
+tags.add("featured")
+tags.discard("new")
+print("sale" in tags)                       # True   (very fast)
+
+a = {1, 2, 3}
+b = {2, 3, 4}
+print(a & b)    # {2, 3}      intersection
+print(a | b)    # {1,2,3,4}   union`,
+java:
+`import java.util.HashSet;
+import java.util.Set;
+
+Set<String> tags = new HashSet<>();
+tags.add("sale");
+tags.add("new");
+tags.add("sale");                  // ignored - already present
+
+tags.remove("new");
+System.out.println(tags.contains("sale"));   // true
+System.out.println(tags.size());             // 1
+
+Set<Integer> ids = Set.of(1, 2, 3);   // immutable set`,
+spring:
+`@Entity
+class Product {
+    @Id @GeneratedValue
+    private Long id;
+
+    @ElementCollection            // store the collection in its own table
+    private Set<String> tags = new HashSet<>();   // unique tags only
+}`
+  }
+},
+{
+  id:"map", n:"05", title:"Map / Dictionary", level:"i",
+  blurb:"A collection of key → value pairs with fast lookup by key. The backbone of almost every app — e.g. product name → stock count.",
+  glance:{ python:"{'k': v}", java:"new HashMap<>()", spring:"Map<> -> JSON object" },
+  file:{ python:"stock.py", java:"Stock.java", spring:"StockController.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"Use <b>{ }</b> with <b>key: value</b>. Read with <b>d[key]</b>, or <b>d.get(key, default)</b> to avoid errors.",
+    java:"Use <b>HashMap&lt;&gt;</b>. <b>put</b> to add/update, <b>get</b>/<b>getOrDefault</b> to read, <b>merge</b> to combine.",
+    spring:"Return a <b>Map&lt;&gt;</b> and Spring serializes it to a JSON object <b>{key: value}</b>."
+  },
+  code:{
+python:
+`# A dict: key -> value, fast lookup by key
+stock = {"Keyboard": 12, "Mouse": 30, "Monitor": 5}
+
+print(stock["Mouse"])            # 30
+stock["Webcam"] = 8              # add / update
+stock["Mouse"] -= 1              # update a value
+
+for name, qty in stock.items():
+    print(name, qty)
+
+print(stock.get("Headset", 0))   # 0   (default if missing)`,
+java:
+`import java.util.HashMap;
+import java.util.Map;
+
+Map<String, Integer> stock = new HashMap<>();
+stock.put("Keyboard", 12);
+stock.put("Mouse", 30);
+
+System.out.println(stock.get("Mouse"));        // 30
+stock.put("Webcam", 8);                        // add / update
+stock.merge("Mouse", -1, Integer::sum);        // decrement
+
+for (Map.Entry<String, Integer> e : stock.entrySet()) {
+    System.out.println(e.getKey() + " " + e.getValue());
+}
+System.out.println(stock.getOrDefault("Headset", 0));  // 0`,
+spring:
+`@RestController
+class StockController {
+
+    private final Map<String, Integer> stock = new HashMap<>();
+
+    @GetMapping("/stock")
+    public Map<String, Integer> all() {
+        return stock;            // -> {"Keyboard":12, ...}
+    }
+
+    @GetMapping("/stock/{name}")
+    public Integer of(@PathVariable String name) {
+        return stock.getOrDefault(name, 0);
+    }
+}`
+  }
+},
+{
+  id:"stackqueue", n:"06", title:"Stack & Queue", level:"i",
+  blurb:"Two ordering disciplines. A Stack is Last-In-First-Out (undo, back button); a Queue is First-In-First-Out (order processing).",
+  glance:{ python:"deque() / list", java:"ArrayDeque", spring:"Queue in @Service" },
+  file:{ python:"flow.py", java:"Flow.java", spring:"OrderQueueService.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"A <b>list</b> works as a stack (<b>append</b>/<b>pop</b>). For a queue use <b>collections.deque</b> — <b>popleft()</b> is O(1).",
+    java:"Prefer <b>ArrayDeque</b> for both: <b>push/pop</b> (stack) and <b>offer/poll</b> (queue). Avoid the legacy <b>Stack</b> class.",
+    spring:"A <b>Queue</b> held in a <b>@Service</b> models a processing pipeline — enqueue requests, dequeue to handle them."
+  },
+  code:{
+python:
+`from collections import deque
+
+# STACK (LIFO) - undo / back button. A list is enough:
+history = []
+history.append("home")     # push
+history.append("cart")
+last = history.pop()       # pop -> "cart"  (last in, first out)
+
+# QUEUE (FIFO) - order processing. Use deque (fast at both ends):
+orders = deque()
+orders.append("#101")      # enqueue
+orders.append("#102")
+first = orders.popleft()   # dequeue -> "#101"  (first in, first out)`,
+java:
+`import java.util.ArrayDeque;
+import java.util.Deque;
+
+// STACK (LIFO)
+Deque<String> history = new ArrayDeque<>();
+history.push("home");      // push
+history.push("cart");
+String last = history.pop();    // -> "cart"
+
+// QUEUE (FIFO)
+Deque<String> orders = new ArrayDeque<>();
+orders.offer("#101");      // enqueue
+orders.offer("#102");
+String first = orders.poll();   // -> "#101"`,
+spring:
+`@Service
+public class OrderQueueService {
+
+    // FIFO queue of orders waiting to be processed
+    private final Queue<String> pending = new LinkedList<>();
+
+    public void submit(String orderId) {
+        pending.offer(orderId);          // enqueue
+    }
+
+    public String processNext() {
+        return pending.poll();           // dequeue (null if empty)
+    }
+}`
+  }
+},
+{
+  id:"overload", n:"07", title:"Method / Function Overloading", level:"p",
+  blurb:"Same name, different parameter lists — the right version is chosen by the arguments. Java does it natively. Python does NOT — so here's the bypass.",
+  glance:{ python:"default / *args / dispatch", java:"native overloads", spring:"@…Mapping variants" },
+  file:{ python:"cart.py", java:"Cart.java", spring:"CartController.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"There's no real overloading — a 2nd <b>def</b> just replaces the 1st. Reach for default args, <b>*args/**kwargs</b>, or <b>singledispatch</b> to branch by type.",
+    java:"Declare the method several times with <b>different parameter lists</b>. The compiler picks the match at compile time.",
+    spring:"At the web layer you don't overload a URL — you <b>narrow the mapping</b> with different paths or <b>params</b>. (Service methods still overload normally.)"
+  },
+  warn:{
+    python:"Python <b>can't overload</b>: defining <code>add()</code> twice keeps only the last. Idiomatic fixes: <code>def add(x, qty=1)</code> (defaults), <code>*args/**kwargs</code>, or <code>@singledispatch</code> to dispatch on the argument's type."
+  },
+  code:{
+python:
+`from functools import singledispatch
+
+# A 2nd "def" with the same name REPLACES the first -
+# Python has no real overloading. Three idiomatic fixes:
+
+# 1) Default arguments
+def add(name, qty=1):
+    print(f"Add {qty} x {name}")
+
+# 2) *args / **kwargs - accept any shape
+def add_any(*args, **kwargs):
+    print(args, kwargs)
+
+# 3) Dispatch by the TYPE of the argument
+@singledispatch
+def show(x):        print("other:", x)
+@show.register
+def _(x: int):      print("int:", x)
+@show.register
+def _(x: str):      print("text:", x)`,
+java:
+`public class Cart {
+
+    // SAME name, DIFFERENT parameter lists = overloading
+    public void add(String name) {
+        add(name, 1);                 // delegate to the other one
+    }
+    public void add(String name, int qty) {
+        System.out.println("Add " + qty + " x " + name);
+    }
+    public void add(String name, double price) {
+        System.out.println(name + " at " + price);
+    }
+}
+
+// The compiler picks the match from the arguments:
+Cart c = new Cart();
+c.add("Mouse");          // Add 1 x Mouse
+c.add("Mouse", 3);       // Add 3 x Mouse
+c.add("Mouse", 19.99);   // Mouse at 19.99`,
+spring:
+`@RestController
+@RequestMapping("/cart")
+public class CartController {
+
+    // Plain Java overloading works in @Services.
+    // But you don't overload a URL - you narrow the mapping:
+
+    @PostMapping("/{name}")                    // POST /cart/Mouse
+    public String add(@PathVariable String name) {
+        return "Added 1 x " + name;
+    }
+
+    @PostMapping(value = "/{name}", params = "qty")   // ...?qty=3
+    public String add(@PathVariable String name,
+                      @RequestParam int qty) {
+        return "Added " + qty + " x " + name;
+    }
+}`
+  }
+}
+];
+
+/* ===== Spring full stack ===== */
+const STACK = [
+{ n:"1", title:"DTO (Tuple)", desc:"A record = an immutable named tuple", tag:"record",
+code:
+`// A record: an immutable "tuple" with named fields
+public record ProductDto(
+        String name,
+        double price,
+        Set<String> tags) {}` },
+{ n:"2", title:"Service", desc:"Map store + Set tags + overloaded add()", tag:"@Service",
+code:
+`@Service
+public class CatalogService {
+
+    // A Map as the in-memory store:  name -> product
+    private final Map<String, ProductDto> store = new HashMap<>();
+
+    // Overloaded add() - Java picks the version by arguments
+    public void add(String name, double price) {
+        add(name, price, Set.of());          // delegate
+    }
+    public void add(String name, double price, Set<String> tags) {
+        store.put(name, new ProductDto(name, price, tags));
+    }
+
+    public List<ProductDto> findAll() {
+        return new ArrayList<>(store.values());   // Map values -> List
+    }
+}` },
+{ n:"3", title:"Controller", desc:"List -> JSON; mapping variants, not URL overloads", tag:"@RestController",
+code:
+`@RestController
+@RequestMapping("/catalog")
+public class CatalogController {
+
+    private final CatalogService service;
+    public CatalogController(CatalogService service) {
+        this.service = service;          // constructor injection
+    }
+
+    @GetMapping                          // GET /catalog
+    public List<ProductDto> all() {
+        return service.findAll();        // List -> JSON array
+    }
+
+    @PostMapping                         // POST /catalog
+    public void add(@RequestBody ProductDto p) {
+        service.add(p.name(), p.price(), p.tags());
+    }
+}` }
+];
+
+/* ===== Render ===== */
+let LANG = "python";
+const LANGS = ["python","java","spring"];
+function levelTag(l){ return '<span class="lv '+l+'">'+({b:"Beginner",i:"Intermediate",p:"Pro"}[l])+'</span>'; }
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function highlight(el){ if(window.Prism){ try{ Prism.highlightElement(el); }catch(e){} } }
+
+function buildCards(){
+  const root = document.getElementById('concepts');
+  CONCEPTS.forEach(c=>{
+    const sec = document.createElement('section');
+    sec.className = 'section';
+    sec.innerHTML = `
+      <div class="card">
+        <div class="card-grid">
+          <div class="cinfo">
+            <div class="cnum">${c.n}</div>
+            <div class="chead"><h3>${c.title}</h3>${levelTag(c.level)}</div>
+            <div class="blurb">${c.blurb}</div>
+            <div class="glance">
+              <div class="t">at a glance</div>
+              <div class="chips">
+                ${LANGS.map(l=>`
+                  <div class="chip" data-l="${l}" data-cl="${l}">
+                    <span class="nm"><i></i>${l==='spring'?'Spring':l[0].toUpperCase()+l.slice(1)}</span>
+                    <span class="vl">${esc(c.glance[l])}</span>
+                  </div>`).join('')}
+              </div>
+            </div>
+            <div class="note"><span class="b">💡</span><span class="x" data-note></span></div>
+            <div class="note warn" data-warnbox style="display:none"><span class="b">⚠️</span><span class="x" data-warn></span></div>
+          </div>
+          <div class="cpane">
+            <div class="cbar">
+              <span class="dots"><i></i><i></i><i></i></span>
+              <span class="fname"><b data-fname></b></span>
+              <button class="copy" data-copy>⧉ Copy</button>
+            </div>
+            <pre><code data-code class="language-python"></code></pre>
+          </div>
+        </div>
+      </div>`;
+    root.appendChild(sec);
+    sec._concept = c;
+  });
+}
+
+function buildStack(){
+  const root = document.getElementById('stack');
+  STACK.forEach((s,i)=>{
+    if(i>0){ const f=document.createElement('div'); f.className='flowline'; f.innerHTML='<span>▼</span>'; root.appendChild(f); }
+    const l=document.createElement('div'); l.className='layer';
+    l.innerHTML = `
+      <div class="lhead">
+        <div class="lbadge">${s.n}</div>
+        <div class="lt"><b>${s.title}</b><span>${s.desc}</span></div>
+        <div class="ltag">${s.tag}</div>
+      </div>
+      <pre><code class="language-java">${esc(s.code)}</code></pre>`;
+    root.appendChild(l);
+  });
+}
+
+function paint(animate){
+  document.querySelectorAll('#concepts .section').forEach(sec=>{
+    const c = sec._concept;
+    const card = sec.querySelector('.card');
+    const codeEl = card.querySelector('[data-code]');
+    const fname = card.querySelector('[data-fname]');
+    const note = card.querySelector('[data-note]');
+    const warnBox = card.querySelector('[data-warnbox]');
+    const warnEl = card.querySelector('[data-warn]');
+    const apply = ()=>{
+      codeEl.className = 'language-'+c.lang[LANG];
+      codeEl.textContent = c.code[LANG];
+      highlight(codeEl);
+      fname.textContent = c.file[LANG];
+      note.innerHTML = c.note[LANG];
+      const w = (c.warn && c.warn[LANG]) ? c.warn[LANG] : '';
+      if(w){ warnEl.innerHTML = w; warnBox.style.display='flex'; }
+      else { warnBox.style.display='none'; }
+      card.querySelectorAll('.chip').forEach(ch=>ch.classList.toggle('act', ch.dataset.cl===LANG));
+    };
+    if(animate){
+      card.querySelector('.cpane').classList.add('swapping');
+      setTimeout(()=>{ apply(); card.querySelector('.cpane').classList.remove('swapping'); }, 190);
+    } else apply();
+  });
+}
+
+function setLang(l){
+  if(l===LANG) return;
+  LANG=l;
+  document.body.className='lang-'+l;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('on', p.dataset.l===l));
+  paint(true);
+}
+document.getElementById('switch').addEventListener('click',e=>{
+  const b=e.target.closest('.pill'); if(b) setLang(b.dataset.l);
+});
+
+document.addEventListener('click', e=>{
+  const btn = e.target.closest('[data-copy]');
+  if(!btn) return;
+  const code = btn.closest('.cpane').querySelector('[data-code]').textContent;
+  const ok = ()=>{ btn.classList.add('done'); btn.textContent='✓ Copied'; setTimeout(()=>{btn.classList.remove('done');btn.textContent='⧉ Copy';},1400); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(code).then(ok).catch(()=>fallback(code,ok));
+  } else fallback(code,ok);
+});
+function fallback(text,ok){
+  const t=document.createElement('textarea'); t.value=text; t.style.position='fixed'; t.style.opacity=0;
+  document.body.appendChild(t); t.select();
+  try{ document.execCommand('copy'); ok(); }catch(e){}
+  document.body.removeChild(t);
+}
+
+const io = new IntersectionObserver((es)=>{ es.forEach(en=>{ if(en.isIntersecting) en.target.classList.add('in'); }); },{threshold:.1});
+function onScroll(){ const h=document.documentElement; const sc=(h.scrollTop)/(h.scrollHeight-h.clientHeight)*100; document.getElementById('prog').style.width=sc+'%'; }
+window.addEventListener('scroll',onScroll,{passive:true});
+
+function boot(){
+  buildCards();
+  buildStack();
+  paint(false);
+  document.querySelectorAll('#stack code').forEach(highlight);
+  document.querySelectorAll('.section').forEach(s=>io.observe(s));
+  onScroll();
+}
+if(window.Prism) boot();
+else window.addEventListener('load', boot);
+</script>
+</body>
+</html>

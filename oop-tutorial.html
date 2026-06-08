@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OOP Across Three Worlds — Python · Java · Spring Boot</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#080b12;
+  --bg2:#0c1019;
+  --panel:#10151f;
+  --panel2:#0e131c;
+  --ink:#e8eef6;
+  --muted:#8595ad;
+  --faint:#5b6982;
+  --line:rgba(255,255,255,.08);
+  --line2:rgba(255,255,255,.05);
+  /* default = python */
+  --accent:#4B8BBE;
+  --accent2:#FFD43B;
+  --glow:rgba(75,139,190,.45);
+
+  --code-key:#ff7eb6;
+  --code-str:#7ee787;
+  --code-num:#ffa657;
+  --code-fn:#d2a8ff;
+  --code-cls:#ffd866;
+  --code-com:#5c6b85;
+  --code-anno:#7ee0a8;
+  --code-punc:#9fb0cc;
+}
+body.lang-python{ --accent:#4B8BBE; --accent2:#FFD43B; --glow:rgba(75,139,190,.5); }
+body.lang-java  { --accent:#f89820; --accent2:#ff5b4a; --glow:rgba(248,152,32,.5); }
+body.lang-spring{ --accent:#6DB33F; --accent2:#bfe86a; --glow:rgba(109,179,63,.5); }
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Hanken Grotesk',sans-serif;
+  line-height:1.65;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* atmosphere */
+.aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.aurora::before,.aurora::after{
+  content:"";position:absolute;width:60vw;height:60vw;border-radius:50%;
+  filter:blur(120px);opacity:.20;transition:background 1.2s ease;
+}
+.aurora::before{top:-15vw;left:-10vw;background:var(--accent);animation:drift1 22s ease-in-out infinite}
+.aurora::after{bottom:-20vw;right:-12vw;background:var(--accent2);animation:drift2 28s ease-in-out infinite}
+@keyframes drift1{50%{transform:translate(8vw,10vh) scale(1.15)}}
+@keyframes drift2{50%{transform:translate(-10vw,-6vh) scale(1.1)}}
+.grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.04;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+
+/* scroll progress */
+.progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:100;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  box-shadow:0 0 14px var(--glow);transition:width .1s linear}
+
+.wrap{position:relative;z-index:2;max-width:1140px;margin:0 auto;padding:0 22px}
+
+/* header */
+header{position:sticky;top:0;z-index:60;backdrop-filter:blur(14px);
+  background:rgba(8,11,18,.72);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  max-width:1140px;margin:0 auto;padding:13px 22px}
+.brand{display:flex;align-items:center;gap:11px;font-family:'Bricolage Grotesque';font-weight:800;letter-spacing:-.02em}
+.brand .mark{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#06090f;font-size:17px;
+  box-shadow:0 0 18px var(--glow);transition:.5s}
+.brand b{font-size:16px}
+.brand span{color:var(--faint);font-weight:600;font-size:11.5px;font-family:'JetBrains Mono';display:block;letter-spacing:0}
+
+.switch{display:flex;gap:6px;background:var(--panel);padding:5px;border-radius:13px;border:1px solid var(--line)}
+.pill{border:0;cursor:pointer;font-family:'JetBrains Mono';font-weight:500;font-size:12.5px;
+  color:var(--muted);background:transparent;padding:7px 13px;border-radius:9px;
+  display:flex;align-items:center;gap:7px;transition:.25s;white-space:nowrap}
+.pill .dot{width:8px;height:8px;border-radius:50%}
+.pill[data-l="python"] .dot{background:#4B8BBE}
+.pill[data-l="java"] .dot{background:#f89820}
+.pill[data-l="spring"] .dot{background:#6DB33F}
+.pill:hover{color:var(--ink)}
+.pill.on{color:#06090f;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  box-shadow:0 4px 16px var(--glow);font-weight:700}
+.pill.on .dot{background:#06090f}
+
+/* hero */
+.hero{padding:78px 0 40px;text-align:center}
+.kick{display:inline-flex;align-items:center;gap:9px;font-family:'JetBrains Mono';font-size:12px;
+  color:var(--accent2);border:1px solid var(--line);background:var(--panel);padding:7px 15px;border-radius:30px;margin-bottom:26px;
+  opacity:0;animation:up .7s .05s forwards}
+.kick .ping{width:7px;height:7px;border-radius:50%;background:var(--accent2);box-shadow:0 0 0 0 var(--glow);animation:ping 2s infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 var(--glow)}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+h1{font-family:'Bricolage Grotesque';font-weight:800;letter-spacing:-.035em;line-height:1.02;
+  font-size:clamp(38px,7vw,72px);opacity:0;animation:up .8s .12s forwards}
+h1 .g{background:linear-gradient(115deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;transition:.5s}
+.sub{max-width:640px;margin:22px auto 0;color:var(--muted);font-size:clamp(15px,2vw,18px);
+  opacity:0;animation:up .8s .22s forwards}
+.sub code{font-family:'JetBrains Mono';color:var(--ink);background:var(--panel);padding:1px 7px;border-radius:6px;font-size:.85em;border:1px solid var(--line)}
+
+.pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-top:46px}
+.pillar{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 16px;text-align:left;
+  position:relative;overflow:hidden;opacity:0;animation:up .7s forwards;transition:.3s}
+.pillar:nth-child(1){animation-delay:.34s}
+.pillar:nth-child(2){animation-delay:.42s}
+.pillar:nth-child(3){animation-delay:.5s}
+.pillar:nth-child(4){animation-delay:.58s}
+.pillar:hover{transform:translateY(-6px);border-color:var(--accent);box-shadow:0 14px 40px -18px var(--glow)}
+.pillar::after{content:"";position:absolute;inset:0;background:radial-gradient(120px 80px at 80% 0,var(--glow),transparent 70%);opacity:.4}
+.pillar .ic{font-size:24px;display:block;margin-bottom:11px}
+.pillar h4{font-family:'Bricolage Grotesque';font-size:16px;font-weight:700;letter-spacing:-.01em}
+.pillar p{font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.5}
+
+/* legend */
+.legend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin:54px auto 0;
+  font-size:12.5px;color:var(--muted);font-family:'JetBrains Mono';
+  opacity:0;animation:up .7s .66s forwards}
+.legend .it{display:flex;align-items:center;gap:7px}
+.lv{font-family:'JetBrains Mono';font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.03em;text-transform:uppercase}
+.lv.b{color:#7ee787;background:rgba(126,231,135,.12);border:1px solid rgba(126,231,135,.3)}
+.lv.i{color:#ffd866;background:rgba(255,216,102,.12);border:1px solid rgba(255,216,102,.3)}
+.lv.p{color:#ff7eb6;background:rgba(255,126,182,.12);border:1px solid rgba(255,126,182,.3)}
+
+/* sections */
+.section{padding:30px 0;opacity:0;transform:translateY(28px);transition:.7s cubic-bezier(.22,1,.36,1)}
+.section.in{opacity:1;transform:none}
+
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+  border-radius:22px;overflow:hidden;margin-bottom:26px;position:relative}
+.card::before{content:"";position:absolute;left:0;top:0;height:100%;width:3px;
+  background:linear-gradient(var(--accent),var(--accent2));transition:.5s;box-shadow:0 0 18px var(--glow)}
+.card-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.18fr)}
+.cinfo{padding:30px 30px 30px 34px;border-right:1px solid var(--line)}
+.cnum{font-family:'JetBrains Mono';font-size:12px;color:var(--accent2);font-weight:700;letter-spacing:.1em}
+.chead{display:flex;align-items:center;gap:12px;margin:8px 0 14px;flex-wrap:wrap}
+.chead h3{font-family:'Bricolage Grotesque';font-size:25px;font-weight:800;letter-spacing:-.02em}
+.blurb{color:var(--muted);font-size:14.5px}
+
+.glance{margin-top:22px;border-top:1px dashed var(--line);padding-top:18px}
+.glance .t{font-family:'JetBrains Mono';font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);margin-bottom:11px}
+.chips{display:flex;flex-direction:column;gap:8px}
+.chip{display:flex;align-items:center;gap:10px;font-size:12.5px;padding:8px 11px;border-radius:11px;
+  border:1px solid var(--line2);background:rgba(255,255,255,.02);transition:.3s;font-family:'JetBrains Mono'}
+.chip .nm{font-weight:700;width:54px;flex:none;display:flex;align-items:center;gap:6px}
+.chip .nm i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.chip[data-l="python"] .nm i{background:#4B8BBE}
+.chip[data-l="java"] .nm i{background:#f89820}
+.chip[data-l="spring"] .nm i{background:#6DB33F}
+.chip .vl{color:var(--muted)}
+.chip.act{border-color:var(--accent);background:var(--glow);box-shadow:0 0 0 1px var(--accent)}
+.chip.act .vl{color:var(--ink)}
+.chip .nm span{color:var(--faint);font-weight:500}
+
+.note{margin-top:20px;display:flex;gap:11px;background:var(--glow);border:1px solid var(--accent);
+  border-radius:13px;padding:13px 15px;transition:.25s}
+.note .b{font-size:17px;line-height:1.3}
+.note .x{font-size:13px;color:var(--ink)}
+.note .x b{color:var(--accent2)}
+
+/* code panel */
+.cpane{background:#0a0e16;display:flex;flex-direction:column;min-width:0}
+.cbar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:#0c111b}
+.dots{display:flex;gap:6px}
+.dots i{width:11px;height:11px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}
+.fname{font-family:'JetBrains Mono';font-size:12px;color:var(--muted);margin-left:4px}
+.fname b{color:var(--accent2);transition:.25s}
+.copy{margin-left:auto;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;
+  font-family:'JetBrains Mono';font-size:11px;padding:5px 11px;border-radius:8px;transition:.2s;display:flex;gap:6px;align-items:center}
+.copy:hover{color:var(--ink);border-color:var(--accent);background:var(--glow)}
+.copy.done{color:#28c840;border-color:#28c840}
+pre{margin:0;overflow:auto;padding:20px 22px;flex:1}
+pre code{font-family:'JetBrains Mono'!important;font-size:13px;line-height:1.72;background:none!important;white-space:pre;tab-size:4}
+.swapping pre,.swapping .fname b{opacity:0;transform:translateY(6px)}
+pre,.fname b{transition:opacity .2s,transform .2s}
+
+/* prism tokens (custom) */
+code[class*="language-"],pre[class*="language-"]{color:var(--ink);text-shadow:none}
+.token.comment,.token.prolog,.token.doctype,.token.cdata{color:var(--code-com);font-style:italic}
+.token.punctuation{color:var(--code-punc)}
+.token.keyword,.token.boolean,.token.operator{color:var(--code-key)}
+.token.string,.token.char,.token.attr-value{color:var(--code-str)}
+.token.number{color:var(--code-num)}
+.token.function,.token.method{color:var(--code-fn)}
+.token.class-name,.token.builtin{color:var(--code-cls)}
+.token.decorator,.token.annotation{color:var(--code-anno);font-weight:700;text-shadow:0 0 14px rgba(126,224,168,.35)}
+.token.annotation .token.punctuation{color:var(--code-anno)}
+.token.triple-quoted-string{color:var(--code-str)}
+
+/* section title */
+.stitle{text-align:center;margin:22px 0 30px}
+.stitle .e{font-family:'JetBrains Mono';font-size:12px;color:var(--accent2);letter-spacing:.14em;text-transform:uppercase}
+.stitle h2{font-family:'Bricolage Grotesque';font-weight:800;font-size:clamp(28px,4.5vw,40px);letter-spacing:-.03em;margin-top:8px}
+.stitle p{color:var(--muted);max-width:560px;margin:10px auto 0;font-size:14.5px}
+
+/* spring stack flow */
+.stack{display:grid;gap:14px}
+.layer{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:18px;overflow:hidden;
+  position:relative;opacity:0;transform:translateY(20px);transition:.6s}
+.section.in .layer{opacity:1;transform:none}
+.section.in .layer:nth-child(1){transition-delay:.05s}
+.section.in .layer:nth-child(2){transition-delay:.13s}
+.section.in .layer:nth-child(3){transition-delay:.21s}
+.section.in .layer:nth-child(4){transition-delay:.29s}
+.lhead{display:flex;align-items:center;gap:13px;padding:15px 20px;border-bottom:1px solid var(--line)}
+.lbadge{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-family:'Bricolage Grotesque';font-weight:800;
+  color:#06090f;background:linear-gradient(135deg,#6DB33F,#bfe86a);box-shadow:0 0 16px rgba(109,179,63,.45);flex:none}
+.lhead .lt b{font-family:'Bricolage Grotesque';font-size:16px;display:block;letter-spacing:-.01em}
+.lhead .lt span{font-size:12px;color:var(--muted)}
+.ltag{margin-left:auto;font-family:'JetBrains Mono';font-size:11px;color:#6DB33F;background:rgba(109,179,63,.12);
+  border:1px solid rgba(109,179,63,.3);padding:4px 10px;border-radius:20px}
+.layer pre{background:#0a0e16}
+
+.flowline{height:22px;display:grid;place-items:center}
+.flowline span{color:var(--faint);font-size:18px;animation:bob 1.8s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(4px)}}
+
+/* glossary */
+.gloss{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin-top:8px}
+.gitem{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);
+  border-radius:13px;padding:13px 15px;transition:.25s}
+.gitem:hover{border-color:#6DB33F;background:rgba(109,179,63,.06);transform:translateY(-3px)}
+.gitem .a{font-family:'JetBrains Mono';font-weight:700;font-size:13px;color:#7ee0a8;flex:none;text-shadow:0 0 12px rgba(126,224,168,.3)}
+.gitem .d{font-size:12.5px;color:var(--muted)}
+
+/* cheat table */
+.tablewrap{border:1px solid var(--line);border-radius:18px;overflow:hidden;overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:13.5px}
+th,td{text-align:left;padding:14px 18px;border-bottom:1px solid var(--line)}
+thead th{font-family:'JetBrains Mono';font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;background:var(--panel)}
+thead th:nth-child(2){color:#4B8BBE}thead th:nth-child(3){color:#f89820}thead th:nth-child(4){color:#6DB33F}
+tbody tr{transition:.2s}
+tbody tr:hover{background:var(--glow)}
+tbody td:first-child{font-family:'Bricolage Grotesque';font-weight:700;color:var(--ink)}
+td code,th code{font-family:'JetBrains Mono';font-size:12px;color:var(--ink)}
+tbody td:not(:first-child){font-family:'JetBrains Mono';font-size:12px;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+
+footer{text-align:center;padding:50px 0 60px;color:var(--faint);font-size:13px;border-top:1px solid var(--line);margin-top:30px}
+footer b{color:var(--accent2)}
+
+@keyframes up{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+
+::selection{background:var(--accent);color:#06090f}
+pre::-webkit-scrollbar,.tablewrap::-webkit-scrollbar{height:8px;width:8px}
+pre::-webkit-scrollbar-thumb,.tablewrap::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
+
+@media(max-width:820px){
+  .card-grid{grid-template-columns:1fr}
+  .cinfo{border-right:0;border-bottom:1px solid var(--line)}
+  .pillars{grid-template-columns:repeat(2,1fr)}
+  .gloss{grid-template-columns:1fr}
+  .brand span{display:none}
+  .bar{padding:11px 16px}
+  .switch{padding:4px}.pill{padding:7px 9px;font-size:11px}
+}
+/* Spring-specific sections render ONLY on the Spring Boot tab */
+.spring-only{display:none}
+body.lang-spring .spring-only{display:block}
+body.lang-spring .spring-only.section,
+body.lang-spring .spring-only .section,
+body.lang-spring .spring-only .layer{opacity:1;transform:none}
+</style>
+</head>
+<body class="lang-python">
+
+<div class="aurora"></div>
+<div class="grain"></div>
+<div class="progress" id="prog"></div>
+
+<header>
+  <div class="bar">
+    <div class="brand">
+      <div class="mark">◑</div>
+      <div><b>OOP&nbsp;×&nbsp;3</b><span>python · java · spring</span></div>
+    </div>
+    <div class="switch" id="switch">
+      <button class="pill on" data-l="python"><span class="dot"></span>Python</button>
+      <button class="pill" data-l="java"><span class="dot"></span>Java</button>
+      <button class="pill" data-l="spring"><span class="dot"></span>Spring&nbsp;Boot</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="kick"><span class="ping"></span>one topic · three languages · all four pillars</div>
+    <h1>Object-Oriented Programming<br><span class="g">across three worlds</span></h1>
+    <p class="sub">The same <code>Employee</code> system, rebuilt in <b>Python</b>, <b>Java</b>, and <b>Spring Boot</b>. Flip the toggle above and watch every example morph. Annotations stay <b style="color:#7ee0a8">highlighted</b> so you never miss them.</p>
+
+    <div class="pillars">
+      <div class="pillar"><span class="ic">🔒</span><h4>Encapsulation</h4><p>Hide the data, expose safe access.</p></div>
+      <div class="pillar"><span class="ic">🧬</span><h4>Inheritance</h4><p>Build new classes on existing ones.</p></div>
+      <div class="pillar"><span class="ic">🎭</span><h4>Polymorphism</h4><p>One name, many behaviors.</p></div>
+      <div class="pillar"><span class="ic">📐</span><h4>Abstraction</h4><p>Show the "what", hide the "how".</p></div>
+    </div>
+
+    <div class="legend">
+      <div class="it">Difficulty:</div>
+      <div class="it"><span class="lv b">Beginner</span></div>
+      <div class="it"><span class="lv i">Intermediate</span></div>
+      <div class="it"><span class="lv p">Pro</span></div>
+      <div class="it" style="color:var(--faint)">— each card scales up as you scroll</div>
+    </div>
+  </section>
+
+  <!-- CONCEPT CARDS (rendered by JS) -->
+  <div id="concepts"></div>
+
+  <!-- SPRING STACK -->
+  <section class="section spring-only" id="springstack">
+    <div class="stitle">
+      <div class="e">🍃 Spring Boot in action</div>
+      <h2>The four pillars, fully annotated</h2>
+      <p>This is how every OOP idea lands in a real, layered Spring Boot app. Read it top to bottom — data flows down, the response flows back up.</p>
+    </div>
+    <div class="stack" id="stack"></div>
+  </section>
+
+  <!-- GLOSSARY -->
+  <section class="section spring-only" id="glossary">
+    <div class="stitle">
+      <div class="e">📖 reference</div>
+      <h2>Annotation cheat sheet</h2>
+      <p>Every annotation used above, in one line each.</p>
+    </div>
+    <div class="gloss" id="gloss"></div>
+  </section>
+
+  <!-- CHEAT TABLE -->
+  <section class="section" id="compare">
+    <div class="stitle">
+      <div class="e">⚡ side by side</div>
+      <h2>The whole story on one screen</h2>
+      <p>Same concept, three syntaxes. This is the table to screenshot.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Concept</th><th>Python</th><th>Java</th><th>Spring Boot</th></tr></thead>
+        <tbody>
+          <tr><td>Class</td><td><code>class X:</code></td><td><code>class X { }</code></td><td>plain class + <code>@Service</code></td></tr>
+          <tr><td>Object</td><td><code>X(...)</code></td><td><code>new X(...)</code></td><td><code>new X(...)</code></td></tr>
+          <tr><td>Constructor</td><td><code>__init__</code></td><td><code>X(...) { }</code></td><td><code>X(...) { }</code></td></tr>
+          <tr><td>Encapsulation</td><td><code>_field</code> + <code>@property</code></td><td><code>private</code> + getters</td><td><code>private</code> + validated setter</td></tr>
+          <tr><td>Inheritance</td><td><code>class B(A)</code></td><td><code>extends A</code></td><td><code>extends A</code></td></tr>
+          <tr><td>Polymorphism</td><td>override + duck typing</td><td><code>@Override</code></td><td><code>@Override</code> (or DI beans)</td></tr>
+          <tr><td>Abstraction</td><td><code>ABC</code> + <code>@abstractmethod</code></td><td><code>interface</code></td><td>interface + <code>@Service</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  Built as one tutorial — <b>Employee Management</b> in Python, Java &amp; Spring Boot.<br>
+  Toggle a language at the top to recolor every example. Happy coding 🚀
+</footer>
+
+<!-- Prism -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+
+<script>
+/* ---------- DATA: one topic (Employee), three languages ---------- */
+const CONCEPTS = [
+{
+  id:"classobj", n:"01", title:"Class & Object", level:"b",
+  blurb:"A class is a blueprint; an object is a real thing built from it. Define the shape once, create as many instances as you like.",
+  glance:{ python:"Employee('Aarav', 75000)", java:"new Employee(...)", spring:"plain class + @Service" },
+  note:{
+    python:"No <b>new</b> keyword and no type declarations — Python resolves types at runtime.",
+    java:"Types are explicit and objects are born with <b>new</b>. The constructor shares the class name.",
+    spring:"<b>Identical to the Java class</b> - Spring changes nothing about a plain class. The annotation goes on a <b>@Service</b> that <i>uses</i> it, not on the data class. <b>@Entity</b> would mean \u201Csave to a database\u201D and <b>@RestController</b> \u201Cexpose on the web\u201D - neither was asked for here."
+  },
+  file:{ python:"employee.py", java:"Employee.java", spring:"Employee.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  code:{
+python:
+`class Employee:
+    def __init__(self, name: str, salary: float):
+        self.name = name          # instance attributes
+        self.salary = salary
+
+    def describe(self) -> str:
+        return f"{self.name}: {self.salary:,.2f} USD"
+
+
+# Build an object (an instance of the class)
+emp = Employee("Aarav", 75000)
+print(emp.describe())             # Aarav: 75,000.00 USD`,
+java:
+`public class Employee {
+    String name;
+    double salary;
+
+    // Constructor — same name as the class
+    public Employee(String name, double salary) {
+        this.name = name;
+        this.salary = salary;
+    }
+
+    public String describe() {
+        return name + ": " + salary + " USD";
+    }
+
+    public static void main(String[] args) {
+        Employee emp = new Employee("Aarav", 75000);
+        System.out.println(emp.describe());
+    }
+}`,
+spring:
+`// In Spring Boot this is a plain Java class - identical to the Java tab.
+public class Employee {
+    private String name;
+    private double salary;
+
+    public Employee(String name, double salary) {
+        this.name = name;
+        this.salary = salary;
+    }
+
+    public String describe() {
+        return name + ": " + salary + " USD";
+    }
+}
+
+// Spring only adds wiring & lifecycle - a @Service can use the class:
+@Service                          // a Spring bean (NO database, NO web)
+public class EmployeeService {
+    public String run() {
+        Employee emp = new Employee("Aarav", 75000);   // build an object
+        return emp.describe();                          // Aarav: 75000.0 USD
+    }
+}`
+  }
+},
+{
+  id:"encap", n:"02", title:"Encapsulation", level:"b",
+  blurb:"Hide the internal data and expose safe access points. This lets you validate every change and protect the object's invariants.",
+  glance:{ python:"_salary + @property", java:"private + getters", spring:"validated setter + @Service" },
+  note:{
+    python:"Privacy is by convention (<b>_name</b>). <b>@property</b> gives getter/setter behavior without changing how callers use the attribute.",
+    java:"<b>private</b> is enforced by the compiler. Outsiders must go through <b>getSalary()</b> / <b>setSalary()</b>.",
+    spring:"<b>Identical to Java</b>: private field + validated setter. A <b>@Service</b> bean uses it. (<b>@Column</b>/<b>@Entity</b> appear only if you persist it to a database.)"
+  },
+  file:{ python:"employee.py", java:"Employee.java", spring:"Employee.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  code:{
+python:
+`class Employee:
+    def __init__(self, name: str, salary: float):
+        self.name = name
+        self._salary = salary            # "_" signals "private"
+
+    @property
+    def salary(self) -> float:           # getter
+        return self._salary
+
+    @salary.setter
+    def salary(self, value: float):      # setter with validation
+        if value < 0:
+            raise ValueError("Salary cannot be negative")
+        self._salary = value
+
+
+emp = Employee("Aarav", 75000)
+emp.salary = 80000                       # goes through the setter
+print(emp.salary)                        # goes through the getter`,
+java:
+`public class Employee {
+    private String name;                 // hidden from outside
+    private double salary;
+
+    public Employee(String name, double salary) {
+        this.name = name;
+        setSalary(salary);
+    }
+
+    public double getSalary() {          // getter
+        return salary;
+    }
+
+    public void setSalary(double salary) {   // setter + validation
+        if (salary < 0) {
+            throw new IllegalArgumentException("Salary cannot be negative");
+        }
+        this.salary = salary;
+    }
+}`,
+spring:
+`// Identical to Java: a private field with a validated getter/setter.
+public class Employee {
+    private double salary;
+
+    public double getSalary() {              // getter
+        return salary;
+    }
+
+    public void setSalary(double salary) {   // setter + validation
+        if (salary < 0) {
+            throw new IllegalArgumentException("Salary cannot be negative");
+        }
+        this.salary = salary;
+    }
+}
+
+@Service                          // a Spring bean that uses the class
+public class PayrollService {
+    public void giveRaise(Employee e) {
+        e.setSalary(80000);                  // must go through the setter
+    }
+}`
+  }
+},
+{
+  id:"inherit", n:"03", title:"Inheritance", level:"i",
+  blurb:"Build new classes on top of existing ones. The child reuses the parent's fields and methods, then adds its own — an \u201Cis-a\u201D relationship.",
+  glance:{ python:"class Manager(Employee)", java:"extends Employee", spring:"extends + @Service" },
+  note:{
+    python:"<b>super().__init__(...)</b> runs the parent constructor before the child adds its own state.",
+    java:"<b>extends</b> inherits; <b>super(...)</b> calls the parent constructor. <b>protected</b> lets the child see the field.",
+    spring:"<b>Identical to Java</b> - <b>extends</b> is plain Java and Spring changes nothing. <b>@MappedSuperclass</b> only appears when you map the hierarchy to <i>database</i> tables, which isn\u2019t part of inheritance."
+  },
+  file:{ python:"manager.py", java:"Manager.java", spring:"Manager.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  code:{
+python:
+`class Employee:
+    def __init__(self, salary: float):
+        self.salary = salary
+
+    def bonus(self) -> float:
+        return self.salary * 0.10
+
+
+class Manager(Employee):                 # Manager IS-A Employee
+    def __init__(self, salary, team_size):
+        super().__init__(salary)   # reuse parent constructor
+        self.team_size = team_size`,
+java:
+`public class Employee {
+    protected double salary;             // visible to subclasses
+
+    public Employee(double salary) {
+        this.salary = salary;
+    }
+
+    public double bonus() {
+        return salary * 0.10;
+    }
+}
+
+public class Manager extends Employee {  // Manager IS-A Employee
+    private int teamSize;
+
+    public Manager(double salary, int teamSize) {
+        super(salary);                   // call parent constructor
+        this.teamSize = teamSize;
+    }
+}`,
+spring:
+`// Identical to Java - Manager IS-A Employee (plain inheritance):
+public class Employee {
+    protected double salary;             // visible to subclasses
+    public Employee(double salary) { this.salary = salary; }
+
+    public double bonus() { return salary * 0.10; }
+}
+
+public class Manager extends Employee {  // Manager IS-A Employee
+    private int teamSize;
+    public Manager(double salary, int teamSize) {
+        super(salary);                   // call parent constructor
+        this.teamSize = teamSize;
+    }
+}
+
+@Service
+public class HrService {
+    public double payout(Employee e) {
+        return e.bonus();                // works for an Employee or a Manager
+    }
+}`
+  }
+},
+{
+  id:"poly", n:"04", title:"Polymorphism", level:"i",
+  blurb:"One name, many forms. The same method call behaves differently depending on the actual object — and that choice is made at runtime.",
+  glance:{ python:"override + duck typing", java:"@Override", spring:"@Override + @Service" },
+  note:{
+    python:"Just redefine the method in the child. Python only cares that the method exists, not the object's type — that's \u201Cduck typing\u201D.",
+    java:"Mark overrides with <b>@Override</b>. A parent reference can hold a child object and still call the child's version.",
+    spring:"<b>Identical @Override to Java</b> - Spring adds nothing to overriding. Its own twist on swapping behavior is injecting different <b>@Service</b> beans, but the language mechanism is the same."
+  },
+  file:{ python:"bonus.py", java:"Bonus.java", spring:"HrService.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  code:{
+python:
+`class Employee:
+    def __init__(self, salary): self.salary = salary
+    def bonus(self): return self.salary * 0.10
+
+class Manager(Employee):
+    def bonus(self):                     # override the parent method
+        return self.salary * 0.20
+
+team = [Employee(50000), Manager(90000)]
+for person in team:
+    print(person.bonus())                # 5000.0, then 18000.0`,
+java:
+`class Employee {
+    protected double salary;
+    Employee(double salary) { this.salary = salary; }
+    public double bonus() { return salary * 0.10; }
+}
+
+class Manager extends Employee {
+    Manager(double salary) { super(salary); }
+
+    @Override                            // same name, new behavior
+    public double bonus() { return salary * 0.20; }
+}
+
+Employee person = new Manager(90000);    // parent type, child object
+System.out.println(person.bonus());      // 18000.0`,
+spring:
+`// Identical override to Java - Spring adds nothing to polymorphism:
+public class Employee {
+    protected double salary;
+    public Employee(double salary) { this.salary = salary; }
+    public double bonus() { return salary * 0.10; }       // 10%
+}
+
+public class Manager extends Employee {
+    public Manager(double salary) { super(salary); }
+
+    @Override
+    public double bonus() { return salary * 0.20; }       // 20%
+}
+
+@Service
+public class HrService {
+    public double bonusFor(Employee e) {
+        return e.bonus();        // runtime picks the real type
+    }
+    // bonusFor(new Manager(90000)) -> 18000.0
+}`
+  }
+},
+{
+  id:"abstract", n:"05", title:"Abstraction", level:"p",
+  blurb:"Expose what something does, hide how it does it. Define a contract with no implementation; concrete classes fill in the details.",
+  glance:{ python:"ABC + @abstractmethod", java:"interface", spring:"interface + @Service" },
+  note:{
+    python:"Inherit from <b>ABC</b> and tag methods <b>@abstractmethod</b>. You can't instantiate until every abstract method is implemented.",
+    java:"An <b>interface</b> is a pure contract — signatures, no bodies. <b>implements</b> forces the class to define them.",
+    spring:"Same <b>Payable</b> contract and <b>salary / 12</b> logic. Spring\u2019s twist: depend on the interface and let it <b>inject</b> the implementation (constructor injection)."
+  },
+  file:{ python:"payable.py", java:"Payable.java", spring:"Payable.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  code:{
+python:
+`from abc import ABC, abstractmethod
+
+class Payable(ABC):                      # abstract base class
+    @abstractmethod
+    def calculate_pay(self) -> float:
+        ...                              # no body — must be overridden
+
+class Employee(Payable):
+    def __init__(self, salary): self.salary = salary
+
+    def calculate_pay(self) -> float:    # required implementation
+        return self.salary / 12`,
+java:
+`public interface Payable {               // pure contract
+    double calculatePay();               // no body
+}
+
+public class Employee implements Payable {
+    private double salary;
+    public Employee(double salary) { this.salary = salary; }
+
+    @Override
+    public double calculatePay() {       // must implement
+        return salary / 12;
+    }
+}`,
+spring:
+`public interface Payable {               // same contract as Java
+    double calculatePay();               // no body
+}
+
+@Service                                 // the implementation is a Spring bean
+public class Employee implements Payable {
+    private double salary = 75000;
+
+    @Override
+    public double calculatePay() {       // same logic: salary / 12
+        return salary / 12;
+    }
+}
+
+@Service
+public class PayrollRunner {
+    private final Payable payable;       // depend on the ABSTRACTION
+    public PayrollRunner(Payable payable) {   // Spring injects the impl
+        this.payable = payable;
+    }
+}`
+  }
+}
+];
+
+/* ---------- Spring full stack ---------- */
+const STACK = [
+{ n:"1", title:"Model", desc:"Encapsulation lives here", tag:"@Entity",
+code:
+`@Entity                          // a database table
+@Getter @Setter                  // Lombok getters + setters
+public class Employee {
+
+    @Id @GeneratedValue
+    private Long id;
+
+    private String name;
+    private double salary;
+}` },
+{ n:"2", title:"Repository", desc:"Abstraction — zero code, full CRUD", tag:"@Repository",
+code:
+`@Repository                      // data-access component
+public interface EmployeeRepository
+        extends JpaRepository<Employee, Long> {
+
+    // save(), findById(), findAll(), delete()...
+    // all provided automatically by Spring Data JPA
+}` },
+{ n:"3", title:"Service", desc:"Business logic + dependency injection", tag:"@Service",
+code:
+`@Service                         // business-logic component
+public class EmployeeService {
+
+    private final EmployeeRepository repo;
+
+    public EmployeeService(EmployeeRepository repo) {
+        this.repo = repo;        // constructor injection
+    }
+
+    public Employee save(Employee e) {
+        return repo.save(e);
+    }
+
+    public Employee findById(Long id) {
+        return repo.findById(id)
+                   .orElseThrow(() -> new RuntimeException("Not found"));
+    }
+}` },
+{ n:"4", title:"Controller", desc:"REST API — the public face", tag:"@RestController",
+code:
+`@RestController                  // returns JSON
+@RequestMapping("/employees")    // base URL
+public class EmployeeController {
+
+    private final EmployeeService service;
+
+    public EmployeeController(EmployeeService service) {
+        this.service = service;
+    }
+
+    @PostMapping                 // POST /employees
+    public Employee create(@RequestBody Employee e) {
+        return service.save(e);
+    }
+
+    @GetMapping("/{id}")         // GET /employees/42
+    public Employee get(@PathVariable Long id) {
+        return service.findById(id);
+    }
+}` }
+];
+
+/* ---------- Annotation glossary ---------- */
+const GLOSS = [
+["@Entity","Maps a class to a database table."],
+["@Id","Marks the primary-key field."],
+["@GeneratedValue","Auto-generates the key (e.g. auto-increment)."],
+["@Column","Configures a column: nullable, length, name."],
+["@MappedSuperclass","Share fields with subclasses, no own table."],
+["@Getter / @Setter","Lombok: generate getters & setters for you."],
+["@Repository","Data-access layer component (Spring stereotype)."],
+["@Service","Business-logic layer component."],
+["@RestController","REST endpoint that returns JSON directly."],
+["@RequestMapping","Base URL path for a controller."],
+["@GetMapping / @PostMapping","Map HTTP GET / POST to a method."],
+["@PathVariable","Bind a URL path segment to a parameter."],
+["@RequestBody","Bind the JSON request body to an object."],
+["@Autowired","Inject a dependency (optional on constructors)."],
+["@Qualifier","Pick a specific bean when several match."]
+];
+
+/* ---------- Render ---------- */
+let LANG = "python";
+const LANGS = ["python","java","spring"];
+
+function levelTag(l){ return '<span class="lv '+l+'">'+({b:"Beginner",i:"Intermediate",p:"Pro"}[l])+'</span>'; }
+
+function buildCards(){
+  const root = document.getElementById('concepts');
+  CONCEPTS.forEach(c=>{
+    const sec = document.createElement('section');
+    sec.className = 'section';
+    sec.innerHTML = `
+      <div class="card" data-id="${c.id}">
+        <div class="card-grid">
+          <div class="cinfo">
+            <div class="cnum">${c.n}</div>
+            <div class="chead"><h3>${c.title}</h3>${levelTag(c.level)}</div>
+            <div class="blurb">${c.blurb}</div>
+            <div class="glance">
+              <div class="t">at a glance</div>
+              <div class="chips">
+                ${LANGS.map(l=>`
+                  <div class="chip" data-l="${l}" data-cl="${l}">
+                    <span class="nm"><i></i>${l==='spring'?'Spring':l[0].toUpperCase()+l.slice(1)}</span>
+                    <span class="vl">${esc(c.glance[l])}</span>
+                  </div>`).join('')}
+              </div>
+            </div>
+            <div class="note"><span class="b">💡</span><span class="x" data-note></span></div>
+          </div>
+          <div class="cpane">
+            <div class="cbar">
+              <span class="dots"><i></i><i></i><i></i></span>
+              <span class="fname"><b data-fname></b></span>
+              <button class="copy" data-copy>⧉ Copy</button>
+            </div>
+            <pre><code data-code class="language-python"></code></pre>
+          </div>
+        </div>
+      </div>`;
+    root.appendChild(sec);
+    sec._concept = c;
+  });
+}
+
+function buildStack(){
+  const root = document.getElementById('stack');
+  STACK.forEach((s,i)=>{
+    if(i>0){ const f=document.createElement('div'); f.className='flowline'; f.innerHTML='<span>▼</span>'; root.appendChild(f); }
+    const l=document.createElement('div'); l.className='layer';
+    l.innerHTML = `
+      <div class="lhead">
+        <div class="lbadge">${s.n}</div>
+        <div class="lt"><b>${s.title}</b><span>${s.desc}</span></div>
+        <div class="ltag">${s.tag}</div>
+      </div>
+      <pre><code class="language-java">${esc(s.code)}</code></pre>`;
+    root.appendChild(l);
+  });
+}
+
+function buildGloss(){
+  const root=document.getElementById('gloss');
+  root.innerHTML = GLOSS.map(g=>`<div class="gitem"><span class="a">${g[0]}</span><span class="d">${g[1]}</span></div>`).join('');
+}
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function highlight(el){ if(window.Prism){ try{ Prism.highlightElement(el); }catch(e){} } }
+
+/* fill code/notes for current language */
+function paint(animate){
+  document.querySelectorAll('#concepts .section').forEach(sec=>{
+    const c = sec._concept;
+    const card = sec.querySelector('.card');
+    const codeEl = card.querySelector('[data-code]');
+    const fname = card.querySelector('[data-fname]');
+    const note = card.querySelector('[data-note]');
+    const apply = ()=>{
+      codeEl.className = 'language-'+c.lang[LANG];
+      codeEl.textContent = c.code[LANG];
+      highlight(codeEl);
+      fname.textContent = c.file[LANG];
+      note.innerHTML = c.note[LANG];
+      card.querySelectorAll('.chip').forEach(ch=>ch.classList.toggle('act', ch.dataset.cl===LANG));
+    };
+    if(animate){
+      card.querySelector('.cpane').classList.add('swapping');
+      setTimeout(()=>{ apply(); card.querySelector('.cpane').classList.remove('swapping'); }, 190);
+    } else apply();
+  });
+}
+
+/* ---------- Interactions ---------- */
+function setLang(l){
+  if(l===LANG) return;
+  LANG=l;
+  document.body.className='lang-'+l;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('on', p.dataset.l===l));
+  paint(true);
+}
+document.getElementById('switch').addEventListener('click',e=>{
+  const b=e.target.closest('.pill'); if(b) setLang(b.dataset.l);
+});
+
+/* copy buttons */
+document.addEventListener('click', e=>{
+  const btn = e.target.closest('[data-copy]');
+  if(!btn) return;
+  const code = btn.closest('.cpane').querySelector('[data-code]').textContent;
+  const ok = ()=>{ btn.classList.add('done'); btn.textContent='✓ Copied'; setTimeout(()=>{btn.classList.remove('done');btn.textContent='⧉ Copy';},1400); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(code).then(ok).catch(()=>fallback(code,ok));
+  } else fallback(code,ok);
+});
+function fallback(text,ok){
+  const t=document.createElement('textarea'); t.value=text; t.style.position='fixed'; t.style.opacity=0;
+  document.body.appendChild(t); t.select();
+  try{ document.execCommand('copy'); ok(); }catch(e){}
+  document.body.removeChild(t);
+}
+
+/* scroll reveal + progress */
+const io = new IntersectionObserver((es)=>{
+  es.forEach(en=>{ if(en.isIntersecting) en.target.classList.add('in'); });
+},{threshold:.12});
+
+function onScroll(){
+  const h=document.documentElement;
+  const sc=(h.scrollTop)/(h.scrollHeight-h.clientHeight)*100;
+  document.getElementById('prog').style.width=sc+'%';
+}
+window.addEventListener('scroll',onScroll,{passive:true});
+
+/* ---------- Boot ---------- */
+function boot(){
+  buildCards();
+  buildStack();
+  buildGloss();
+  paint(false);
+  document.querySelectorAll('#stack code').forEach(highlight);
+  document.querySelectorAll('.section').forEach(s=>io.observe(s));
+  onScroll();
+}
+if(window.Prism) boot();
+else window.addEventListener('load', boot);
+</script>
+</body>
+</html>

@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Claude Agent Stack — Field Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Spline+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<style>
+:root{
+  --bg:#070b11; --bg2:#0a0f17; --surface:#10171f; --surface2:#141d28;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.14);
+  --ink:#eaf1f7; --muted:#93a3b6; --faint:#5e6e81;
+  --aqua:#2ee6c6; --cyan:#39bdf8; --lime:#bdf24a; --amber:#f6b53f;
+  --coral:#ff6f61; --violet:#b794f6; --blue:#6aa8ff; --pink:#ff79c6;
+  --brand:var(--aqua);
+  --r:16px; --mono:'JetBrains Mono',ui-monospace,monospace;
+  --disp:'Bricolage Grotesque',sans-serif; --body:'Spline Sans',sans-serif;
+  --sidebar:288px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:32px}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--body);
+  font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+/* ---------- animated background ---------- */
+.bg{position:fixed;inset:0;z-index:-3;overflow:hidden;background:
+  radial-gradient(1200px 700px at 12% -8%, rgba(46,230,198,.10), transparent 60%),
+  radial-gradient(1000px 800px at 92% 4%, rgba(183,148,246,.10), transparent 55%),
+  radial-gradient(900px 700px at 70% 100%, rgba(246,181,63,.07), transparent 55%),
+  linear-gradient(180deg,var(--bg),var(--bg2));}
+.bg::before{content:"";position:absolute;inset:-40%;background:
+  conic-gradient(from 120deg at 30% 40%, rgba(57,189,248,.06), transparent 40%, rgba(255,111,97,.05) 70%, transparent);
+  animation:spin 48s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.grid{position:fixed;inset:0;z-index:-2;opacity:.35;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:46px 46px;mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,#000 30%,transparent 80%);}
+.noise{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.04;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+/* ---------- reading progress ---------- */
+.progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--aqua),var(--cyan),var(--violet));box-shadow:0 0 14px rgba(46,230,198,.6)}
+/* ---------- layout ---------- */
+.shell{display:grid;grid-template-columns:var(--sidebar) 1fr;max-width:1500px;margin:0 auto}
+/* ---------- sidebar ---------- */
+aside{position:sticky;top:0;height:100vh;padding:30px 18px 30px 30px;overflow-y:auto;border-right:1px solid var(--line);
+  backdrop-filter:blur(4px)}
+aside::-webkit-scrollbar{width:7px}aside::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px}
+.brand{display:flex;align-items:center;gap:11px;margin-bottom:6px;font-family:var(--disp);font-weight:800;font-size:1.18rem;letter-spacing:-.01em}
+.brand .dot{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:1.1rem;
+  background:radial-gradient(circle at 30% 30%,#0e3a35,#06100f);border:1px solid rgba(46,230,198,.4);box-shadow:0 0 18px rgba(46,230,198,.25) inset}
+.brand small{display:block;font-family:var(--body);font-weight:500;font-size:.7rem;color:var(--faint);letter-spacing:.06em;text-transform:uppercase;margin-top:1px}
+nav{margin-top:22px;font-size:.9rem}
+nav .grp{font-family:var(--mono);font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin:20px 0 7px;padding-left:11px}
+nav a{display:flex;align-items:center;gap:9px;color:var(--muted);text-decoration:none;padding:7px 11px;border-radius:9px;transition:.18s;border-left:2px solid transparent}
+nav a:hover{color:var(--ink);background:var(--surface)}
+nav a.active{color:var(--ink);background:linear-gradient(90deg,rgba(46,230,198,.12),transparent);border-left:2px solid var(--brand)}
+nav a .sq{width:7px;height:7px;border-radius:2px;background:var(--c,var(--faint));flex:none;transition:.18s;box-shadow:0 0 0 transparent}
+nav a:hover .sq,nav a.active .sq{box-shadow:0 0 9px var(--c,var(--brand))}
+/* ---------- main ---------- */
+main{padding:0 clamp(20px,4vw,68px) 120px;min-width:0}
+section{padding-top:84px;scroll-margin-top:24px}
+.kicker{font-family:var(--mono);font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--brand);display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.kicker::before{content:"";width:26px;height:1px;background:var(--brand);opacity:.6}
+h1{font-family:var(--disp);font-weight:800;font-size:clamp(2.4rem,6vw,4.4rem);line-height:.98;letter-spacing:-.025em}
+h2{font-family:var(--disp);font-weight:700;font-size:clamp(1.7rem,3.4vw,2.5rem);line-height:1.04;letter-spacing:-.02em;margin-bottom:14px}
+h3{font-family:var(--disp);font-weight:700;font-size:1.28rem;letter-spacing:-.01em;margin:26px 0 8px}
+h4{font-family:var(--mono);font-size:.74rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+p{color:#cdd8e4;margin:10px 0;max-width:74ch}
+.lead{font-size:1.16rem;color:#c2cedd;max-width:72ch}
+a.ln{color:var(--cyan);text-decoration:none;border-bottom:1px solid rgba(57,189,248,.3)}
+a.ln:hover{border-color:var(--cyan)}
+code.ic{font-family:var(--mono);font-size:.86em;background:var(--surface2);padding:2px 7px;border-radius:6px;border:1px solid var(--line);color:#d6e7ff}
+strong{color:#fff;font-weight:600}
+.muted{color:var(--muted)}
+/* ---------- brand logos ---------- */
+.logo{width:1.15em;height:1.15em;display:inline-block;vertical-align:-.2em;flex:none}
+svg.h2logo{width:1.04em;height:1.04em;vertical-align:-.12em;margin-right:.42em}
+.brand .dot svg{width:18px;height:18px}
+.chip svg.logo{width:18px;height:18px}
+.logostrip{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0 4px}
+.logostrip .lz{display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border:1px solid var(--line);border-radius:11px;background:var(--surface);font-family:var(--mono);font-size:.76rem;color:var(--muted);transition:.16s}
+.logostrip .lz:hover{border-color:var(--line2);color:var(--ink);transform:translateY(-2px)}
+.logostrip .lz svg{width:20px;height:20px}
+.repo svg.gh{width:13px;height:13px;vertical-align:-2px;margin-right:5px;opacity:.85}
+/* scope tiers + key cheat-sheet */
+.tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(212px,1fr));gap:14px;margin:20px 0}
+.tiers .tier{border:1px solid var(--line);border-radius:13px;padding:16px 17px;background:linear-gradient(180deg,var(--surface),rgba(16,23,31,.5));border-top:3px solid var(--c,var(--brand))}
+.tiers .tier .tg{font-family:var(--mono);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--c,var(--brand));margin-bottom:5px}
+.tiers .tier code{font-family:var(--mono);font-size:.82rem;color:#d6e7ff;display:block;margin-bottom:7px;word-break:break-all}
+.tiers .tier p{font-size:.86rem;color:var(--muted);margin:0;max-width:none}
+.keys{display:grid;gap:0;margin:14px 0 4px}
+.keys .k{display:grid;grid-template-columns:178px 1fr;gap:16px;align-items:start;padding:11px 0;border-top:1px dashed var(--line)}
+.keys .k:first-child{border-top:none}
+.keys .k p{margin:0;font-size:.92rem;color:#cdd8e4;max-width:none}
+.keys kbd{font-family:var(--mono);font-size:.8rem;background:var(--surface2);border:1px solid var(--line2);border-bottom-width:2px;border-radius:7px;padding:3px 9px;color:#d6e7ff;white-space:nowrap;display:inline-block}
+@media(max-width:560px){.keys .k{grid-template-columns:1fr;gap:5px}}
+/* ---------- hero ---------- */
+.hero{padding-top:60px;min-height:92vh;display:flex;flex-direction:column;justify-content:center;position:relative}
+.hero h1 span{background:linear-gradient(100deg,var(--aqua),var(--cyan) 40%,var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero .lead{margin-top:24px}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}
+.chip{font-family:var(--mono);font-size:.78rem;padding:8px 14px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);color:var(--ink);display:flex;align-items:center;gap:8px}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c)}
+.herometa{display:flex;flex-wrap:wrap;gap:26px;margin-top:46px;padding-top:26px;border-top:1px solid var(--line)}
+.herometa div{font-size:.82rem;color:var(--faint)}
+.herometa b{display:block;font-family:var(--disp);font-weight:700;font-size:1.5rem;color:var(--ink);letter-spacing:-.02em}
+.scrollcue{position:absolute;bottom:26px;left:0;font-family:var(--mono);font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);display:flex;align-items:center;gap:9px;animation:bob 2.4s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(6px)}}
+.orb{position:absolute;border-radius:50%;filter:blur(50px);opacity:.5;z-index:-1}
+.orb1{width:300px;height:300px;background:rgba(46,230,198,.25);top:8%;right:6%;animation:float1 14s ease-in-out infinite}
+.orb2{width:230px;height:230px;background:rgba(183,148,246,.22);bottom:18%;right:24%;animation:float1 18s ease-in-out infinite reverse}
+@keyframes float1{50%{transform:translate(-30px,24px)}}
+/* ---------- cards & boxes ---------- */
+.card{background:linear-gradient(180deg,var(--surface),rgba(16,23,31,.6));border:1px solid var(--line);border-radius:var(--r);padding:24px;transition:.25s}
+.card:hover{border-color:var(--line2);transform:translateY(-3px);box-shadow:0 18px 50px -28px rgba(0,0,0,.8)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:18px;margin-top:22px}
+.note{border-radius:13px;padding:16px 18px;margin:18px 0;font-size:.95rem;border:1px solid var(--line);background:var(--surface)}
+.note.warn{border-color:rgba(246,181,63,.35);background:linear-gradient(180deg,rgba(246,181,63,.08),transparent)}
+.note.tip{border-color:rgba(46,230,198,.3);background:linear-gradient(180deg,rgba(46,230,198,.07),transparent)}
+.note .nh{font-family:var(--mono);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.note.warn .nh{color:var(--amber)} .note.tip .nh{color:var(--aqua)}
+.wwh{display:grid;gap:12px;margin-top:16px}
+.wwh .row{display:grid;grid-template-columns:118px 1fr;gap:14px;align-items:start;padding:13px 0;border-top:1px dashed var(--line)}
+.wwh .row:first-child{border-top:none}
+.wwh .lbl{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--c,var(--brand));padding-top:2px}
+.wwh .row p{margin:0;font-size:.95rem}
+/* ---------- code ---------- */
+.codewrap{margin:18px 0;border-radius:13px;border:1px solid var(--line);overflow:hidden;background:#0c1119}
+.tabs{display:flex;gap:2px;background:#0a0e15;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{font-family:var(--mono);font-size:.78rem;color:var(--faint);background:none;border:none;padding:11px 16px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.16s}
+.tabs button:hover{color:var(--muted)}
+.tabs button.on{color:var(--ink);border-bottom:2px solid var(--brand);background:rgba(46,230,198,.05)}
+.cbar{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:#0a0e15;border-bottom:1px solid var(--line)}
+.cbar .fn{font-family:var(--mono);font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:8px}
+.cbar .fn .lang{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);border:1px solid var(--line);padding:2px 7px;border-radius:5px}
+.copy{font-family:var(--mono);font-size:.72rem;color:var(--muted);background:var(--surface2);border:1px solid var(--line);border-radius:7px;padding:5px 11px;cursor:pointer;transition:.16s;display:flex;align-items:center;gap:6px}
+.copy:hover{color:var(--ink);border-color:var(--line2)}
+.copy.done{color:var(--aqua);border-color:rgba(46,230,198,.4)}
+pre{margin:0;overflow-x:auto}
+pre code{font-family:var(--mono)!important;font-size:.83rem;line-height:1.7;padding:18px 18px!important;display:block;background:transparent!important}
+pre code.hljs{background:transparent!important}
+.pane{display:none}.pane.on{display:block}
+/* ---------- decision matrix ---------- */
+.matrix{margin-top:24px;border:1px solid var(--line);border-radius:14px;overflow:hidden;overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:780px;font-size:.9rem}
+th,td{text-align:left;padding:14px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--mono);font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);background:#0b1119;position:sticky;top:0}
+tbody tr{transition:.14s}tbody tr:hover{background:rgba(46,230,198,.04)}
+td:first-child{font-family:var(--disp);font-weight:700;color:var(--ink);white-space:nowrap}
+td .tag{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:8px;vertical-align:middle;background:var(--c,var(--brand))}
+.flow{font-family:var(--mono);font-size:.82rem;line-height:2.1;color:var(--muted)}
+.flow b{color:var(--aqua)} .flow .a{color:var(--violet)}
+/* ---------- tool filter ---------- */
+.filterbar{display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}
+.fchip{font-family:var(--mono);font-size:.76rem;padding:7px 14px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);color:var(--muted);cursor:pointer;transition:.16s}
+.fchip:hover{color:var(--ink)}
+.fchip.on{color:#06100f;background:var(--brand);border-color:var(--brand);font-weight:600}
+.toolcard{position:relative;overflow:hidden}
+.toolcard::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--c,var(--brand))}
+.toolcard .top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.toolcard h3{margin:6px 0 2px}
+.toolcard .cat{font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:var(--c,var(--brand))}
+.toolcard .repo{font-family:var(--mono);font-size:.74rem;color:var(--faint);text-decoration:none;border-bottom:1px solid var(--line)}
+.toolcard .repo:hover{color:var(--muted)}
+.bestfor{margin-top:14px;font-size:.82rem;color:var(--muted)}
+.bestfor b{color:var(--ink)}
+.pill{display:inline-block;font-family:var(--mono);font-size:.66rem;padding:3px 9px;border-radius:6px;border:1px solid var(--line2);color:var(--muted);margin:3px 5px 0 0}
+/* ---------- misc ---------- */
+.hr{height:1px;background:var(--line);margin:60px 0 0}
+.foot{margin-top:60px;padding-top:30px;border-top:1px solid var(--line);font-size:.85rem;color:var(--faint)}
+.foot a{color:var(--muted);text-decoration:none;border-bottom:1px solid var(--line)}
+.srcgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:18px}
+.srcgrid a{display:block;padding:12px 14px;border:1px solid var(--line);border-radius:10px;text-decoration:none;color:var(--muted);font-family:var(--mono);font-size:.8rem;transition:.16s}
+.srcgrid a:hover{border-color:var(--line2);color:var(--ink);background:var(--surface)}
+.menubtn{display:none;position:fixed;top:14px;right:14px;z-index:50;width:44px;height:44px;border-radius:11px;background:var(--surface);border:1px solid var(--line2);color:var(--ink);font-size:1.2rem;cursor:pointer}
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1);transition-delay:var(--d,0s)}
+.reveal.show{opacity:1;transform:none}
+/* ---------- responsive ---------- */
+@media(max-width:980px){
+  .shell{grid-template-columns:1fr}
+  aside{position:fixed;left:0;top:0;width:300px;z-index:45;transform:translateX(-104%);transition:.3s;background:var(--bg2);box-shadow:0 0 60px rgba(0,0,0,.6)}
+  aside.open{transform:none}
+  .menubtn{display:grid;place-items:center}
+  main{padding:0 20px 100px}
+  .wwh .row{grid-template-columns:1fr;gap:4px}
+}
+</style>
+</head>
+<body>
+<div class="bg"></div><div class="grid"></div><div class="noise"></div>
+<div class="progress" id="prog"></div>
+<button class="menubtn" id="menu">☰</button>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+<symbol id="logo-claude" viewBox="0 0 24 24"><g fill="#D97757"><rect x="11" y="2.2" width="2" height="19.6" rx="1" transform="rotate(0 12 12)"/><rect x="11" y="2.2" width="2" height="19.6" rx="1" transform="rotate(30 12 12)"/><rect x="11" y="2.2" width="2" height="19.6" rx="1" transform="rotate(60 12 12)"/><rect x="11" y="2.2" width="2" height="19.6" rx="1" transform="rotate(90 12 12)"/><rect x="11" y="2.2" width="2" height="19.6" rx="1" transform="rotate(120 12 12)"/><rect x="11" y="2.2" width="2" height="19.6" rx="1" transform="rotate(150 12 12)"/></g></symbol>
+<symbol id="logo-python" viewBox="0 0 24 24"><path fill="#3776AB" d="M11.9 2c-1.1 0-2.2.1-3.1.3-2.6.5-3.1 1.4-3.1 3.2v2.4h6.2v.8H3.3c-1.8 0-3.4 1.1-3.9 3.2-.6 2.4-.6 3.9 0 6.4.4 1.9 1.5 3.2 3.3 3.2h2.1v-2.9c0-2.1 1.8-3.9 3.9-3.9h6.2c1.7 0 3.1-1.4 3.1-3.1V5.5c0-1.7-1.4-2.9-3.1-3.2-1.1-.2-2.2-.3-3.2-.3zM8.5 4c.6 0 1.1.5 1.1 1.2 0 .6-.5 1.1-1.1 1.1-.6 0-1.2-.5-1.2-1.1C7.3 4.5 7.9 4 8.5 4z"/><path fill="#FFD43B" d="M20.7 8.5v2.8c0 2.2-1.9 3.9-3.9 3.9h-6.2c-1.7 0-3.1 1.4-3.1 3.1v3.4c0 1.7 1.5 2.7 3.1 3.2 2 .6 3.9.7 6.2 0 1.6-.4 3.1-1.4 3.1-3.2v-2.4h-6.2v-.8h9.3c1.8 0 2.5-1.3 3.1-3.2.6-2 .6-3.9 0-6.4-.4-1.9-1.3-3.2-3.1-3.2h-2.3zM15.5 19.6c.6 0 1.2.5 1.2 1.1 0 .7-.6 1.2-1.2 1.2-.6 0-1.1-.5-1.1-1.2 0-.6.5-1.1 1.1-1.1z"/></symbol>
+<symbol id="logo-ts" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#3178C6"/><text x="12" y="16.5" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="10" fill="#ffffff">TS</text></symbol>
+<symbol id="logo-js" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#F7DF1E"/><text x="12" y="17" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="10" fill="#0b0b0b">JS</text></symbol>
+<symbol id="logo-java" viewBox="0 0 24 24"><g fill="none" stroke="#E76F00" stroke-width="1.5" stroke-linecap="round"><path d="M10 2.5c-1 1.1-1 2 0 3.1"/><path d="M13 2c-1.1 1.2-1.1 2.3 0 3.6"/><path d="M7.5 4.2c-1 .9-.8 1.9.3 2.8"/></g><path fill="#5382A1" d="M4.8 8.2h11.4v4.1c0 2.1-1.7 3.8-3.8 3.8H8.6c-2.1 0-3.8-1.7-3.8-3.8z"/><path fill="none" stroke="#E76F00" stroke-width="1.6" d="M16.3 9.2h1.2c1.3 0 2.3 1 2.3 2.2 0 1.2-1 2.2-2.3 2.2h-1.1"/><rect x="4" y="18" width="13" height="2" rx="1" fill="#E76F00"/></symbol>
+<symbol id="logo-spring" viewBox="0 0 24 24"><path fill="#6DB33F" d="M20 4c.6 6.7-2.8 11.8-8 13.2-2.9.8-5.4-.1-6.6-2.1 4.4 1.2 8.1-.6 10.3-3.1-2.7 1.6-5.7 2.1-8.4.4C4.2 10.6 5 6.1 8.3 4.2c-1 1.7-.6 3.6.8 4.6 2 1.5 4.8.6 7-.8C17.7 6.9 19 5.4 20 4z"/><circle cx="5.6" cy="18.4" r="1.4" fill="#6DB33F"/></symbol>
+<symbol id="logo-mongodb" viewBox="0 0 24 24"><path fill="#00684A" d="M12 1.5c2.7 3.4 4.3 6.7 4.3 10.4 0 4.3-1.9 7.1-3.7 8.8L12 22l-.6-1.3C9.6 19 7.7 16.2 7.7 11.9 7.7 8.2 9.3 4.9 12 1.5z"/><path fill="#00ED64" d="M12 1.5c2.7 3.4 4.3 6.7 4.3 10.4 0 4.3-1.9 7.1-3.7 8.8L12 20.5z"/></symbol>
+<symbol id="logo-node" viewBox="0 0 24 24"><path fill="#5FA04E" d="M12 1.6l9 5.2v10.4l-9 5.2-9-5.2V6.8z"/><text x="12" y="15.4" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="6.6" fill="#0b0b0b">node</text></symbol>
+<symbol id="logo-github" viewBox="0 0 24 24"><path fill="currentColor" d="M12 1.7C6.1 1.7 1.3 6.5 1.3 12.4c0 4.7 3.1 8.7 7.3 10.1.5.1.7-.2.7-.5v-1.9c-3 .6-3.6-1.3-3.6-1.3-.5-1.2-1.2-1.6-1.2-1.6-1-.7.1-.7.1-.7 1.1.1 1.6 1.1 1.6 1.1 1 1.6 2.5 1.2 3.1.9.1-.7.4-1.2.7-1.5-2.4-.3-4.9-1.2-4.9-5.3 0-1.2.4-2.1 1.1-2.9-.1-.3-.5-1.4.1-2.8 0 0 .9-.3 2.9 1.1.8-.2 1.7-.3 2.6-.3.9 0 1.8.1 2.6.3 2-1.4 2.9-1.1 2.9-1.1.6 1.4.2 2.5.1 2.8.7.8 1.1 1.7 1.1 2.9 0 4.1-2.5 5-4.9 5.3.4.3.7 1 .7 2v3c0 .3.2.6.7.5 4.2-1.4 7.3-5.4 7.3-10.1C22.7 6.5 17.9 1.7 12 1.7z"/></symbol>
+</defs></svg>
+<div class="shell">
+<aside id="side">
+  <div class="brand"><span class="dot"><svg class="logo" aria-hidden="true"><use href="#logo-claude"></use></svg></span><span>Agent Stack<small>Claude Code field guide</small></span></div>
+  <nav id="nav">
+    <div class="grp">Start here</div>
+    <a href="#overview" style="--c:var(--aqua)"><span class="sq"></span>Overview</a>
+    <a href="#stack" style="--c:var(--aqua)"><span class="sq"></span>The Stack &amp; Decision Matrix</a>
+    <div class="grp">Native features</div>
+    <a href="#claude-md" style="--c:var(--aqua)"><span class="sq"></span>CLAUDE.md</a>
+    <a href="#shortcuts" style="--c:var(--aqua)"><span class="sq"></span>Shortcuts &amp; @ · #</a>
+    <a href="#agents-md" style="--c:var(--cyan)"><span class="sq"></span>AGENTS.md</a>
+    <a href="#instructions" style="--c:var(--blue)"><span class="sq"></span>instructions.md</a>
+    <a href="#skills" style="--c:var(--lime)"><span class="sq"></span>Skills · SKILL.md</a>
+    <a href="#mcp" style="--c:var(--violet)"><span class="sq"></span>MCP Servers</a>
+    <a href="#advanced" style="--c:var(--pink)"><span class="sq"></span>Subagents · Hooks · Plugins</a>
+    <div class="grp">Project setups</div>
+    <a href="#stack-ts" style="--c:var(--cyan)"><span class="sq"></span>TypeScript / React</a>
+    <a href="#stack-py" style="--c:var(--amber)"><span class="sq"></span>Python · AI / ML</a>
+    <a href="#stack-java" style="--c:var(--coral)"><span class="sq"></span>Java · Spring Boot</a>
+    <a href="#stack-mongo" style="--c:var(--lime)"><span class="sq"></span>MongoDB</a>
+    <div class="grp">Ecosystem</div>
+    <a href="#tools" style="--c:var(--violet)"><span class="sq"></span>Power Tools (×7)</a>
+    <a href="#kits" style="--c:var(--aqua)"><span class="sq"></span>Recommended Kits</a>
+    <a href="#sources" style="--c:var(--faint)"><span class="sq"></span>Sources</a>
+  </nav>
+</aside>
+
+<main>
+  <!-- ================= HERO ================= -->
+  <header class="hero">
+    <div class="orb orb1"></div><div class="orb orb2"></div>
+    <div class="kicker">Updated for 2026 · Claude Opus 4.8 era</div>
+    <h1>Build like the<br>agent is a <span>teammate.</span></h1>
+    <p class="lead">A complete, copy-paste field guide to the modern Claude Code stack — <strong>CLAUDE.md, AGENTS.md, instruction files, Agent Skills, and MCP servers</strong> — plus battle-tested starter setups for TypeScript/React, Python AI/ML, Java Spring Boot and MongoDB, and the 7 community power-tools that bolt on memory, orchestration, code-intelligence and cost control.</p>
+    <div class="chips">
+      <span class="chip" style="--c:var(--cyan)"><svg class="logo"><use href="#logo-ts"></use></svg>TypeScript / React</span>
+      <span class="chip" style="--c:var(--amber)"><svg class="logo"><use href="#logo-python"></use></svg>Python · AI / ML</span>
+      <span class="chip" style="--c:var(--coral)"><svg class="logo"><use href="#logo-java"></use></svg>Java · Spring Boot</span>
+      <span class="chip" style="--c:var(--lime)"><svg class="logo"><use href="#logo-mongodb"></use></svg>MongoDB</span>
+    </div>
+    <div class="herometa">
+      <div><b>5</b>native primitives</div>
+      <div><b>4</b>language starters</div>
+      <div><b>7</b>power tools</div>
+      <div><b>30+</b>code snippets &amp; commands</div>
+    </div>
+    <div class="scrollcue">↓ scroll to begin</div>
+  </header>
+
+  <!-- ================= OVERVIEW ================= -->
+  <section id="overview" class="reveal">
+    <div class="kicker">01 — Overview</div>
+    <h2>What “the agent stack” actually is</h2>
+    <p class="lead">Out of the box, Claude Code is a smart terminal that edits files and runs commands. The stack is the thin layer of <strong>config files and protocols</strong> that turns it into something that already knows your repo conventions, can reach your real systems, remembers across sessions, and behaves predictably — without you re-explaining everything every prompt.</p>
+
+    <h3>Install Claude Code in 30 seconds</h3>
+    <p>Everything below assumes Claude Code is installed. It needs <strong>Node.js 18+</strong> and works in the terminal, VS Code, JetBrains, the desktop app, and on the web/iOS.</p>
+    <div class="codewrap">
+      <div class="cbar"><span class="fn">⌘ terminal<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash"># install the CLI globally
+npm install -g @anthropic-ai/claude-code
+
+# run it inside any project folder
+cd my-project
+claude
+
+# generate a starter CLAUDE.md from your codebase
+/init</code></pre>
+    </div>
+
+    <h3>The technologies this guide covers</h3>
+    <div class="logostrip">
+      <span class="lz"><svg class="logo"><use href="#logo-claude"></use></svg>Claude Code</span>
+      <span class="lz"><svg class="logo"><use href="#logo-node"></use></svg>Node 18+</span>
+      <span class="lz"><svg class="logo"><use href="#logo-ts"></use></svg>TypeScript</span>
+      <span class="lz"><svg class="logo"><use href="#logo-js"></use></svg>JavaScript</span>
+      <span class="lz"><svg class="logo"><use href="#logo-python"></use></svg>Python</span>
+      <span class="lz"><svg class="logo"><use href="#logo-java"></use></svg>Java</span>
+      <span class="lz"><svg class="logo"><use href="#logo-spring"></use></svg>Spring</span>
+      <span class="lz"><svg class="logo"><use href="#logo-mongodb"></use></svg>MongoDB</span>
+    </div>
+
+    <h3>The seven layers, in the order they were built</h3>
+    <p>You rarely need all of them. Most teams start with two (<code class="ic">CLAUDE.md</code> + one MCP server) and grow. Here is the whole timeline so you know what exists:</p>
+    <div class="grid2">
+      <div class="card reveal" style="--d:.04s"><h4 style="color:var(--violet)">Nov 2024 · MCP</h4><p>Universal protocol that connects the agent to external tools &amp; data — databases, GitHub, browsers, your docs.</p></div>
+      <div class="card reveal" style="--d:.08s"><h4 style="color:var(--pink)">Jul 2025 · Subagents</h4><p>Specialised assistants that run in their own isolated context window with their own tools &amp; permissions.</p></div>
+      <div class="card reveal" style="--d:.12s"><h4 style="color:var(--coral)">Sep 2025 · Hooks</h4><p>Shell commands that fire automatically on lifecycle events — guardrails, formatters, logging, memory saves.</p></div>
+      <div class="card reveal" style="--d:.16s"><h4 style="color:var(--lime)">Oct 2025 · Skills</h4><p>Folders of reusable instructions the model loads on demand. The unified extensibility primitive.</p></div>
+      <div class="card reveal" style="--d:.2s"><h4 style="color:var(--amber)">Oct 2025 · Plugins</h4><p>Installable bundles that package skills + agents + hooks + MCP servers + commands into one unit.</p></div>
+      <div class="card reveal" style="--d:.24s"><h4 style="color:var(--cyan)">Feb 2026 · Agent Teams</h4><p>Coordinated groups of subagents that collaborate on a shared task — the orchestration layer.</p></div>
+    </div>
+    <div class="note tip"><div class="nh">◆ The one rule that decides everything</div><strong>If an instruction must be true on every single turn → it belongs in CLAUDE.md.</strong> Everything else (workflows, tools, research, automation) lives in a more specialised layer so it doesn’t burn context when it isn’t needed.</div>
+  </section>
+
+  <!-- ================= STACK / MATRIX ================= -->
+  <section id="stack" class="reveal">
+    <div class="kicker">02 — Decision matrix</div>
+    <h2>When do I reach for which layer?</h2>
+    <p class="lead">Every layer has a different <em>context cost</em> and lifecycle. CLAUDE.md is always loaded; a skill body only loads when invoked; a subagent gets a fresh window; a hook runs around events. Pick the cheapest layer that does the job.</p>
+    <div class="matrix">
+      <table>
+        <thead><tr><th>Layer</th><th>What it is</th><th>Context cost</th><th>Reach for it when…</th><th>Scope</th></tr></thead>
+        <tbody>
+          <tr><td><span class="tag" style="--c:var(--aqua)"></span>CLAUDE.md</td><td>Always-loaded project memory &amp; rules</td><td>High — every turn</td><td>The fact must hold for the whole session (commands, conventions, “definition of done”)</td><td>Project / personal / global</td></tr>
+          <tr><td><span class="tag" style="--c:var(--cyan)"></span>AGENTS.md</td><td>Cross-tool open standard “README for machines”</td><td>Loaded as context</td><td>You want one instruction file that every agent (Codex, Cursor, Copilot, Claude) reads</td><td>Repo root + nested</td></tr>
+          <tr><td><span class="tag" style="--c:var(--blue)"></span>instructions.md</td><td>Convention / tool-specific rule files</td><td>Varies by tool</td><td>You need a human-readable “how we work” doc or a tool-specific override file</td><td>Tool-specific</td></tr>
+          <tr><td><span class="tag" style="--c:var(--lime)"></span>Skill</td><td>On-demand workflow folder (SKILL.md)</td><td>Tiny (~100 tok) until used</td><td>A repeatable procedure: review checklist, release dance, migration generator</td><td>Project / personal / plugin</td></tr>
+          <tr><td><span class="tag" style="--c:var(--violet)"></span>MCP server</td><td>Live connection to an external system</td><td>Tool-schema overhead each session</td><td>The agent needs real data/actions: query a DB, open a PR, hit an API</td><td>Local / project / user</td></tr>
+          <tr><td><span class="tag" style="--c:var(--pink)"></span>Subagent</td><td>Isolated worker with its own context</td><td>Separate window</td><td>Noisy research, large-file reading, or parallel review you don’t want in main context</td><td>Project / personal</td></tr>
+          <tr><td><span class="tag" style="--c:var(--coral)"></span>Hook</td><td>Shell command bound to a lifecycle event</td><td>Runs out-of-band</td><td>You want automatic behaviour: block unsafe commands, format after edits, log</td><td>Project / personal</td></tr>
+          <tr><td><span class="tag" style="--c:var(--amber)"></span>Plugin</td><td>Bundle of all of the above</td><td>Depends on contents</td><td>You want to install/share a whole opinionated setup in one command</td><td>Marketplace</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note"><div class="nh">↳ quick mental model</div><div class="flow">need a <b>fact every turn</b> &rarr; CLAUDE.md<br>need a <b>repeatable workflow</b> &rarr; Skill<br>need <b>external system access</b> &rarr; MCP<br>need <span class="a">parallel / isolated research</span> &rarr; Subagent<br>need an <span class="a">automatic reaction to events</span> &rarr; Hook<br>need a <span class="a">shareable bundle</span> &rarr; Plugin</div></div>
+  </section>
+
+  <!-- ================= CLAUDE.md ================= -->
+  <section id="claude-md" class="reveal">
+    <div class="kicker" style="color:var(--aqua)">03 — Native feature</div>
+    <h2>CLAUDE.md <span class="muted" style="font-size:.5em;font-family:var(--mono)">project memory</span></h2>
+    <div class="wwh" style="--c:var(--aqua)">
+      <div class="row"><div class="lbl">Definition</div><p>A plain-Markdown file Claude Code loads into context automatically at the start of every session. It is the agent’s persistent memory of <strong>how this project works</strong>. Supports <code class="ic">@path</code> imports to pull in other files.</p></div>
+      <div class="row"><div class="lbl">When / Why</div><p>Use it for facts that must be true on <em>every</em> turn: build &amp; test commands, the package manager, code-style rules, architectural constraints, and your “definition of done”. Because it is always in context, keep it short and high-signal — it costs tokens on every message.</p></div>
+      <div class="row"><div class="lbl">How to create</div><p>Run <code class="ic">/init</code> inside <code class="ic">claude</code> to auto-draft one from your codebase, then <strong>trim it hard</strong>. Or just create the file. Locations: <code class="ic">./CLAUDE.md</code> (shared, committed), <code class="ic">./CLAUDE.local.md</code> (personal, gitignored), <code class="ic">~/.claude/CLAUDE.md</code> (global), and nested files per sub-directory.</p></div>
+    </div>
+    <div class="codewrap">
+      <div class="cbar"><span class="fn">CLAUDE.md<span class="lang">markdown</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-markdown"># Project: Acme Web App
+
+## Commands
+- Install: `pnpm install`
+- Dev server: `pnpm dev`
+- Test (run before saying done): `pnpm test`
+- Lint + typecheck: `pnpm lint && pnpm typecheck`
+
+## Conventions
+- Package manager is **pnpm** — never npm/yarn.
+- TypeScript strict mode; no `any`, no non-null `!`.
+- React: function components + hooks only. Co-locate tests as `*.test.tsx`.
+- Commits follow Conventional Commits.
+
+## Constraints
+- Never edit files in `src/generated/`.
+- Never commit `.env*` or anything under `data/`.
+- Always run the test suite before reporting a task complete.
+
+## Context
+@docs/architecture.md   # pull in extra detail only when needed</code></pre>
+    </div>
+    <div class="codewrap">
+      <div class="cbar"><span class="fn">in-session memory commands<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash">/init        # generate a first-draft CLAUDE.md from the repo
+/memory      # open CLAUDE.md in your editor to edit it
+# Type a line starting with '#' during a chat to append a memory instantly:
+# always prefer composition over inheritance</code></pre>
+    </div>
+    <h3>Three places it can live — machine, project, local</h3>
+    <p>Every matching file is <strong>combined</strong> when a session starts, and the more specific file wins on conflicts. That gives you three layers (plus nested):</p>
+    <div class="tiers">
+      <div class="tier" style="--c:var(--violet)">
+        <div class="tg">① Machine / global</div>
+        <code>~/.claude/CLAUDE.md</code>
+        <p>Your personal defaults for <em>every</em> project on this computer — preferred languages, tone, global do/don’t rules. Never shared.</p>
+      </div>
+      <div class="tier" style="--c:var(--aqua)">
+        <div class="tg">② Project</div>
+        <code>./CLAUDE.md</code>
+        <p>Committed to the repo and shared with the whole team. The main one — commands, conventions and constraints for <em>this</em> codebase.</p>
+      </div>
+      <div class="tier" style="--c:var(--amber)">
+        <div class="tg">③ Local</div>
+        <code>./CLAUDE.local.md</code>
+        <p>Project-specific but <strong>personal &amp; git-ignored</strong>. Your own overrides, scratch notes or machine paths that shouldn’t reach the team.</p>
+      </div>
+      <div class="tier" style="--c:var(--cyan)">
+        <div class="tg">④ Nested</div>
+        <code>./packages/api/CLAUDE.md</code>
+        <p>Drop one inside a sub-folder of a monorepo to add or override rules just for that part of the tree.</p>
+      </div>
+    </div>
+    <div class="codewrap">
+      <div class="cbar"><span class="fn">precedence — most specific wins<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash">~/.claude/CLAUDE.md        # MACHINE  · your personal defaults, every project
+./CLAUDE.md                # PROJECT  · committed, shared with the team
+./CLAUDE.local.md          # LOCAL    · personal &amp; git-ignored, this repo only
+./packages/api/CLAUDE.md   # NESTED   · extra rules for one sub-folder</code></pre>
+    </div>
+
+    <div class="note tip"><div class="nh">◆ When should you update CLAUDE.md again?</div>
+    Update it the <strong>moment a fact changes or a pattern emerges</strong> — not on a fixed schedule. Concretely, edit it when you: add or rename a build / test / run command · adopt a new convention, library or package manager · catch Claude making the same mistake twice (encode the fix as one line, or just type <code class="ic"># your rule</code> mid-chat) · add an MCP server, skill or subagent it should know about · change the folder layout or your “definition of done”. Then <strong>prune</strong> anything now stale or obvious — a healthy CLAUDE.md trends <em>shorter</em> over time, not longer.</div>
+
+    <div class="note warn"><div class="nh">▲ keep it minimal — bloat actively hurts</div>Research in 2026 (Gloaguen et al.) found that <strong>over-stuffed, auto-generated context files reduce agent performance and inflate cost</strong> — the agent dutifully follows noise. Treat <code class="ic">/init</code> output as a <em>draft</em>. Drop generic “architecture overview” prose; keep commands, hard constraints, and non-obvious conventions.</div>
+  </section>
+
+    <!-- ================= SHORTCUTS ================= -->
+  <section id="shortcuts" class="reveal">
+    <div class="kicker" style="color:var(--aqua)"><svg class="h2logo" style="margin:0 6px 0 0"><use href="#logo-claude"></use></svg>Reference · cheat sheet</div>
+    <h2>Slash commands &amp; the <code class="ic" style="font-size:.58em">@</code> / <code class="ic" style="font-size:.58em">#</code> shortcuts</h2>
+    <p class="lead">Inside the <code class="ic">claude</code> session, slash commands drive the tooling and two characters drive context: <strong><code class="ic">@</code> pulls a file in, <code class="ic">#</code> writes a memory out</strong>. Here are the ones you’ll reach for daily.</p>
+
+    <h3>Essential commands</h3>
+    <div class="keys">
+      <div class="k"><div><kbd>/init</kbd></div><p>Scan the repository and generate a first-draft <code class="ic">CLAUDE.md</code>. Treat the output as a draft and trim it.</p></div>
+      <div class="k"><div><kbd>/memory</kbd></div><p>Open your <code class="ic">CLAUDE.md</code> (project or user) in an editor to edit it directly.</p></div>
+      <div class="k"><div><kbd>/compact</kbd></div><p>Summarise the conversation so far and continue with a <strong>smaller context window</strong> — exactly what frees up room in a long session. Add a hint, e.g. <code class="ic">/compact focus on the open bug</code>, to steer what’s kept.</p></div>
+      <div class="k"><div><kbd>/clear</kbd></div><p>Wipe the current context and start a fresh conversation in the same project.</p></div>
+      <div class="k"><div><kbd>/help</kbd></div><p>List every available command in your build.</p></div>
+      <div class="k"><div><kbd>/model</kbd></div><p>Switch the model for this session (e.g. Opus ↔ Sonnet).</p></div>
+    </div>
+
+    <h3>Discover &amp; manage the stack</h3>
+    <div class="keys">
+      <div class="k"><div><kbd>/mcp</kbd></div><p>View connected MCP servers, their tools and auth status.</p></div>
+      <div class="k"><div><kbd>/agents</kbd></div><p>Create and manage subagents (name, description, tools, model).</p></div>
+      <div class="k"><div><kbd>/skills</kbd></div><p>List the skills currently available to the agent.</p></div>
+      <div class="k"><div><kbd>/plugin</kbd></div><p>Manage plugins &amp; marketplaces — <code class="ic">/plugin marketplace add owner/repo</code>, then <code class="ic">/plugin install name@repo</code>.</p></div>
+    </div>
+
+    <h3>Context: the <code class="ic">@</code> and <code class="ic">#</code> characters</h3>
+    <div class="keys">
+      <div class="k"><div><kbd>@path/to/file</kbd></div><p>Type <code class="ic">@</code> at the prompt and an autocomplete appears — pick a file or folder to <strong>pull its contents into the current message</strong>. The fast way to say “look at this”.</p></div>
+      <div class="k"><div><kbd>@AGENTS.md</kbd></div><p>The <em>same</em> <code class="ic">@</code> used <strong>inside</strong> a <code class="ic">CLAUDE.md</code> is an <strong>import</strong> — that file is loaded with memory. This is how a one-line CLAUDE.md can defer to AGENTS.md.</p></div>
+      <div class="k"><div><kbd># your rule</kbd></div><p>Start a chat line with <code class="ic">#</code> to <strong>append it to memory instantly</strong> — the quickest way to teach a convention without opening the file.</p></div>
+    </div>
+
+    <h3>From the community tools</h3>
+    <div class="keys">
+      <div class="k"><div><kbd>/skill-name</kbd></div><p>Invoke any installed skill on demand instead of waiting for the model to pick it up.</p></div>
+      <div class="k"><div><kbd>/caveman</kbd></div><p><span class="muted">(caveman)</span> Toggle terse output to cut output tokens; <code class="ic">/caveman lite|ultra</code>, or say “normal mode” to stop.</p></div>
+      <div class="k"><div><kbd>/security-scan</kbd></div><p><span class="muted">(ECC)</span> Run the AgentShield security review over your setup before shipping.</p></div>
+    </div>
+
+    <div class="note tip"><div class="nh">◆ The two-character mental model</div><strong><code class="ic">@</code> reads, <code class="ic">#</code> writes.</strong> <code class="ic">@</code> brings a file <em>into</em> this turn’s context; <code class="ic">#</code> sends a rule <em>out</em> to <code class="ic">CLAUDE.md</code> so it sticks on every future turn.</div>
+  </section>
+
+  <!-- ================= AGENTS.md ================= -->
+  <section id="agents-md" class="reveal">
+    <div class="kicker" style="color:var(--cyan)">04 — Native feature</div>
+    <h2>AGENTS.md <span class="muted" style="font-size:.5em;font-family:var(--mono)">the portable standard</span></h2>
+    <div class="wwh" style="--c:var(--cyan)">
+      <div class="row"><div class="lbl">Definition</div><p>An <strong>open, cross-tool standard</strong> (Linux-Foundation-stewarded, used by 60k+ repos) — a “README for machines”. The same file is read by OpenAI Codex, GitHub Copilot, Cursor, Google Gemini/Jules, Aider, Zed and Claude Code. It complements <code class="ic">README.md</code>; one targets humans, the other targets agents.</p></div>
+      <div class="row"><div class="lbl">When / Why</div><p>Use it when you (or your team) hop between AI tools and don’t want to maintain five different config files. Put build/test commands, code style, conventions and constraints here once. In monorepos, drop a nested <code class="ic">AGENTS.md</code> in each package to override the root.</p></div>
+      <div class="row"><div class="lbl">How to create</div><p>Create <code class="ic">AGENTS.md</code> at the repo root. The high-signal sections are: <strong>setup/build/test commands, code style, conventions, version pins, and programmatic checks</strong>. Skip long architecture essays — research shows they don’t improve behaviour.</p></div>
+    </div>
+    <div class="codewrap">
+      <div class="tabs"><button class="on" data-t="ag1">AGENTS.md</button><button data-t="ag2">CLAUDE.md (the smart pattern)</button></div>
+      <div class="pane on" id="ag1"><div class="cbar"><span class="fn">AGENTS.md<span class="lang">markdown</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-markdown"># AGENTS.md
+
+## Setup
+- Node 20+. Install deps with `pnpm install`.
+
+## Commands
+- Build: `pnpm build`
+- Test: `pnpm test`   # run before finishing any task
+- Lint: `pnpm lint`
+
+## Code style
+- TypeScript strict. Named exports only.
+- No comments unless explaining a non-obvious decision.
+
+## Conventions
+- Use the repository's existing patterns before introducing a new library.
+- API routes live in `src/server/routes`; UI in `src/ui`.
+
+## Checks an agent should run before declaring done
+1. `pnpm typecheck`
+2. `pnpm test`</code></pre></div>
+      <div class="pane" id="ag2"><div class="cbar"><span class="fn">CLAUDE.md<span class="lang">markdown</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-markdown"># Don't duplicate. Make AGENTS.md the source of truth
+# and import it so Claude-specific notes sit alongside.
+
+@AGENTS.md
+
+## Claude-only notes
+- Prefer the `code-review-graph` MCP tools before Grep/Read.
+- When unsure, ask before deleting files.</code></pre></div>
+    </div>
+    <div class="note tip"><div class="nh">◆ CLAUDE.md vs AGENTS.md</div>They coexist. <strong>AGENTS.md</strong> is the shared baseline every tool reads; <strong>CLAUDE.md</strong> is Claude-specific and takes precedence for Claude Code. The cleanest setup: put the real content in <code class="ic">AGENTS.md</code>, and make <code class="ic">CLAUDE.md</code> a one-liner that imports it via <code class="ic">@AGENTS.md</code> — single source of truth, zero drift.</div>
+  </section>
+
+  <!-- ================= instructions.md ================= -->
+  <section id="instructions" class="reveal">
+    <div class="kicker" style="color:var(--blue)">05 — Native feature</div>
+    <h2>instructions.md <span class="muted" style="font-size:.5em;font-family:var(--mono)">the convention layer</span></h2>
+    <div class="note warn"><div class="nh">▲ honesty first</div><code class="ic">instructions.md</code> is <strong>not</strong> an Anthropic-defined primitive like CLAUDE.md or Skills. It’s a <em>convention</em>. Different ecosystems read differently-named instruction files. Treat “instructions” as the umbrella for all of them, and avoid fragmenting your guidance across many files.</div>
+    <div class="wwh" style="--c:var(--blue)">
+      <div class="row"><div class="lbl">Definition</div><p>A human-readable rules/onboarding doc — sometimes literally <code class="ic">instructions.md</code> or <code class="ic">CONTRIBUTING.md</code> — plus the tool-specific instruction files each agent looks for: <code class="ic">.github/copilot-instructions.md</code> (Copilot), <code class="ic">.cursor/rules/*.mdc</code> (Cursor), <code class="ic">.windsurfrules</code> (Windsurf), and the standard <code class="ic">AGENTS.md</code>.</p></div>
+      <div class="row"><div class="lbl">When / Why</div><p>Use a dedicated instructions file when you want one canonical “how we work” document that humans read and that your agent files <em>import</em>, or when a specific tool needs its own override file with rules that don’t belong in the shared standard.</p></div>
+      <div class="row"><div class="lbl">How to create</div><p>Write the doc, then reference it from your agent config via <code class="ic">@import</code> (Claude) or let the tool auto-discover its native path. <strong>Pick AGENTS.md as the source of truth</strong> and point the others at it.</p></div>
+    </div>
+    <div class="codewrap">
+      <div class="tabs"><button class="on" data-t="in1">.github/copilot-instructions.md</button><button data-t="in2">.cursor/rules/conventions.mdc</button><button data-t="in3">CLAUDE.md import</button></div>
+      <div class="pane on" id="in1"><div class="cbar"><span class="fn">.github/copilot-instructions.md<span class="lang">markdown</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-markdown"># Copilot instructions
+- This is a pnpm monorepo. Build with `pnpm -r build`.
+- Use the patterns already present in the package you are editing.
+- All new code is TypeScript strict; add Vitest tests for new logic.</code></pre></div>
+      <div class="pane" id="in2"><div class="cbar"><span class="fn">.cursor/rules/conventions.mdc<span class="lang">markdown</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-markdown">---
+description: Project-wide conventions
+alwaysApply: true
+---
+- Constructor injection only; never field injection.
+- Keep functions under ~40 lines; extract helpers.
+- Mirror the existing folder structure when adding files.</code></pre></div>
+      <div class="pane" id="in3"><div class="cbar"><span class="fn">CLAUDE.md<span class="lang">markdown</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-markdown"># One source of truth, imported everywhere
+@AGENTS.md
+@docs/instructions.md   # the human-facing "how we work" doc</code></pre></div>
+    </div>
+    <div class="note tip"><div class="nh">◆ rule of thumb</div>One canonical doc, many thin pointers. Duplicated instructions across files drift out of sync and confuse agents — let <code class="ic">AGENTS.md</code> hold the truth and have tool-specific files import or restate only what’s genuinely tool-specific.</div>
+  </section>
+
+  <!-- ================= SKILLS ================= -->
+  <section id="skills" class="reveal">
+    <div class="kicker" style="color:var(--lime)">06 — Native feature</div>
+    <h2>Agent Skills <span class="muted" style="font-size:.5em;font-family:var(--mono)">SKILL.md</span></h2>
+    <div class="wwh" style="--c:var(--lime)">
+      <div class="row"><div class="lbl">Definition</div><p>A <strong>folder</strong> containing a <code class="ic">SKILL.md</code> (YAML frontmatter with a <code class="ic">name</code> + <code class="ic">description</code>, then Markdown instructions) and optional scripts/resources. It’s an open standard (Anthropic, Oct 2025; open-sourced and now adopted by Codex, Cursor, VS Code and 30+ tools). Claude loads it <strong>on demand</strong> when the description matches the task, or you invoke it with <code class="ic">/skill-name</code>.</p></div>
+      <div class="row"><div class="lbl">When / Why</div><p>For repeatable workflows and methodology: a code-review checklist, a release dance, a migration generator, your data-analysis routine. Skills are <strong>cheap</strong> — about 100 tokens of context until invoked — so you can install fifty and pay almost nothing for the ones you aren’t using (progressive disclosure).</p></div>
+      <div class="row"><div class="lbl">How to create</div><p>Make a folder under <code class="ic">.claude/skills/&lt;name&gt;/</code> (project) or <code class="ic">~/.claude/skills/</code> (personal) and add <code class="ic">SKILL.md</code>. Install community skills with the <code class="ic">skills</code> CLI: <code class="ic">npx skills add &lt;owner/repo&gt;</code>.</p></div>
+    </div>
+    <div class="codewrap">
+      <div class="tabs"><button class="on" data-t="sk1">folder layout</button><button data-t="sk2">SKILL.md</button><button data-t="sk3">create &amp; install</button></div>
+      <div class="pane on" id="sk1"><div class="cbar"><span class="fn">.claude/skills/<span class="lang">tree</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-plaintext">.claude/
+└── skills/
+    └── review-component/
+        ├── SKILL.md          # frontmatter + instructions (always read)
+        ├── checklist.md      # extra detail, loaded only if referenced
+        └── scripts/
+            └── run-axe.sh     # optional executable helpers</code></pre></div>
+      <div class="pane" id="sk2"><div class="cbar"><span class="fn">SKILL.md<span class="lang">markdown</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-markdown">---
+name: review-component
+description: >
+  Review a React component for accessibility, re-render
+  performance, and test coverage. Use when the user asks to
+  review, audit, or harden a .tsx component.
+---
+
+# Component review
+
+When invoked, do the following in order:
+
+1. Read the component and its test file.
+2. Check accessibility: roles, labels, keyboard nav, focus order.
+3. Flag re-render risks: inline object/array props, missing
+   `useMemo`/`useCallback`, unstable keys.
+4. Confirm a Vitest test exists for each branch; if not, write one.
+5. Output a numbered findings list, most severe first.</code></pre></div>
+      <div class="pane" id="sk3"><div class="cbar"><span class="fn">⌘ terminal<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash"># create your own
+mkdir -p .claude/skills/review-component
+$EDITOR .claude/skills/review-component/SKILL.md
+
+# install from the community registry (skills.sh)
+npx skills add anthropics/skills
+
+# inside claude: list skills, then invoke one
+/skills
+/review-component src/ui/Button.tsx</code></pre></div>
+    </div>
+    <div class="note tip"><div class="nh">◆ Skill vs MCP vs Subagent</div><strong>Skill</strong> = shapes behaviour/knowledge inside the tools the agent already has. <strong>MCP</strong> = adds a brand-new external capability (a database, an API). <strong>Subagent</strong> = an isolated worker with its own context. A skill can teach Claude <em>how</em> to review auth code; it can’t, by itself, connect to your database — that’s MCP’s job.</div>
+  </section>
+
+  <!-- ================= MCP ================= -->
+  <section id="mcp" class="reveal">
+    <div class="kicker" style="color:var(--violet)">07 — Native feature</div>
+    <h2>MCP Servers <span class="muted" style="font-size:.5em;font-family:var(--mono)">the USB-C for AI tools</span></h2>
+    <div class="wwh" style="--c:var(--violet)">
+      <div class="row"><div class="lbl">Definition</div><p>The <strong>Model Context Protocol</strong> is an open standard that lets agents call external tools and data sources through one universal interface — databases, GitHub, Slack, the filesystem, browsers, monitoring stacks. A server exposes a set of tools; Claude calls them like any other tool.</p></div>
+      <div class="row"><div class="lbl">When / Why</div><p>When the agent needs <strong>live access</strong> to a system instead of you pasting data into the chat — querying your MongoDB, opening a PR, reading your issue tracker. It eliminates the “copy context in by hand” loop.</p></div>
+      <div class="row"><div class="lbl">How to create</div><p>Add servers via the CLI, or commit a <code class="ic">.mcp.json</code> file so the whole team shares the same setup. Scopes: <code class="ic">local</code> (just you), <code class="ic">project</code> (committed), <code class="ic">user</code> (all your projects). Manage live with <code class="ic">/mcp</code>.</p></div>
+    </div>
+    <div class="codewrap">
+      <div class="tabs"><button class="on" data-t="mc1">.mcp.json</button><button data-t="mc2">CLI</button></div>
+      <div class="pane on" id="mc1"><div class="cbar"><span class="fn">.mcp.json<span class="lang">json</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-json">{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "./"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}" }
+    },
+    "MongoDB": {
+      "command": "npx",
+      "args": ["-y", "mongodb-mcp-server@latest", "--readOnly"],
+      "env": { "MDB_MCP_CONNECTION_STRING": "mongodb://localhost:27017/myDatabase" }
+    }
+  }
+}</code></pre></div>
+      <div class="pane" id="mc2"><div class="cbar"><span class="fn">⌘ terminal<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash"># add a stdio server (local process)
+claude mcp add github -- npx -y @modelcontextprotocol/server-github
+
+# add a remote HTTP server
+claude mcp add --transport http notion https://mcp.notion.com/mcp
+
+# add MongoDB at project scope so the team inherits it
+claude mcp add MongoDB --scope project -- \
+  npx -y mongodb-mcp-server@latest --readOnly
+
+# list / inspect connected servers (also works as /mcp inside claude)
+claude mcp list</code></pre></div>
+    </div>
+    <div class="note warn"><div class="nh">▲ MCP is a trust + cost surface</div>Only connect servers you trust, and prefer <strong>least privilege</strong> — start <code class="ic">--readOnly</code>, scope tokens tightly, never hand a staging-DB server blanket write access “for convenience”. Every connected server also adds <strong>tool-schema tokens to every session</strong>, so prune ones you don’t use (the <code class="ic">codeburn</code> tool below finds the dead weight).</div>
+  </section>
+
+  <!-- ================= ADVANCED ================= -->
+  <section id="advanced" class="reveal">
+    <div class="kicker" style="color:var(--pink)">08 — Native feature</div>
+    <h2>Subagents · Hooks · Plugins <span class="muted" style="font-size:.5em;font-family:var(--mono)">the automation layer</span></h2>
+
+    <h3 style="color:var(--pink)">Subagents</h3>
+    <p>Specialised assistants that run in <strong>their own context window</strong> with their own prompt, tool access and permissions — perfect for noisy research, large-file reading, or parallel code review you don’t want polluting your main context. Create them with <code class="ic">/agents</code> or a Markdown file. <em>Agent Teams</em> (2026) coordinate several at once.</p>
+    <div class="codewrap">
+      <div class="cbar"><span class="fn">.claude/agents/security-reviewer.md<span class="lang">markdown</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-markdown">---
+name: security-reviewer
+description: Audits diffs for injection, authn/z and secret-leak issues.
+tools: Read, Grep, Bash
+model: opus
+---
+You are a security reviewer. Inspect only the changed files.
+Report findings as: severity, file:line, the risk, and a fix.
+Do not modify code; produce a review only.</code></pre>
+    </div>
+
+    <h3 style="color:var(--coral)">Hooks</h3>
+    <p>Shell commands bound to lifecycle events — <code class="ic">PreToolUse</code> (validation gates), <code class="ic">PostToolUse</code> (lint/format/tests after an edit), <code class="ic">SessionStart</code>, <code class="ic">PreCompact</code>, <code class="ic">Stop</code>. They run automatically, no prompting. Configure in <code class="ic">.claude/settings.json</code>.</p>
+    <div class="codewrap">
+      <div class="cbar"><span class="fn">.claude/settings.json<span class="lang">json</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-json">{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "pnpm prettier --write \"$CLAUDE_FILE_PATHS\"" }
+        ]
+      }
+    ]
+  }
+}</code></pre>
+    </div>
+
+    <h3 style="color:var(--amber)">Plugins</h3>
+    <p>Installable <strong>bundles</strong> that package skills + subagents + hooks + MCP servers + slash-commands into one unit, distributed through a marketplace. Convenient — and a bigger trust surface, since you’re installing hook logic and tool connections, not just prompts. Vet before installing.</p>
+    <div class="codewrap">
+      <div class="cbar"><span class="fn">inside claude<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash"># add a marketplace, then install a plugin from it
+/plugin marketplace add owner/repo
+/plugin install some-plugin@repo
+
+# browse what's installed
+/plugin</code></pre>
+    </div>
+  </section>
+
+  <div class="hr"></div>
+
+  <!-- ================= TS / REACT ================= -->
+  <section id="stack-ts" class="reveal">
+    <div class="kicker" style="color:var(--cyan)">09 — Project setup</div>
+    <h2><svg class="h2logo"><use href="#logo-ts"></use></svg>TypeScript / React starter</h2>
+    <p class="lead">Vite + React + TypeScript (strict), Vitest for tests, ESLint + Prettier, pnpm. A lean, conventional layout the agent can navigate without surprises.</p>
+    <div class="codewrap">
+      <div class="cbar"><span class="fn">project layout<span class="lang">tree</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-plaintext">acme-web/
+├── CLAUDE.md                 # always-loaded rules (imports AGENTS.md)
+├── AGENTS.md                 # portable, cross-tool instructions
+├── .mcp.json                 # filesystem + github (+ playwright)
+├── .claude/
+│   ├── settings.json         # PostToolUse: prettier on save
+│   ├── skills/scaffold-component/SKILL.md
+│   └── agents/security-reviewer.md
+├── src/
+│   ├── ui/                   # components (Button.tsx + Button.test.tsx)
+│   ├── hooks/                # reusable hooks
+│   ├── lib/                  # framework-free logic (easy to unit test)
+│   └── main.tsx
+├── tests/                    # integration / e2e
+├── vite.config.ts
+├── tsconfig.json
+└── package.json</code></pre>
+    </div>
+    <div class="codewrap">
+      <div class="tabs"><button class="on" data-t="ts1">scaffold commands</button><button data-t="ts2">CLAUDE.md</button><button data-t="ts3">.mcp.json</button><button data-t="ts4">SKILL.md</button></div>
+      <div class="pane on" id="ts1"><div class="cbar"><span class="fn">⌘ terminal<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash"># scaffold + dependencies
+pnpm create vite@latest acme-web -- --template react-ts
+cd acme-web && pnpm install
+
+# testing + quality
+pnpm add -D vitest @testing-library/react @testing-library/jest-dom
+pnpm add -D eslint prettier eslint-config-prettier typescript-eslint
+
+# wire Claude Code
+claude
+/init                       # draft CLAUDE.md, then trim
+claude mcp add github -- npx -y @modelcontextprotocol/server-github</code></pre></div>
+      <div class="pane" id="ts2"><div class="cbar"><span class="fn">CLAUDE.md<span class="lang">markdown</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-markdown">@AGENTS.md
+
+# Acme Web (React + TS)
+## Commands
+- Dev: `pnpm dev` · Test: `pnpm test` · Lint: `pnpm lint`
+- Typecheck (must pass): `pnpm typecheck`
+## Rules
+- pnpm only. TypeScript strict; no `any`, no `!`.
+- Function components + hooks. One component per file.
+- Co-locate tests: `Button.tsx` -> `Button.test.tsx`.
+- Pure logic goes in `src/lib` so it is trivially testable.
+- Run `pnpm test && pnpm typecheck` before reporting done.</code></pre></div>
+      <div class="pane" id="ts3"><div class="cbar"><span class="fn">.mcp.json<span class="lang">json</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-json">{
+  "mcpServers": {
+    "filesystem": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "./"] },
+    "github":     { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-github"],
+                    "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}" } },
+    "playwright": { "command": "npx", "args": ["-y", "@playwright/mcp@latest"] }
+  }
+}</code></pre></div>
+      <div class="pane" id="ts4"><div class="cbar"><span class="fn">.claude/skills/scaffold-component/SKILL.md<span class="lang">markdown</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-markdown">---
+name: scaffold-component
+description: Create a typed React component with a co-located
+  Vitest test and story-ready props. Use when asked to add a
+  new UI component.
+---
+1. Create `src/ui/<Name>.tsx` — typed props, named export.
+2. Create `src/ui/<Name>.test.tsx` with a render + a11y check.
+3. Use existing tokens/styles; do not add a new CSS lib.
+4. Run `pnpm test <Name>` and report results.</code></pre></div>
+    </div>
+  </section>
+
+  <!-- ================= PYTHON ================= -->
+  <section id="stack-py" class="reveal">
+    <div class="kicker" style="color:var(--amber)">10 — Project setup</div>
+    <h2><svg class="h2logo"><use href="#logo-python"></use></svg>Python · AI / ML starter</h2>
+    <p class="lead"><code class="ic">uv</code> for fast, reproducible envs &amp; deps, Ruff for lint+format, pytest, a clean <code class="ic">src/</code> layout, and hard rules about never committing data or model weights.</p>
+    <div class="codewrap">
+      <div class="cbar"><span class="fn">project layout<span class="lang">tree</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-plaintext">ml-project/
+├── CLAUDE.md
+├── AGENTS.md
+├── .mcp.json
+├── .claude/skills/run-experiment/SKILL.md
+├── pyproject.toml            # uv-managed deps + ruff + pytest config
+├── src/
+│   └── mlproj/
+│       ├── data/             # loaders (NOT the data itself)
+│       ├── models/           # architectures
+│       ├── train.py
+│       └── evaluate.py
+├── notebooks/                # exploratory only; never imported
+├── tests/
+├── data/                     # gitignored — raw + processed
+└── artifacts/                # gitignored — checkpoints, runs</code></pre>
+    </div>
+    <div class="codewrap">
+      <div class="tabs"><button class="on" data-t="py1">scaffold commands</button><button data-t="py2">CLAUDE.md</button><button data-t="py3">.mcp.json</button><button data-t="py4">SKILL.md</button></div>
+      <div class="pane on" id="py1"><div class="cbar"><span class="fn">⌘ terminal<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash"># init env + core deps (uv is fast and reproducible)
+uv init ml-project && cd ml-project
+uv add numpy pandas scikit-learn torch
+uv add --dev ruff pytest
+
+# run things through uv so the env is always correct
+uv run pytest
+uv run ruff check . && uv run ruff format .
+
+# wire Claude Code
+claude && /init</code></pre></div>
+      <div class="pane" id="py2"><div class="cbar"><span class="fn">CLAUDE.md<span class="lang">markdown</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-markdown">@AGENTS.md
+
+# ML Project
+## Commands
+- Run anything via uv: `uv run <cmd>`
+- Test: `uv run pytest` · Lint+format: `uv run ruff check . && uv run ruff format .`
+## Rules
+- Manage deps with **uv** (`uv add`), never bare pip.
+- Full type hints on public functions; Ruff must pass.
+- **Never** commit anything under `data/` or `artifacts/`.
+- Set + log seeds for any randomness; keep runs reproducible.
+- Notebooks are exploration only — production logic lives in `src/`.</code></pre></div>
+      <div class="pane" id="py3"><div class="cbar"><span class="fn">.mcp.json<span class="lang">json</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-json">{
+  "mcpServers": {
+    "filesystem": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "./"] },
+    "github":     { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-github"],
+                    "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}" } }
+  }
+}</code></pre></div>
+      <div class="pane" id="py4"><div class="cbar"><span class="fn">.claude/skills/run-experiment/SKILL.md<span class="lang">markdown</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-markdown">---
+name: run-experiment
+description: Run a training experiment reproducibly and record
+  the result. Use when asked to train, fine-tune, or benchmark.
+---
+1. Confirm/seed all RNGs and log the config used.
+2. Launch via `uv run python -m mlproj.train --config <path>`.
+3. Write metrics + the exact config to `artifacts/<run-id>/`.
+4. Summarise: dataset, params, key metrics, deltas vs last run.
+5. Never overwrite a prior run directory.</code></pre></div>
+    </div>
+    <div class="note tip"><div class="nh">◆ pairs especially well with</div>Large ML repos benefit hugely from <strong>code-review-graph</strong> (fewer tokens reading the codebase) and a local, private memory like <strong>MemPalace</strong> — both covered below, both Python-native.</div>
+  </section>
+
+  <!-- ================= JAVA / SPRING ================= -->
+  <section id="stack-java" class="reveal">
+    <div class="kicker" style="color:var(--coral)">11 — Project setup</div>
+    <h2><svg class="h2logo"><use href="#logo-java"></use></svg>Java · Spring Boot starter</h2>
+    <p class="lead">Spring Boot 3 on Java 21, Maven wrapper, JUnit 5, the classic layered package structure, and Spring Data MongoDB so it slots straight onto the database layer below.</p>
+    <div class="codewrap">
+      <div class="cbar"><span class="fn">project layout<span class="lang">tree</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-plaintext">acme-api/
+├── CLAUDE.md
+├── AGENTS.md
+├── .mcp.json                 # filesystem + github + MongoDB
+├── .claude/skills/rest-endpoint/SKILL.md
+├── pom.xml
+├── mvnw / mvnw.cmd
+└── src/
+    ├── main/
+    │   ├── java/com/acme/api/
+    │   │   ├── controller/   # thin web layer
+    │   │   ├── service/      # business logic
+    │   │   ├── repository/   # Spring Data Mongo repos
+    │   │   ├── domain/       # @Document model classes
+    │   │   └── AcmeApiApplication.java
+    │   └── resources/application.yml
+    └── test/java/com/acme/api/   # JUnit 5 + @SpringBootTest</code></pre>
+    </div>
+    <div class="codewrap">
+      <div class="tabs"><button class="on" data-t="jv1">scaffold commands</button><button data-t="jv2">CLAUDE.md</button><button data-t="jv3">application.yml</button><button data-t="jv4">SKILL.md</button></div>
+      <div class="pane on" id="jv1"><div class="cbar"><span class="fn">⌘ terminal<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash"># generate a project from start.spring.io
+curl https://start.spring.io/starter.zip \
+  -d type=maven-project -d language=java -d javaVersion=21 \
+  -d bootVersion=3.4.0 \
+  -d dependencies=web,data-mongodb,validation,actuator \
+  -d groupId=com.acme -d artifactId=acme-api -o acme-api.zip
+unzip acme-api.zip -d acme-api && cd acme-api
+
+# build + test through the wrapper
+./mvnw test
+./mvnw spring-boot:run
+
+claude && /init</code></pre></div>
+      <div class="pane" id="jv2"><div class="cbar"><span class="fn">CLAUDE.md<span class="lang">markdown</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-markdown">@AGENTS.md
+
+# Acme API (Spring Boot 3 / Java 21)
+## Commands
+- Build+test (must pass): `./mvnw test`
+- Run: `./mvnw spring-boot:run`
+## Rules
+- Always use the Maven wrapper `./mvnw`, never a global mvn.
+- Layered flow only: controller -> service -> repository.
+- **Constructor injection** only; never `@Autowired` on fields.
+- Validate request bodies with Jakarta `@Valid`.
+- One `@SpringBootTest` (or slice test) per new endpoint.
+- Keep controllers thin; business rules live in services.</code></pre></div>
+      <div class="pane" id="jv3"><div class="cbar"><span class="fn">src/main/resources/application.yml<span class="lang">yaml</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-yaml">spring:
+  application:
+    name: acme-api
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/acme}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info</code></pre></div>
+      <div class="pane" id="jv4"><div class="cbar"><span class="fn">.claude/skills/rest-endpoint/SKILL.md<span class="lang">markdown</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-markdown">---
+name: rest-endpoint
+description: Add a CRUD REST endpoint following the project's
+  layered Spring conventions. Use when asked to add an API route.
+---
+1. Add/extend the `@Document` domain class in `domain/`.
+2. Add a `MongoRepository` in `repository/`.
+3. Put logic in a `@Service`; keep the `@RestController` thin.
+4. Validate inputs with `@Valid`; return proper status codes.
+5. Add a `@SpringBootTest` covering happy + error paths.
+6. Run `./mvnw test` and report results.</code></pre></div>
+    </div>
+  </section>
+
+  <!-- ================= MONGODB ================= -->
+  <section id="stack-mongo" class="reveal">
+    <div class="kicker" style="color:var(--lime)">12 — Project setup</div>
+    <h2><svg class="h2logo"><use href="#logo-mongodb"></use></svg>MongoDB · the data layer</h2>
+    <p class="lead">MongoDB is the database behind the stacks above. The leverage here is the <strong>official MongoDB MCP server</strong> — it lets Claude inspect collections, reason about your real schema, and write safe queries, instead of guessing from code.</p>
+    <div class="wwh" style="--c:var(--lime)">
+      <div class="row"><div class="lbl">Definition</div><p>MongoDB ships an official MCP server (<code class="ic">mongodb-mcp-server</code>, a Node package, also a Docker image). It connects to a local instance or an Atlas cluster and exposes tools to list collections, read schemas, run queries and aggregations.</p></div>
+      <div class="row"><div class="lbl">When / Why</div><p>Whenever Claude works on data-backed features. With the server connected it can confirm field names, propose indexes, and draft aggregation pipelines against the <em>actual</em> shape of your data — eliminating a whole class of guesswork bugs.</p></div>
+      <div class="row"><div class="lbl">How to create</div><p>Add it to <code class="ic">.mcp.json</code> with a connection string, or install the official MongoDB plugin bundle (Claude Code / Codex / Cursor / Gemini) which ships the server <em>and</em> pre-built MongoDB agent skills. Start <strong>read-only</strong>.</p></div>
+    </div>
+    <div class="codewrap">
+      <div class="tabs"><button class="on" data-t="mg1">local (.mcp.json)</button><button data-t="mg2">Atlas (cloud)</button><button data-t="mg3">CLAUDE.md safety</button><button data-t="mg4">SKILL.md</button></div>
+      <div class="pane on" id="mg1"><div class="cbar"><span class="fn">.mcp.json — local, read-only<span class="lang">json</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-json">{
+  "mcpServers": {
+    "MongoDB": {
+      "command": "npx",
+      "args": ["-y", "mongodb-mcp-server@latest", "--readOnly"],
+      "env": { "MDB_MCP_CONNECTION_STRING": "mongodb://localhost:27017/acme" }
+    }
+  }
+}</code></pre></div>
+      <div class="pane" id="mg2"><div class="cbar"><span class="fn">⌘ Atlas via service account<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash"># dry-run to verify config + see which tools are enabled
+export MDB_MCP_CONNECTION_STRING="mongodb+srv://user:pass@cluster.mongodb.net/acme"
+npx -y mongodb-mcp-server@latest --readOnly --dryRun
+
+# Atlas API service-account auth (least-privilege role recommended)
+export MDB_MCP_API_CLIENT_ID="your-atlas-client-id"
+export MDB_MCP_API_CLIENT_SECRET="your-atlas-client-secret"</code></pre></div>
+      <div class="pane" id="mg3"><div class="cbar"><span class="fn">CLAUDE.md — database guardrails<span class="lang">markdown</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-markdown"># Database rules
+- The MongoDB MCP server is **read-only** by default — keep it so
+  unless a task explicitly needs writes.
+- Never run destructive operations (drop/deleteMany) without
+  showing the query and asking for confirmation first.
+- Propose an index before suggesting any query that would collection-scan.
+- Schema changes go through a migration script, never ad-hoc edits.</code></pre></div>
+      <div class="pane" id="mg4"><div class="cbar"><span class="fn">.claude/skills/schema-review/SKILL.md<span class="lang">markdown</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-markdown">---
+name: schema-review
+description: Inspect a collection's real schema and recommend
+  indexes + an aggregation. Use for data-modelling questions.
+---
+1. Use the MongoDB MCP tools to sample the collection schema.
+2. Report field types, nullability, and document-size outliers.
+3. Recommend indexes for the access patterns in the code.
+4. Draft the aggregation pipeline; explain each stage briefly.</code></pre></div>
+    </div>
+    <div class="note warn"><div class="nh">▲ verify the runtime</div>The MongoDB MCP server needs <strong>Node 20.10+</strong> and won’t start without a connection string or Atlas credentials. For exploration, <code class="ic">--readOnly</code> (or <code class="ic">MDB_MCP_READ_ONLY=true</code> for Docker) is strongly recommended; grant the smallest Atlas role that works.</div>
+  </section>
+
+  <div class="hr"></div>
+
+  <!-- ================= TOOLS ================= -->
+  <section id="tools" class="reveal">
+    <div class="kicker" style="color:var(--violet)">13 — Ecosystem</div>
+    <h2>7 community power-tools</h2>
+    <p class="lead">Once the native stack is in place, these open-source projects bolt on the things Claude Code doesn’t do out of the box: <strong>multi-agent orchestration, persistent memory, code-intelligence, and token/cost control</strong>. Each card: why it exists, when to use it, and the exact install. Filter by what you need.</p>
+    <div class="filterbar" id="filter">
+      <button class="fchip on" data-f="all">All 7</button>
+      <button class="fchip" data-f="orchestration">⚙ Orchestration</button>
+      <button class="fchip" data-f="memory">🧠 Memory</button>
+      <button class="fchip" data-f="context">🗺 Code-intelligence</button>
+      <button class="fchip" data-f="cost">💸 Cost &amp; tokens</button>
+    </div>
+
+    <div class="grid2" id="toolgrid">
+
+      <!-- ruflo -->
+      <div class="card toolcard reveal" data-cat="orchestration" style="--c:var(--violet)">
+        <div class="cat">⚙ Orchestration · TypeScript/CLI</div>
+        <div class="top"><h3>🌊 ruflo</h3><a class="repo" href="https://github.com/ruvnet/ruflo" target="_blank" rel="noopener"><svg class="logo gh" aria-hidden="true"><use href="#logo-github"></use></svg>ruvnet/ruflo ↗</a></div>
+        <p class="muted" style="font-size:.92rem">The leading agent meta-harness for Claude — coordinated swarms, self-learning memory, RAG, federation.</p>
+        <div class="wwh" style="--c:var(--violet)">
+          <div class="row"><div class="lbl">Why</div><p>Orchestrate 100+ specialised agents into coordinated swarms. A hooks system routes tasks, learns from successful patterns, and runs background workers — so the agents collaborate instead of just running one at a time.</p></div>
+          <div class="row"><div class="lbl">When</div><p>Large, multi-step autonomous workflows where one agent isn’t enough — full-feature builds, multi-file refactors, release automation.</p></div>
+          <div class="row"><div class="lbl">How</div><p>Two install paths with very different surface areas:</p></div>
+        </div>
+        <div class="codewrap"><div class="cbar"><span class="fn">full loop (MCP + hooks + daemon)<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash">npx ruflo@latest init wizard      # creates .claude/, CLAUDE.md, config
+npx ruflo@latest daemon start     # background workers + task loops
+npx ruflo@latest swarm init --topology hierarchical --max-agents 8</code></pre></div>
+        <div class="bestfor"><b>Best for:</b> big TS / Python monorepos &amp; autonomous build loops.<br><span class="pill">start with the wizard defaults</span><span class="pill">314 MCP tools — don’t learn them all</span></div>
+      </div>
+
+      <!-- ECC -->
+      <div class="card toolcard reveal" data-cat="orchestration" style="--c:var(--pink)">
+        <div class="cat">⚙ Orchestration · multi-harness</div>
+        <div class="top"><h3>ECC</h3><a class="repo" href="https://github.com/affaan-m/ECC" target="_blank" rel="noopener"><svg class="logo gh" aria-hidden="true"><use href="#logo-github"></use></svg>affaan-m/ECC ↗</a></div>
+        <p class="muted" style="font-size:.92rem">“Everything Claude Code” — a complete agent-harness performance system, not just configs.</p>
+        <div class="wwh" style="--c:var(--pink)">
+          <div class="row"><div class="lbl">Why</div><p>A full, opinionated system refined over 10+ months: production-ready skills, “instincts”, memory optimisation, continuous learning, security scanning (AgentShield), and research-first development — ready-made instead of hand-assembled.</p></div>
+          <div class="row"><div class="lbl">When</div><p>You want a battle-tested baseline, or you’re standardising a team across Claude Code, Codex, Cursor, OpenCode, Gemini and Copilot.</p></div>
+          <div class="row"><div class="lbl">How</div><p>Install from the repo (ships agents, skills, hooks, rules &amp; MCP configs); run its security scan from Claude. MIT OSS; ECC&nbsp;Pro adds a private-repo GitHub App from $19/seat/mo.</p></div>
+        </div>
+        <div class="codewrap"><div class="cbar"><span class="fn">setup<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash"># follow the repo's current bootstrap (it evolves weekly):
+#   https://github.com/affaan-m/ECC  ->  setup guide
+# then, inside Claude Code, run its AgentShield security scan:
+/security-scan</code></pre></div>
+        <div class="bestfor"><b>Best for:</b> all four stacks; teams wanting one shared, secure baseline.<br><span class="pill">verify the bootstrap on the repo</span><span class="pill">audit before trusting hooks</span></div>
+      </div>
+
+      <!-- claude-mem -->
+      <div class="card toolcard reveal" data-cat="memory" style="--c:var(--amber)">
+        <div class="cat">🧠 Memory · cross-session</div>
+        <div class="top"><h3>claude-mem</h3><a class="repo" href="https://github.com/thedotmack/claude-mem" target="_blank" rel="noopener"><svg class="logo gh" aria-hidden="true"><use href="#logo-github"></use></svg>thedotmack/claude-mem ↗</a></div>
+        <p class="muted" style="font-size:.92rem">Persistent context across sessions — captures, compresses, and re-injects.</p>
+        <div class="wwh" style="--c:var(--amber)">
+          <div class="row"><div class="lbl">Why</div><p>Captures everything the agent does in a session, compresses it with AI, and injects the relevant slice back into future sessions — so you stop re-explaining the project every morning.</p></div>
+          <div class="row"><div class="lbl">When</div><p>Multi-week projects where context evaporates between sessions and you want continuity without a giant CLAUDE.md.</p></div>
+          <div class="row"><div class="lbl">How</div><p>Installs as a plugin with a worker service + web viewer; query your history with the <code class="ic">mem-search</code> skill. Apache-2.0; also works with Codex, Gemini, Copilot.</p></div>
+        </div>
+        <div class="codewrap"><div class="cbar"><span class="fn">install<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash">npx claude-mem install          # NOT `npm i -g` (that's the SDK only)
+# restart Claude Code; past context appears automatically.
+# browse the live memory stream at http://localhost:37777</code></pre></div>
+        <div class="bestfor"><b>Best for:</b> long-running work on any of the four stacks.</div>
+      </div>
+
+      <!-- mempalace -->
+      <div class="card toolcard reveal" data-cat="memory" style="--c:var(--lime)">
+        <div class="cat">🧠 Memory · local &amp; verbatim</div>
+        <div class="top"><h3>MemPalace</h3><a class="repo" href="https://github.com/MemPalace/mempalace" target="_blank" rel="noopener"><svg class="logo gh" aria-hidden="true"><use href="#logo-github"></use></svg>MemPalace/mempalace ↗</a></div>
+        <p class="muted" style="font-size:.92rem">The best-benchmarked open-source AI memory system — and it’s free.</p>
+        <div class="wwh" style="--c:var(--lime)">
+          <div class="row"><div class="lbl">Why</div><p>Stores history <strong>verbatim</strong> (no summarising or paraphrasing) in a structured “memory palace” — wings for people/projects, rooms for time, drawers for content. 96.6% R@5 on LongMemEval, <strong>zero API calls</strong>, fully local/offline.</p></div>
+          <div class="row"><div class="lbl">When</div><p>You want exact recall and full privacy/data-sovereignty — nothing leaves your machine unless you opt in.</p></div>
+          <div class="row"><div class="lbl">How</div><p>Python CLI; 29 MCP tools + Claude Code hooks (stop, pre-compact) that file memories silently. MIT.</p></div>
+        </div>
+        <div class="codewrap"><div class="cbar"><span class="fn">install (isolated env)<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash">uv tool install mempalace        # or: pipx install mempalace
+mempalace init ~/projects/myapp
+mempalace mine ~/.claude/projects/ --mode convos   # ingest sessions</code></pre></div>
+        <div class="bestfor"><b>Best for:</b> privacy-sensitive Python/Java &amp; research.<br><span class="pill">only official sources — beware impostor sites</span></div>
+      </div>
+
+      <!-- code-review-graph -->
+      <div class="card toolcard reveal" data-cat="context" style="--c:var(--cyan)">
+        <div class="cat">🗺 Code-intelligence · MCP</div>
+        <div class="top"><h3>code-review-graph</h3><a class="repo" href="https://github.com/tirth8205/code-review-graph" target="_blank" rel="noopener"><svg class="logo gh" aria-hidden="true"><use href="#logo-github"></use></svg>tirth8205/code-review-graph ↗</a></div>
+        <p class="muted" style="font-size:.92rem">A local-first code-intelligence graph so the agent reads only what matters.</p>
+        <div class="wwh" style="--c:var(--cyan)">
+          <div class="row"><div class="lbl">Why</div><p>Builds a Tree-sitter AST graph of your repo (functions, classes, calls, test coverage) and serves precise context over MCP — so the agent stops re-reading the whole codebase. Reported 6.8× fewer tokens on reviews, up to 49× on daily tasks.</p></div>
+          <div class="row"><div class="lbl">When</div><p>Large repos and review-heavy workflows — exactly the pain point of big Java/Python/TS codebases.</p></div>
+          <div class="row"><div class="lbl">How</div><p>Python CLI that auto-writes MCP config for your tools; then add a CLAUDE.md/AGENTS.md line telling the agent to use its tools <em>before</em> Grep/Read. Python 3.10+, local SQLite, no cloud.</p></div>
+        </div>
+        <div class="codewrap"><div class="cbar"><span class="fn">install<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash">pip install code-review-graph     # or: pipx install code-review-graph
+code-review-graph install         # auto-configures MCP for detected tools
+code-review-graph build           # parse the codebase (~10s / 500 files)</code></pre></div>
+        <div class="bestfor"><b>Best for:</b> large Java / Python / TypeScript codebases.<br><span class="pill">CLAUDE.md: “use the graph tools before Grep/Read”</span></div>
+      </div>
+
+      <!-- caveman -->
+      <div class="card toolcard reveal" data-cat="cost" style="--c:var(--coral)">
+        <div class="cat">💸 Cost &amp; tokens · skill</div>
+        <div class="top"><h3>🪨 caveman</h3><a class="repo" href="https://github.com/JuliusBrussee/caveman" target="_blank" rel="noopener"><svg class="logo gh" aria-hidden="true"><use href="#logo-github"></use></svg>JuliusBrussee/caveman ↗</a></div>
+        <p class="muted" style="font-size:.92rem">Why use many token when few token do trick.</p>
+        <div class="wwh" style="--c:var(--coral)">
+          <div class="row"><div class="lbl">Why</div><p>Strips articles, pleasantries and hedging from the agent’s output — <strong>~65–75% fewer output tokens</strong> with full technical accuracy. Code, symbols and error strings are kept verbatim. “Brain still big, mouth small.”</p></div>
+          <div class="row"><div class="lbl">When</div><p>High-volume sessions where you want cheaper, faster, denser replies. Note it affects <em>output</em> tokens only — reasoning is untouched.</p></div>
+          <div class="row"><div class="lbl">How</div><p>Installs as a skill via the skills CLI; toggle intensity (lite / full / ultra), revert any time. MIT; works across 30+ agents.</p></div>
+        </div>
+        <div class="codewrap"><div class="cbar"><span class="fn">install &amp; use<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash">npx skills add JuliusBrussee/caveman
+/caveman           # activate (default 'full'); /caveman lite|ultra
+# say "normal mode" or "stop caveman" to turn it off</code></pre></div>
+        <div class="bestfor"><b>Best for:</b> everyone — pairs naturally with codeburn.</div>
+      </div>
+
+      <!-- codeburn -->
+      <div class="card toolcard reveal" data-cat="cost" style="--c:var(--blue)">
+        <div class="cat">💸 Cost &amp; tokens · TUI</div>
+        <div class="top"><h3>codeburn</h3><a class="repo" href="https://github.com/getagentseal/codeburn" target="_blank" rel="noopener"><svg class="logo gh" aria-hidden="true"><use href="#logo-github"></use></svg>getagentseal/codeburn ↗</a></div>
+        <p class="muted" style="font-size:.92rem">See where your AI coding tokens go.</p>
+        <div class="wwh" style="--c:var(--blue)">
+          <div class="row"><div class="lbl">Why</div><p>An interactive TUI dashboard that reads your session logs straight from disk (no API keys, no proxy) and breaks spend down by task type, model, tool, project and provider.</p></div>
+          <div class="row"><div class="lbl">When</div><p>You want cost observability — or to actively hunt waste. <code class="ic">codeburn optimize</code> flags re-read files, unused MCP servers, ghost skills/agents and bloated CLAUDE.md, scores your setup A–F, and hands you paste-ready fixes.</p></div>
+          <div class="row"><div class="lbl">How</div><p>One global install; covers Claude Code, Codex, Cursor, Copilot &amp; more.</p></div>
+        </div>
+        <div class="codewrap"><div class="cbar"><span class="fn">install &amp; run<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash">npm install -g codeburn
+codeburn                 # interactive dashboard (last 7 days)
+codeburn optimize        # waste scan + A–F health grade + fixes</code></pre></div>
+        <div class="bestfor"><b>Best for:</b> everyone managing spend across the four stacks.</div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="hr"></div>
+
+  <!-- ================= KITS ================= -->
+  <section id="kits" class="reveal">
+    <div class="kicker" style="color:var(--aqua)">14 — Putting it together</div>
+    <h2>Recommended kits per stack</h2>
+    <p class="lead">You don’t need all seven tools at once. Here’s a pragmatic starting kit for each stack — native primitives first, then only the bolt-ons that earn their keep. Add more as the codebase and session count grow.</p>
+
+    <div class="grid2" style="margin-top:24px">
+
+      <!-- TS kit -->
+      <div class="card reveal" style="--c:var(--cyan)">
+        <div class="cat" style="color:var(--cyan)">⬡ TypeScript / React</div>
+        <h3 style="margin-top:4px">The web app kit</h3>
+        <div class="wwh" style="--c:var(--cyan)">
+          <div class="row"><div class="lbl">Native</div><p><code class="ic">AGENTS.md</code> as the source of truth; a one-line <code class="ic">CLAUDE.md</code> that imports it via <code class="ic">@AGENTS.md</code>. A small <code class="ic">react</code> / <code class="ic">testing</code> skill for component + RTL conventions.</p></div>
+          <div class="row"><div class="lbl">MCP</div><p><code class="ic">filesystem</code> + <code class="ic">github</code> (PRs, issues, CI). Keep the set tiny — every server adds token overhead.</p></div>
+          <div class="row"><div class="lbl">Tools</div><p>Run <strong>caveman</strong> + <strong>codeburn</strong> from day one (cheaper, observable). Add <strong>code-review-graph</strong> once the repo is big enough that Grep/Read gets wasteful, and <strong>claude-mem</strong> if you want continuity across sessions.</p></div>
+        </div>
+        <div class="codewrap"><div class="cbar"><span class="fn">bootstrap<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash"># native
+echo "@AGENTS.md" > CLAUDE.md
+claude mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem .
+claude mcp add github --transport http https://api.githubcopilot.com/mcp/
+# bolt-ons
+npx skills add JuliusBrussee/caveman      # leaner output
+npm install -g codeburn && codeburn       # watch the spend
+# later, as the repo grows:
+pip install code-review-graph && code-review-graph install && code-review-graph build</code></pre></div>
+        <div class="bestfor"><b>Grows into:</b> add code-review-graph + claude-mem; reach for a harness only if you automate multi-step features.</div>
+      </div>
+
+      <!-- Python kit -->
+      <div class="card reveal" style="--c:var(--amber)">
+        <div class="cat" style="color:var(--amber)">⬡ Python · AI / ML</div>
+        <h3 style="margin-top:4px">The research kit</h3>
+        <div class="wwh" style="--c:var(--amber)">
+          <div class="row"><div class="lbl">Native</div><p><code class="ic">CLAUDE.md</code> pinned to <code class="ic">uv</code> workflows (run, test, lint). An <code class="ic">experiment</code> skill that standardises how runs are logged and seeded.</p></div>
+          <div class="row"><div class="lbl">MCP</div><p><code class="ic">filesystem</code> + <code class="ic">github</code>. Add data/DB servers only when a notebook actually needs them.</p></div>
+          <div class="row"><div class="lbl">Tools</div><p><strong>code-review-graph</strong> for big repos, <strong>MemPalace</strong> when you want verbatim, fully-local, offline memory (no API calls — ideal for private/regulated data). <strong>caveman</strong> + <strong>codeburn</strong> to keep long experiment loops cheap.</p></div>
+        </div>
+        <div class="codewrap"><div class="cbar"><span class="fn">bootstrap<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash"># native (uv project + CLAUDE.md draft)
+uv init ml-project && cd ml-project
+claude && /init
+claude mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem .
+# bolt-ons
+uv tool install mempalace && mempalace init ml-project     # local, verbatim memory
+pip install code-review-graph && code-review-graph install # token-lean reviews
+npx skills add JuliusBrussee/caveman && npm install -g codeburn</code></pre></div>
+        <div class="bestfor"><b>Privacy note:</b> MemPalace runs offline with zero API calls — a strong fit for sensitive datasets.</div>
+      </div>
+
+      <!-- Java kit -->
+      <div class="card reveal" style="--c:var(--coral)">
+        <div class="cat" style="color:var(--coral)">⬡ Java · Spring Boot</div>
+        <h3 style="margin-top:4px">The service kit</h3>
+        <div class="wwh" style="--c:var(--coral)">
+          <div class="row"><div class="lbl">Native</div><p><code class="ic">CLAUDE.md</code> describing the layered architecture and the <code class="ic">./mvnw</code> commands. A <code class="ic">spring</code> skill for controller/service/repository conventions and test style.</p></div>
+          <div class="row"><div class="lbl">MCP</div><p><code class="ic">filesystem</code> + <code class="ic">github</code> + <code class="ic">mongodb</code> (read-only) so Claude can inspect schema while writing repositories.</p></div>
+          <div class="row"><div class="lbl">Tools</div><p><strong>code-review-graph</strong> earns its keep fast on large multi-module services; <strong>codeburn</strong> keeps build-heavy sessions honest. caveman optional.</p></div>
+        </div>
+        <div class="codewrap"><div class="cbar"><span class="fn">bootstrap<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash">claude && /init                            # draft CLAUDE.md (mvnw, layers)
+claude mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem .
+claude mcp add github --transport http https://api.githubcopilot.com/mcp/
+claude mcp add mongodb -- npx -y mongodb-mcp-server \
+  --connectionString "$MDB_MCP_CONNECTION_STRING" --readOnly
+pip install code-review-graph && code-review-graph install && code-review-graph build
+npm install -g codeburn</code></pre></div>
+        <div class="bestfor"><b>Grows into:</b> subagents per module + hooks that run <code class="ic">./mvnw test</code> before “done”.</div>
+      </div>
+
+      <!-- Mongo kit -->
+      <div class="card reveal" style="--c:var(--lime)">
+        <div class="cat" style="color:var(--lime)">⬡ MongoDB</div>
+        <h3 style="margin-top:4px">The data-layer kit</h3>
+        <div class="wwh" style="--c:var(--lime)">
+          <div class="row"><div class="lbl">Native</div><p>The official <code class="ic">mongodb-mcp-server</code> launched <code class="ic">--readOnly</code>, plus MongoDB’s official skills bundle. A <code class="ic">schema-review</code> skill that codifies your indexing + modelling rules.</p></div>
+          <div class="row"><div class="lbl">Pair</div><p>This is a layer, not a standalone project — attach it to whichever app stack owns the data (most often the Java or Python kit above).</p></div>
+          <div class="row"><div class="lbl">Tools</div><p><strong>codeburn</strong> to watch query/agent spend; everything else inherits from the app stack it’s paired with.</p></div>
+        </div>
+        <div class="codewrap"><div class="cbar"><span class="fn">bootstrap<span class="lang">bash</span></span><button class="copy">Copy</button></div>
+<pre><code class="language-bash"># read-only by default; flip off only for a deliberate write task
+claude mcp add mongodb -- npx -y mongodb-mcp-server \
+  --connectionString "$MDB_MCP_CONNECTION_STRING" --readOnly
+# Atlas control-plane (optional)
+#   set MDB_MCP_API_CLIENT_ID / MDB_MCP_API_CLIENT_SECRET instead
+/mcp                                       # confirm tools are live</code></pre></div>
+        <div class="bestfor"><b>Safety:</b> keep <code class="ic">--readOnly</code> on for exploration; use <code class="ic">--dryRun</code> to preview writes.</div>
+      </div>
+
+    </div>
+
+    <div class="note tip">
+      <div class="nh">◆ One harness, not three</div>
+      When you’re ready for a real automation layer — multi-agent swarms, autonomous multi-step workflows — add <strong>ruflo</strong> <em>or</em> <strong>ECC</strong> on top of any kit above. Pick <strong>one</strong>, start with the most minimal setup it offers, and keep <strong>codeburn</strong> running so you can see exactly what the extra agents cost. Two harnesses fighting over the same <code class="ic">.claude/</code> config is the fast path to confusion and token bloat.
+    </div>
+  </section>
+
+  <div class="hr"></div>
+
+  <!-- ================= SOURCES ================= -->
+  <section id="sources" class="reveal">
+    <div class="kicker" style="color:var(--faint)">15 — Go deeper</div>
+    <h2>Sources &amp; official docs</h2>
+    <p class="lead">Everything here is distilled from primary documentation and each project’s own repository. The agent ecosystem moves fast — when in doubt, the links below are the source of truth.</p>
+
+    <h3 style="color:var(--aqua)">Anthropic / Claude Code</h3>
+    <div class="srcgrid">
+      <a href="https://docs.claude.com/en/docs/claude-code/overview" target="_blank" rel="noopener">Claude Code docs ↗</a>
+      <a href="https://docs.claude.com/en/docs/claude-code/memory" target="_blank" rel="noopener">CLAUDE.md / memory ↗</a>
+      <a href="https://docs.claude.com/en/docs/claude-code/sub-agents" target="_blank" rel="noopener">Subagents ↗</a>
+      <a href="https://docs.claude.com/en/docs/claude-code/hooks" target="_blank" rel="noopener">Hooks ↗</a>
+      <a href="https://docs.claude.com/en/docs/agents-and-tools/agent-skills" target="_blank" rel="noopener">Agent Skills ↗</a>
+      <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">Model Context Protocol ↗</a>
+    </div>
+
+    <h3 style="color:var(--cyan)">Open standards &amp; data layer</h3>
+    <div class="srcgrid">
+      <a href="https://agents.md" target="_blank" rel="noopener">AGENTS.md standard ↗</a>
+      <a href="https://skills.sh" target="_blank" rel="noopener">skills.sh (community skills) ↗</a>
+      <a href="https://www.mongodb.com/docs/mcp-server/" target="_blank" rel="noopener">MongoDB MCP Server ↗</a>
+    </div>
+
+    <h3 style="color:var(--violet)">The 7 power-tools</h3>
+    <div class="srcgrid">
+      <a href="https://github.com/ruvnet/ruflo" target="_blank" rel="noopener">ruvnet/ruflo ↗</a>
+      <a href="https://github.com/affaan-m/ECC" target="_blank" rel="noopener">affaan-m/ECC ↗</a>
+      <a href="https://github.com/thedotmack/claude-mem" target="_blank" rel="noopener">thedotmack/claude-mem ↗</a>
+      <a href="https://github.com/JuliusBrussee/caveman" target="_blank" rel="noopener">JuliusBrussee/caveman ↗</a>
+      <a href="https://github.com/tirth8205/code-review-graph" target="_blank" rel="noopener">tirth8205/code-review-graph ↗</a>
+      <a href="https://github.com/MemPalace/mempalace" target="_blank" rel="noopener">MemPalace/mempalace ↗</a>
+      <a href="https://github.com/getagentseal/codeburn" target="_blank" rel="noopener">getagentseal/codeburn ↗</a>
+    </div>
+
+    <div class="note warn" style="margin-top:24px">
+      <div class="nh">⚠ Verify before you install</div>
+      A few of these projects have look-alike or impostor sites. Install only from the official repository, the project’s real package on npm / PyPI, or its documented domain. Treat any other source with suspicion.
+    </div>
+
+    <div class="foot">
+      Built as a single self-contained HTML page — colourful, animated, interactive. Original synthesis for a TypeScript / Python / Java / MongoDB developer. Star counts and commands reflect public data at time of writing; always confirm against the linked sources. Not affiliated with Anthropic or any tool author.
+    </div>
+  </section>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ---- syntax highlighting ---- */
+  try { if (window.hljs) hljs.highlightAll(); } catch(e){}
+
+  /* ---- reading-progress bar ---- */
+  var prog = document.getElementById('prog');
+  function onScroll(){
+    var h = document.documentElement;
+    var max = (h.scrollHeight - h.clientHeight) || 1;
+    var p = (h.scrollTop || document.body.scrollTop) / max;
+    if (prog) prog.style.width = (p * 100).toFixed(2) + '%';
+  }
+  window.addEventListener('scroll', onScroll, { passive:true });
+  onScroll();
+
+  /* ---- reveal on scroll ---- */
+  var revs = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if (en.isIntersecting){ en.target.classList.add('show'); io.unobserve(en.target); }
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.06 });
+    revs.forEach(function(el){ io.observe(el); });
+  } else {
+    revs.forEach(function(el){ el.classList.add('show'); });
+  }
+
+  /* ---- scroll-spy: highlight active nav link ---- */
+  var navLinks = Array.prototype.slice.call(document.querySelectorAll('#nav a'));
+  var sections = navLinks
+    .map(function(a){ var id = a.getAttribute('href'); return id && id.charAt(0)==='#' ? document.querySelector(id) : null; })
+    .filter(Boolean);
+  function spy(){
+    var pos = (document.documentElement.scrollTop || document.body.scrollTop) + 140;
+    var cur = sections[0];
+    for (var i=0;i<sections.length;i++){ if (sections[i].offsetTop <= pos) cur = sections[i]; }
+    navLinks.forEach(function(a){
+      a.classList.toggle('active', cur && a.getAttribute('href') === '#' + cur.id);
+    });
+  }
+  window.addEventListener('scroll', spy, { passive:true });
+  spy();
+
+  /* ---- mobile drawer ---- */
+  var menu = document.getElementById('menu');
+  var side = document.getElementById('side');
+  if (menu && side){
+    menu.addEventListener('click', function(){ side.classList.toggle('open'); });
+    side.addEventListener('click', function(e){
+      if (e.target.tagName === 'A') side.classList.remove('open');
+    });
+  }
+
+  /* ---- tabbed code blocks ---- */
+  document.querySelectorAll('.tabs').forEach(function(tabbar){
+    var wrap = tabbar.closest('.codewrap') || tabbar.parentElement;
+    tabbar.querySelectorAll('button').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var target = btn.getAttribute('data-t');
+        tabbar.querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b === btn); });
+        wrap.querySelectorAll('.pane').forEach(function(p){
+          p.classList.toggle('on', p.id === target);
+        });
+      });
+    });
+  });
+
+  /* ---- copy buttons ---- */
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var wrap = btn.closest('.codewrap');
+      var pane = wrap ? wrap.querySelector('.pane.on code, .pane.on pre') : null;
+      var code = pane || (wrap ? wrap.querySelector('pre code, pre') : null);
+      var text = code ? code.textContent : '';
+      var done = function(){
+        var old = btn.textContent;
+        btn.textContent = 'Copied ✓';
+        btn.classList.add('done');
+        setTimeout(function(){ btn.textContent = old; btn.classList.remove('done'); }, 1400);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){ fallback(text); done(); });
+      } else { fallback(text); done(); }
+    });
+  });
+  function fallback(text){
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+    } catch(e){}
+  }
+
+  /* ---- tool filter ---- */
+  var filter = document.getElementById('filter');
+  var grid = document.getElementById('toolgrid');
+  if (filter && grid){
+    filter.querySelectorAll('.fchip').forEach(function(chip){
+      chip.addEventListener('click', function(){
+        var f = chip.getAttribute('data-f');
+        filter.querySelectorAll('.fchip').forEach(function(c){ c.classList.toggle('on', c === chip); });
+        grid.querySelectorAll('.toolcard').forEach(function(card){
+          var show = (f === 'all') || (card.getAttribute('data-cat') === f);
+          card.style.display = show ? '' : 'none';
+        });
+      });
+    });
+  }
+
+})();
+</script>
+</body>
+</html>

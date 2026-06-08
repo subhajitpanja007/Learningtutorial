@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Essentials — Python · Java · Spring Boot</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#080b12; --bg2:#0c1019; --panel:#10151f; --panel2:#0e131c;
+  --ink:#e8eef6; --muted:#8595ad; --faint:#5b6982;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.05);
+  --accent:#4B8BBE; --accent2:#FFD43B; --glow:rgba(75,139,190,.45);
+  --code-key:#ff7eb6; --code-str:#7ee787; --code-num:#ffa657; --code-fn:#d2a8ff;
+  --code-cls:#ffd866; --code-com:#5c6b85; --code-anno:#7ee0a8; --code-punc:#9fb0cc;
+  --warn:#ffb020;
+}
+body.lang-python{ --accent:#4B8BBE; --accent2:#FFD43B; --glow:rgba(75,139,190,.5); }
+body.lang-java  { --accent:#f89820; --accent2:#ff5b4a; --glow:rgba(248,152,32,.5); }
+body.lang-spring{ --accent:#6DB33F; --accent2:#bfe86a; --glow:rgba(109,179,63,.5); }
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:'Hanken Grotesk',sans-serif;line-height:1.65;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+.aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.aurora::before,.aurora::after{content:"";position:absolute;width:60vw;height:60vw;border-radius:50%;filter:blur(120px);opacity:.20;transition:background 1.2s ease}
+.aurora::before{top:-15vw;left:-10vw;background:var(--accent);animation:drift1 22s ease-in-out infinite}
+.aurora::after{bottom:-20vw;right:-12vw;background:var(--accent2);animation:drift2 28s ease-in-out infinite}
+@keyframes drift1{50%{transform:translate(8vw,10vh) scale(1.15)}}
+@keyframes drift2{50%{transform:translate(-10vw,-6vh) scale(1.1)}}
+.grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+.progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:100;background:linear-gradient(90deg,var(--accent),var(--accent2));box-shadow:0 0 14px var(--glow);transition:width .1s linear}
+
+.wrap{position:relative;z-index:2;max-width:1140px;margin:0 auto;padding:0 22px}
+
+header{position:sticky;top:0;z-index:60;backdrop-filter:blur(14px);background:rgba(8,11,18,.72);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:16px;max-width:1140px;margin:0 auto;padding:13px 22px}
+.brand{display:flex;align-items:center;gap:11px;font-family:'Bricolage Grotesque';font-weight:800;letter-spacing:-.02em}
+.brand .mark{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#06090f;font-size:16px;box-shadow:0 0 18px var(--glow);transition:.5s}
+.brand b{font-size:16px}
+.brand span{color:var(--faint);font-weight:600;font-size:11.5px;font-family:'JetBrains Mono';display:block;letter-spacing:0}
+
+.switch{display:flex;gap:6px;background:var(--panel);padding:5px;border-radius:13px;border:1px solid var(--line)}
+.pill{border:0;cursor:pointer;font-family:'JetBrains Mono';font-weight:500;font-size:12.5px;color:var(--muted);background:transparent;padding:7px 13px;border-radius:9px;display:flex;align-items:center;gap:7px;transition:.25s;white-space:nowrap}
+.pill .dot{width:8px;height:8px;border-radius:50%}
+.pill[data-l="python"] .dot{background:#4B8BBE}.pill[data-l="java"] .dot{background:#f89820}.pill[data-l="spring"] .dot{background:#6DB33F}
+.pill:hover{color:var(--ink)}
+.pill.on{color:#06090f;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 4px 16px var(--glow);font-weight:700}
+.pill.on .dot{background:#06090f}
+
+.hero{padding:78px 0 40px;text-align:center}
+.kick{display:inline-flex;align-items:center;gap:9px;font-family:'JetBrains Mono';font-size:12px;color:var(--accent2);border:1px solid var(--line);background:var(--panel);padding:7px 15px;border-radius:30px;margin-bottom:26px;opacity:0;animation:up .7s .05s forwards}
+.kick .ping{width:7px;height:7px;border-radius:50%;background:var(--accent2);box-shadow:0 0 0 0 var(--glow);animation:ping 2s infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 var(--glow)}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+h1{font-family:'Bricolage Grotesque';font-weight:800;letter-spacing:-.035em;line-height:1.02;font-size:clamp(36px,6.6vw,68px);opacity:0;animation:up .8s .12s forwards}
+h1 .g{background:linear-gradient(115deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;transition:.5s}
+.sub{max-width:660px;margin:22px auto 0;color:var(--muted);font-size:clamp(15px,2vw,18px);opacity:0;animation:up .8s .22s forwards}
+.sub code{font-family:'JetBrains Mono';color:var(--ink);background:var(--panel);padding:1px 7px;border-radius:6px;font-size:.85em;border:1px solid var(--line)}
+
+.pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-top:46px}
+.pillar{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 16px;text-align:left;position:relative;overflow:hidden;opacity:0;animation:up .7s forwards;transition:.3s}
+.pillar:nth-child(1){animation-delay:.34s}.pillar:nth-child(2){animation-delay:.42s}.pillar:nth-child(3){animation-delay:.5s}.pillar:nth-child(4){animation-delay:.58s}
+.pillar:hover{transform:translateY(-6px);border-color:var(--accent);box-shadow:0 14px 40px -18px var(--glow)}
+.pillar::after{content:"";position:absolute;inset:0;background:radial-gradient(120px 80px at 80% 0,var(--glow),transparent 70%);opacity:.4}
+.pillar .ic{font-size:24px;display:block;margin-bottom:11px}
+.pillar h4{font-family:'Bricolage Grotesque';font-size:15.5px;font-weight:700;letter-spacing:-.01em}
+.pillar p{font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.5}
+
+.legend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin:54px auto 0;font-size:12.5px;color:var(--muted);font-family:'JetBrains Mono';opacity:0;animation:up .7s .66s forwards}
+.legend .it{display:flex;align-items:center;gap:7px}
+.lv{font-family:'JetBrains Mono';font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.03em;text-transform:uppercase}
+.lv.b{color:#7ee787;background:rgba(126,231,135,.12);border:1px solid rgba(126,231,135,.3)}
+.lv.i{color:#ffd866;background:rgba(255,216,102,.12);border:1px solid rgba(255,216,102,.3)}
+.lv.p{color:#ff7eb6;background:rgba(255,126,182,.12);border:1px solid rgba(255,126,182,.3)}
+
+.section{padding:30px 0;opacity:0;transform:translateY(28px);transition:.7s cubic-bezier(.22,1,.36,1)}
+.section.in{opacity:1;transform:none}
+
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:22px;overflow:hidden;margin-bottom:26px;position:relative}
+.card::before{content:"";position:absolute;left:0;top:0;height:100%;width:3px;background:linear-gradient(var(--accent),var(--accent2));transition:.5s;box-shadow:0 0 18px var(--glow)}
+.card-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.18fr)}
+.cinfo{padding:30px 30px 30px 34px;border-right:1px solid var(--line)}
+.cnum{font-family:'JetBrains Mono';font-size:12px;color:var(--accent2);font-weight:700;letter-spacing:.1em}
+.chead{display:flex;align-items:center;gap:12px;margin:8px 0 14px;flex-wrap:wrap}
+.chead h3{font-family:'Bricolage Grotesque';font-size:24px;font-weight:800;letter-spacing:-.02em}
+.blurb{color:var(--muted);font-size:14.5px}
+
+.glance{margin-top:22px;border-top:1px dashed var(--line);padding-top:18px}
+.glance .t{font-family:'JetBrains Mono';font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);margin-bottom:11px}
+.chips{display:flex;flex-direction:column;gap:8px}
+.chip{display:flex;align-items:center;gap:10px;font-size:11.5px;padding:8px 11px;border-radius:11px;border:1px solid var(--line2);background:rgba(255,255,255,.02);transition:.3s;font-family:'JetBrains Mono'}
+.chip .nm{font-weight:700;width:60px;flex:none;display:flex;align-items:center;gap:6px}
+.chip .nm i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.chip[data-l="python"] .nm i{background:#4B8BBE}.chip[data-l="java"] .nm i{background:#f89820}.chip[data-l="spring"] .nm i{background:#6DB33F}
+.chip .vl{color:var(--muted)}
+.chip.act{border-color:var(--accent);background:var(--glow);box-shadow:0 0 0 1px var(--accent)}
+.chip.act .vl{color:var(--ink)}
+
+.note{margin-top:18px;display:flex;gap:11px;background:var(--glow);border:1px solid var(--accent);border-radius:13px;padding:13px 15px;transition:.25s}
+.note .b{font-size:17px;line-height:1.3;flex:none}
+.note .x{font-size:13px;color:var(--ink)}
+.note .x b{color:var(--accent2)}
+.note.warn{margin-top:12px;background:rgba(255,176,32,.10);border:1px solid var(--warn)}
+.note.warn .x b{color:#ffd166}
+.note.warn code{font-family:'JetBrains Mono';font-size:.86em;color:#ffd166;background:rgba(255,176,32,.12);padding:1px 5px;border-radius:5px}
+
+.cpane{background:#0a0e16;display:flex;flex-direction:column;min-width:0}
+.cbar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:#0c111b}
+.dots{display:flex;gap:6px}
+.dots i{width:11px;height:11px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}
+.fname{font-family:'JetBrains Mono';font-size:12px;color:var(--muted);margin-left:4px}
+.fname b{color:var(--accent2);transition:.25s}
+.copy{margin-left:auto;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;font-family:'JetBrains Mono';font-size:11px;padding:5px 11px;border-radius:8px;transition:.2s;display:flex;gap:6px;align-items:center}
+.copy:hover{color:var(--ink);border-color:var(--accent);background:var(--glow)}
+.copy.done{color:#28c840;border-color:#28c840}
+pre{margin:0;overflow:auto;padding:20px 22px;flex:1}
+pre code{font-family:'JetBrains Mono'!important;font-size:12.7px;line-height:1.72;background:none!important;white-space:pre;tab-size:4}
+.swapping pre,.swapping .fname b{opacity:0;transform:translateY(6px)}
+pre,.fname b{transition:opacity .2s,transform .2s}
+
+code[class*="language-"],pre[class*="language-"]{color:var(--ink);text-shadow:none}
+.token.comment,.token.prolog,.token.doctype,.token.cdata{color:var(--code-com);font-style:italic}
+.token.punctuation{color:var(--code-punc)}
+.token.keyword,.token.boolean,.token.operator{color:var(--code-key)}
+.token.string,.token.char,.token.attr-value{color:var(--code-str)}
+.token.number{color:var(--code-num)}
+.token.function,.token.method{color:var(--code-fn)}
+.token.class-name,.token.builtin{color:var(--code-cls)}
+.token.decorator,.token.annotation{color:var(--code-anno);font-weight:700;text-shadow:0 0 14px rgba(126,224,168,.35)}
+.token.annotation .token.punctuation{color:var(--code-anno)}
+.token.triple-quoted-string{color:var(--code-str)}
+
+.stitle{text-align:center;margin:22px 0 30px}
+.stitle .e{font-family:'JetBrains Mono';font-size:12px;color:var(--accent2);letter-spacing:.14em;text-transform:uppercase}
+.stitle h2{font-family:'Bricolage Grotesque';font-weight:800;font-size:clamp(28px,4.5vw,40px);letter-spacing:-.03em;margin-top:8px}
+.stitle p{color:var(--muted);max-width:600px;margin:10px auto 0;font-size:14.5px}
+
+.stack{display:grid;gap:14px}
+.layer{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:18px;overflow:hidden;position:relative;opacity:0;transform:translateY(20px);transition:.6s}
+.section.in .layer{opacity:1;transform:none}
+.section.in .layer:nth-child(1){transition-delay:.05s}.section.in .layer:nth-child(2){transition-delay:.12s}.section.in .layer:nth-child(3){transition-delay:.19s}.section.in .layer:nth-child(4){transition-delay:.26s}.section.in .layer:nth-child(5){transition-delay:.33s}.section.in .layer:nth-child(6){transition-delay:.4s}.section.in .layer:nth-child(7){transition-delay:.47s}.section.in .layer:nth-child(8){transition-delay:.54s}.section.in .layer:nth-child(9){transition-delay:.61s}
+.lhead{display:flex;align-items:center;gap:13px;padding:15px 20px;border-bottom:1px solid var(--line)}
+.lbadge{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-family:'Bricolage Grotesque';font-weight:800;color:#06090f;background:linear-gradient(135deg,#6DB33F,#bfe86a);box-shadow:0 0 16px rgba(109,179,63,.45);flex:none}
+.lhead .lt b{font-family:'Bricolage Grotesque';font-size:16px;display:block;letter-spacing:-.01em}
+.lhead .lt span{font-size:12px;color:var(--muted)}
+.ltag{margin-left:auto;font-family:'JetBrains Mono';font-size:11px;color:#6DB33F;background:rgba(109,179,63,.12);border:1px solid rgba(109,179,63,.3);padding:4px 10px;border-radius:20px}
+.layer pre{background:#0a0e16}
+.flowline{height:22px;display:grid;place-items:center}
+.flowline span{color:var(--faint);font-size:18px;animation:bob 1.8s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(4px)}}
+
+.gloss{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}
+.gitem{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px 15px;transition:.25s}
+.gitem:hover{border-color:#6DB33F;background:rgba(109,179,63,.06);transform:translateY(-3px)}
+.gitem .a{font-family:'JetBrains Mono';font-weight:700;font-size:12.5px;color:#7ee0a8;flex:none;text-shadow:0 0 12px rgba(126,224,168,.3)}
+.gitem .d{font-size:12.5px;color:var(--muted)}
+
+.tablewrap{border:1px solid var(--line);border-radius:18px;overflow:hidden;overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:700px;font-size:13.5px}
+th,td{text-align:left;padding:13px 18px;border-bottom:1px solid var(--line)}
+thead th{font-family:'JetBrains Mono';font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;background:var(--panel)}
+thead th:nth-child(2){color:#4B8BBE}thead th:nth-child(3){color:#f89820}thead th:nth-child(4){color:#6DB33F}
+tbody tr{transition:.2s}tbody tr:hover{background:var(--glow)}
+tbody td:first-child{font-family:'Bricolage Grotesque';font-weight:700;color:var(--ink)}
+td code,th code{font-family:'JetBrains Mono';font-size:12px;color:var(--ink)}
+tbody td:not(:first-child){font-family:'JetBrains Mono';font-size:11.5px;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+
+footer{text-align:center;padding:50px 0 60px;color:var(--faint);font-size:13px;border-top:1px solid var(--line);margin-top:30px}
+footer b{color:var(--accent2)}
+@keyframes up{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+::selection{background:var(--accent);color:#06090f}
+pre::-webkit-scrollbar,.tablewrap::-webkit-scrollbar{height:8px;width:8px}
+pre::-webkit-scrollbar-thumb,.tablewrap::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
+
+@media(max-width:820px){
+  .card-grid{grid-template-columns:1fr}
+  .cinfo{border-right:0;border-bottom:1px solid var(--line)}
+  .pillars{grid-template-columns:repeat(2,1fr)}
+  .gloss{grid-template-columns:1fr}
+  .brand span{display:none}
+  .bar{padding:11px 16px}.switch{padding:4px}.pill{padding:7px 9px;font-size:11px}
+}
+/* Spring-specific sections render ONLY on the Spring Boot tab */
+.spring-only{display:none}
+body.lang-spring .spring-only{display:block}
+body.lang-spring .spring-only.section,
+body.lang-spring .spring-only .section,
+body.lang-spring .spring-only .layer{opacity:1;transform:none}
+</style>
+</head>
+<body class="lang-python">
+
+<div class="aurora"></div>
+<div class="grain"></div>
+<div class="progress" id="prog"></div>
+
+<header>
+  <div class="bar">
+    <div class="brand">
+      <div class="mark">✦</div>
+      <div><b>PRO&nbsp;×&nbsp;3</b><span>python · java · spring</span></div>
+    </div>
+    <div class="switch" id="switch">
+      <button class="pill on" data-l="python"><span class="dot"></span>Python</button>
+      <button class="pill" data-l="java"><span class="dot"></span>Java</button>
+      <button class="pill" data-l="spring"><span class="dot"></span>Spring&nbsp;Boot</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="kick"><span class="ping"></span>exceptions · optional · enums · validation · streams · generics · async · annotations</div>
+    <h1>Advanced Essentials<br><span class="g">the production layer</span></h1>
+    <p class="sub">Part 3 of the series. The everyday-but-advanced concepts every real app needs — and where most of Spring's annotations actually live. One theme, a <b>User &amp; Order service</b>, across <b>Python</b>, <b>Java</b> &amp; <b>Spring Boot</b>. Toggle to recolor every snippet.</p>
+
+    <div class="pillars">
+      <div class="pillar"><span class="ic">🧯</span><h4>Exceptions &amp; Optional</h4><p>Fail gracefully, no null crashes.</p></div>
+      <div class="pillar"><span class="ic">🏷️</span><h4>Enums &amp; Validation</h4><p>Fixed states &amp; trusted input.</p></div>
+      <div class="pillar"><span class="ic">🌊</span><h4>Streams &amp; Generics</h4><p>Functional &amp; type-safe code.</p></div>
+      <div class="pillar"><span class="ic">🎀</span><h4>Async &amp; Annotations</h4><p>Concurrency &amp; metadata magic.</p></div>
+    </div>
+
+    <div class="legend">
+      <div class="it">Difficulty:</div>
+      <div class="it"><span class="lv i">Intermediate</span></div>
+      <div class="it"><span class="lv p">Pro</span></div>
+      <div class="it" style="color:var(--faint)">— ⚠️ marks an important real-world gotcha</div>
+    </div>
+  </section>
+
+  <div id="concepts"></div>
+
+  <!-- SPRING CAPSTONE -->
+  <section class="section spring-only" id="springstack">
+    <div class="stitle">
+      <div class="e">🍃 Spring Boot capstone</div>
+      <h2>Everything together: a register flow</h2>
+      <p>One real endpoint that uses <b>enum</b>, <b>validation</b>, <b>Optional</b>, a custom <b>exception</b>, <b>generics</b> (<code>ResponseEntity</code>) and <b>@Async</b> — read top to bottom.</p>
+    </div>
+    <div class="stack" id="stack"></div>
+  </section>
+
+  <!-- GLOSSARY -->
+  <section class="section spring-only" id="glossary">
+    <div class="stitle">
+      <div class="e">📖 reference</div>
+      <h2>New annotations, one line each</h2>
+      <p>Every annotation introduced in this part.</p>
+    </div>
+    <div class="gloss" id="gloss"></div>
+  </section>
+
+  <!-- CHEAT TABLE -->
+  <section class="section" id="compare">
+    <div class="stitle">
+      <div class="e">⚡ side by side</div>
+      <h2>The whole part on one screen</h2>
+      <p>Same concept, three syntaxes. Screenshot this one.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Concept</th><th>Python</th><th>Java</th><th>Spring Boot</th></tr></thead>
+        <tbody>
+          <tr><td>Exceptions</td><td><code>raise / except / finally</code></td><td><code>throw / catch / throws</code></td><td><code>@ExceptionHandler + @ResponseStatus</code></td></tr>
+          <tr><td>Optional</td><td><code>Optional[X] / None</code></td><td><code>Optional&lt;T&gt;</code></td><td><code>findById().orElseThrow()</code></td></tr>
+          <tr><td>Enum</td><td><code>class S(Enum)</code></td><td><code>enum S {…}</code></td><td><code>@Enumerated(STRING)</code></td></tr>
+          <tr><td>Validation</td><td><code>pydantic Field()</code></td><td><code>@NotBlank @Email @Min</code></td><td><code>@Valid @RequestBody</code></td></tr>
+          <tr><td>Lambda / Stream</td><td><code>lambda / [x for x]</code></td><td><code>.stream().filter()</code></td><td><code>repo…stream().map()</code></td></tr>
+          <tr><td>Generics</td><td><code>TypeVar / Generic[T]</code></td><td><code>class Box&lt;T&gt;</code></td><td><code>ResponseEntity&lt;T&gt;</code></td></tr>
+          <tr><td>Async</td><td><code>async / await (asyncio)</code></td><td><code>CompletableFuture</code></td><td><code>@Async + @EnableAsync</code></td></tr>
+          <tr><td>Decorator / Annotation</td><td><code>@decorator (wraps code)</code></td><td><code>@interface (metadata)</code></td><td><code>@Aspect + @Around</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  Part 3 of 3 — an <b>online store</b> in Python, Java &amp; Spring Boot.<br>
+  OOP → Data Structures → Advanced Essentials. Toggle a language up top. Ship it 🚀
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+
+<script>
+/* ===== DATA: one topic (User & Order service), three languages ===== */
+const CONCEPTS = [
+{
+  id:"exception", n:"01", title:"Exception Handling", level:"i",
+  blurb:"Detect problems and respond gracefully instead of crashing. Raise an error where it happens, catch it where you can recover.",
+  glance:{ python:"raise / try-except", java:"throw / try-catch", spring:"@ExceptionHandler" },
+  file:{ python:"bank.py", java:"Bank.java", spring:"GlobalExceptionHandler.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"Define a class extending <b>Exception</b>, <b>raise</b> it, and catch with <b>except</b>. <b>finally</b> always runs.",
+    java:"Same shape: <b>throw</b> + <b>try/catch</b> + <b>finally</b>. Methods declare what they may throw with <b>throws</b>.",
+    spring:"Centralize it: <b>@RestControllerAdvice</b> + <b>@ExceptionHandler</b> handle errors app-wide, and <b>@ResponseStatus</b> maps an exception to an HTTP code."
+  },
+  warn:{
+    java:"Java splits exceptions into <b>checked</b> (must be declared with <code>throws</code> or caught) and <b>unchecked</b> (<code>RuntimeException</code>). Python has no such split — every exception is effectively unchecked."
+  },
+  code:{
+python:
+`class InsufficientFundsError(Exception):     # custom exception
+    pass
+
+def withdraw(balance: float, amount: float) -> float:
+    if amount > balance:
+        raise InsufficientFundsError("Not enough balance")
+    return balance - amount
+
+try:
+    new_balance = withdraw(100, 250)
+except InsufficientFundsError as e:
+    print("Failed:", e)
+finally:
+    print("Done")            # always runs`,
+java:
+`// custom checked exception
+class InsufficientFundsException extends Exception {
+    public InsufficientFundsException(String msg) { super(msg); }
+}
+
+double withdraw(double balance, double amount)
+        throws InsufficientFundsException {
+    if (amount > balance) {
+        throw new InsufficientFundsException("Not enough balance");
+    }
+    return balance - amount;
+}
+
+try {
+    double bal = withdraw(100, 250);
+} catch (InsufficientFundsException e) {
+    System.out.println("Failed: " + e.getMessage());
+} finally {
+    System.out.println("Done");      // always runs
+}`,
+spring:
+`// 1) A domain exception mapped to an HTTP status
+@ResponseStatus(HttpStatus.NOT_FOUND)            // -> 404
+public class UserNotFoundException extends RuntimeException {
+    public UserNotFoundException(String msg) { super(msg); }
+}
+
+// 2) Handle exceptions for the WHOLE app in one place
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<String> handle(UserNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                             .body(ex.getMessage());
+    }
+}`
+  }
+},
+{
+  id:"optional", n:"02", title:"Optional / Null Safety", level:"i",
+  blurb:"Model \u201Cmaybe a value, maybe nothing\u201D explicitly, so a missing result can never sneak through as a null and crash later.",
+  glance:{ python:"Optional[X] / None", java:"Optional<T>", spring:"findById().orElseThrow()" },
+  file:{ python:"users.py", java:"Users.java", spring:"UserService.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"Type it as <b>Optional[str]</b> and return <b>None</b> when absent. <b>dict.get()</b> already does this safely.",
+    java:"Wrap it in <b>Optional&lt;T&gt;</b>. Read with <b>orElse</b>, <b>ifPresent</b>, or <b>orElseThrow</b> — never a raw null.",
+    spring:"Spring Data returns <b>Optional&lt;T&gt;</b> from <b>findById</b>, so <b>.orElseThrow(...)</b> pairs perfectly with your custom exception."
+  },
+  code:{
+python:
+`from typing import Optional
+
+def find_user(uid: int) -> Optional[str]:
+    users = {1: "Aarav"}
+    return users.get(uid)        # None if missing - no crash
+
+name = find_user(2)
+print(name or "guest")           # 'guest'   (None is falsy)
+
+# Explicit check (walrus operator):
+if (n := find_user(1)) is not None:
+    print(n.upper())             # AARAV`,
+java:
+`import java.util.Optional;
+import java.util.Map;
+
+Optional<String> findUser(int id) {
+    Map<Integer, String> users = Map.of(1, "Aarav");
+    return Optional.ofNullable(users.get(id));   // empty if missing
+}
+
+String name = findUser(2).orElse("guest");       // "guest"
+findUser(1).ifPresent(n ->
+        System.out.println(n.toUpperCase()));     // AARAV`,
+spring:
+`@Service
+public class UserService {
+
+    private final UserRepository repo;
+    public UserService(UserRepository repo) { this.repo = repo; }
+
+    public User getById(Long id) {
+        // findById returns Optional<User> - handle "missing" cleanly
+        return repo.findById(id)
+                   .orElseThrow(() ->
+                        new UserNotFoundException("id " + id));
+    }
+}`
+  }
+},
+{
+  id:"enum", n:"03", title:"Enum", level:"i",
+  blurb:"A fixed, named set of constants — like the states an order can be in. Safer and clearer than passing around magic strings or numbers.",
+  glance:{ python:"class S(Enum)", java:"enum S {…}", spring:"@Enumerated(STRING)" },
+  file:{ python:"status.py", java:"Status.java", spring:"Order.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"Subclass <b>Enum</b>. Each member has a <b>.name</b> and a <b>.value</b>; compare with <b>==</b>.",
+    java:"A first-class <b>enum</b> type. Each constant has <b>.name()</b> and <b>.ordinal()</b>, and works in <b>switch</b>.",
+    spring:"Persist with <b>@Enumerated(EnumType.STRING)</b> so the database stores the readable name."
+  },
+  warn:{
+    spring:"Always use <code>@Enumerated(EnumType.STRING)</code>. The default <code>ORDINAL</code> stores 0, 1, 2 — reorder the enum later and existing rows silently point to the wrong value."
+  },
+  code:{
+python:
+`from enum import Enum
+
+class OrderStatus(Enum):
+    PENDING = 1
+    SHIPPED = 2
+    DELIVERED = 3
+
+status = OrderStatus.SHIPPED
+print(status.name)        # SHIPPED
+print(status.value)       # 2
+
+if status == OrderStatus.SHIPPED:
+    print("On the way!")`,
+java:
+`public enum OrderStatus {
+    PENDING, SHIPPED, DELIVERED;     // fixed constants
+}
+
+OrderStatus status = OrderStatus.SHIPPED;
+System.out.println(status.name());       // SHIPPED
+System.out.println(status.ordinal());    // 1
+
+switch (status) {
+    case SHIPPED -> System.out.println("On the way!");
+    default      -> System.out.println("...");
+}`,
+spring:
+`@Entity
+class Order {
+    @Id @GeneratedValue
+    private Long id;
+
+    @Enumerated(EnumType.STRING)     // stores "SHIPPED", not 1
+    private OrderStatus status;
+}`
+  }
+},
+{
+  id:"validation", n:"04", title:"Validation", level:"i",
+  blurb:"Check that incoming data is correct BEFORE your logic runs — name not blank, email well-formed, age in range. Reject bad input early.",
+  glance:{ python:"pydantic Field()", java:"@NotBlank @Email", spring:"@Valid @RequestBody" },
+  file:{ python:"schema.py", java:"RegisterRequest.java", spring:"UserController.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"<b>pydantic</b> (used by FastAPI) validates on construction straight from type hints plus <b>Field(...)</b> rules.",
+    java:"Jakarta <b>Bean Validation</b> annotations declare the rules right on the fields: <b>@NotBlank</b>, <b>@Email</b>, <b>@Min</b>, <b>@Size</b>.",
+    spring:"Add <b>@Valid</b> to the request body and Spring runs every constraint, returning <b>400 Bad Request</b> automatically on failure."
+  },
+  code:{
+python:
+`from pydantic import BaseModel, EmailStr, Field
+
+class RegisterRequest(BaseModel):
+    name: str = Field(min_length=2)
+    email: EmailStr
+    age: int = Field(ge=18)           # ge = greater-or-equal
+
+# raises ValidationError automatically if any rule fails
+user = RegisterRequest(name="Aarav", email="a@x.com", age=25)`,
+java:
+`import jakarta.validation.constraints.*;
+
+public class RegisterRequest {
+
+    @NotBlank                         // not null AND not empty
+    @Size(min = 2)
+    private String name;
+
+    @Email
+    private String email;
+
+    @Min(18)
+    private int age;
+}`,
+spring:
+`@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    // @Valid triggers every constraint above.
+    // On failure Spring returns 400 Bad Request automatically.
+    @PostMapping("/register")
+    public String register(@Valid @RequestBody RegisterRequest req) {
+        return "Welcome, " + req.getName();
+    }
+}`
+  }
+},
+{
+  id:"stream", n:"05", title:"Lambdas & Streams", level:"i",
+  blurb:"Pass behavior as a value (a lambda) and transform collections declaratively — filter, map, reduce — instead of writing manual loops.",
+  glance:{ python:"lambda / [x for x]", java:".stream().filter()", spring:"repo…stream().map()" },
+  file:{ python:"orders.py", java:"Orders.java", spring:"OrderService.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"<b>lambda</b> is a tiny inline function. But the Pythonic way is usually a <b>list comprehension</b> <b>[x for x in …]</b>.",
+    java:"The <b>Stream API</b> chains <b>filter</b> / <b>map</b> / <b>reduce</b> with lambdas and method references like <b>Integer::intValue</b>.",
+    spring:"Service code leans on streams constantly to shape entities from the repository into clean DTOs."
+  },
+  code:{
+python:
+`orders = [120, 45, 300, 80]
+
+# lambda = a tiny anonymous function
+big = list(filter(lambda x: x > 100, orders))   # [120, 300]
+
+# comprehensions are the Pythonic way:
+doubled = [x * 2 for x in orders]               # [240, 90, 600, 160]
+total   = sum(x for x in orders if x > 50)      # 540
+
+names = ["aarav", "bela"]
+upper = list(map(str.upper, names))             # ['AARAV', 'BELA']`,
+java:
+`import java.util.List;
+
+List<Integer> orders = List.of(120, 45, 300, 80);
+
+// Stream API + lambdas: declarative pipelines
+List<Integer> big = orders.stream()
+        .filter(x -> x > 100)        // keep > 100
+        .toList();                   // [120, 300]
+
+int total = orders.stream()
+        .filter(x -> x > 50)
+        .mapToInt(Integer::intValue) // method reference
+        .sum();                      // 540`,
+spring:
+`@Service
+public class OrderService {
+
+    private final OrderRepository repo;
+    public OrderService(OrderRepository repo) { this.repo = repo; }
+
+    // Streams shine when turning query results into DTOs
+    public List<String> shippedRefs() {
+        return repo.findAll().stream()
+                .filter(o -> o.getStatus() == OrderStatus.SHIPPED)
+                .map(Order::getRef)
+                .toList();
+    }
+}`
+  }
+},
+{
+  id:"generics", n:"06", title:"Generics", level:"p",
+  blurb:"Write one class or method that works for many types while staying type-safe — a Box of anything, but the compiler still knows what's inside.",
+  glance:{ python:"Generic[T] / TypeVar", java:"class Box<T>", spring:"ResponseEntity<T>" },
+  file:{ python:"box.py", java:"Box.java", spring:"UserController.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"Declare a <b>TypeVar</b> and inherit <b>Generic[T]</b>. It's a hint — tools enforce it, the runtime doesn't.",
+    java:"<b>&lt;T&gt;</b> is a real type parameter, fixed when you use the class. No casts, checked at compile time.",
+    spring:"You use generics daily: <b>ResponseEntity&lt;T&gt;</b> (typed body + status) and <b>JpaRepository&lt;Entity, Id&gt;</b>."
+  },
+  code:{
+python:
+`from typing import TypeVar, Generic
+
+T = TypeVar("T")                      # a type placeholder
+
+class Box(Generic[T]):                # a generic container
+    def __init__(self, item: T):
+        self.item = item
+    def get(self) -> T:
+        return self.item
+
+b: Box[int] = Box(42)
+print(b.get())        # 42  - tools know it's an int`,
+java:
+`// <T> = a type parameter, fixed when you use the class
+public class Box<T> {
+    private final T item;
+    public Box(T item) { this.item = item; }
+    public T get() { return item; }
+}
+
+Box<Integer> b = new Box<>(42);
+int value = b.get();      // no cast needed - type-safe`,
+spring:
+`@RestController
+class UserController {
+
+    // ResponseEntity<T> = typed body + HTTP status
+    @GetMapping("/users/{id}")
+    public ResponseEntity<User> get(@PathVariable Long id) {
+        User u = new User("Aarav");
+        return ResponseEntity.ok(u);          // 200 + User body
+    }
+}
+
+// JpaRepository<Entity, IdType> - a generic data layer
+@Repository
+interface UserRepository extends JpaRepository<User, Long> {}`
+  }
+},
+{
+  id:"async", n:"07", title:"Async / Concurrency", level:"p",
+  blurb:"Do more than one thing at a time — e.g. send a welcome email without making the user wait for the HTTP response.",
+  glance:{ python:"async / await (asyncio)", java:"CompletableFuture", spring:"@Async + @EnableAsync" },
+  file:{ python:"mailer.py", java:"Mailer.java", spring:"EmailService.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"Mark a coroutine <b>async def</b> and <b>await</b> inside it. <b>asyncio.gather</b> runs many at once on one event loop.",
+    java:"<b>CompletableFuture.runAsync</b> runs work on a real thread pool; <b>allOf(...).join()</b> waits for them all.",
+    spring:"Just annotate a method <b>@Async</b> (with <b>@EnableAsync</b> on) and Spring runs it on a background thread for you."
+  },
+  warn:{
+    python:"Python's <code>asyncio</code> is <b>single-threaded and cooperative</b> — perfect for I/O-bound work (DB, network), but it won't speed up CPU-bound code (the GIL). For that, use <code>multiprocessing</code>."
+  },
+  code:{
+python:
+`import asyncio
+
+async def send_email(to: str):           # a coroutine
+    await asyncio.sleep(1)                # non-blocking wait
+    print("Sent to", to)
+
+async def main():
+    # run both concurrently, not one after another
+    await asyncio.gather(
+        send_email("a@x.com"),
+        send_email("b@x.com"),
+    )
+
+asyncio.run(main())`,
+java:
+`import java.util.concurrent.CompletableFuture;
+
+CompletableFuture<Void> a =
+    CompletableFuture.runAsync(() -> sendEmail("a@x.com"));
+CompletableFuture<Void> b =
+    CompletableFuture.runAsync(() -> sendEmail("b@x.com"));
+
+CompletableFuture.allOf(a, b).join();     // wait for both`,
+spring:
+`@Configuration
+@EnableAsync                              // turn on async support
+public class AsyncConfig {}
+
+@Service
+public class EmailService {
+
+    @Async                                // runs on a background thread
+    public void sendWelcome(String to) {
+        // slow work no longer blocks the request thread
+    }
+}`
+  }
+},
+{
+  id:"annotations", n:"08", title:"Decorators vs Annotations", level:"p",
+  blurb:"The meta concept behind every '@' you've seen. Python decorators run code; Java annotations are just metadata — and Spring turns that metadata into behavior.",
+  glance:{ python:"@decorator (wraps)", java:"@interface (metadata)", spring:"@Aspect + @Around" },
+  file:{ python:"timing.py", java:"Loggable.java", spring:"LoggingAspect.java" },
+  lang:{ python:"python", java:"java", spring:"java" },
+  note:{
+    python:"A decorator is a function that <b>wraps another</b> and runs extra code around it. <b>@timed</b> is sugar for <b>fn = timed(fn)</b>.",
+    java:"An annotation (<b>@interface</b>) is <b>passive metadata</b>. It does nothing until something reads it via reflection.",
+    spring:"<b>@Aspect</b> + <b>@Around</b> (AOP) read your annotation and add behavior around it — exactly how <b>@Transactional</b> and <b>@Cacheable</b> work."
+  },
+  warn:{
+    java:"An annotation does <b>nothing on its own</b> — it's pure metadata. A processor, reflection, or Spring AOP must read it for anything to happen. This is the key difference from a Python decorator."
+  },
+  code:{
+python:
+`import functools, time
+
+def timed(fn):                     # a decorator = wraps another function
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = fn(*args, **kwargs)
+        print(fn.__name__, "took", time.perf_counter() - start)
+        return result
+    return wrapper
+
+@timed                             # sugar for: process = timed(process)
+def process(order):
+    ...`,
+java:
+`import java.lang.annotation.*;
+
+// A custom annotation = metadata you attach to code
+@Retention(RetentionPolicy.RUNTIME)     // visible at runtime
+@Target(ElementType.METHOD)
+public @interface Loggable {}
+
+public class OrderService {
+    @Loggable                            // does nothing by itself...
+    public void process(Order o) { }     // ...a framework reads it
+}`,
+spring:
+`@Aspect                              // cross-cutting behavior (AOP)
+@Component
+public class LoggingAspect {
+
+    // Run AROUND every method annotated @Loggable
+    @Around("@annotation(Loggable)")
+    public Object log(ProceedingJoinPoint jp) throws Throwable {
+        long start = System.currentTimeMillis();
+        Object result = jp.proceed();    // run the real method
+        System.out.println(jp.getSignature() + " took "
+                + (System.currentTimeMillis() - start) + "ms");
+        return result;
+    }
+}`
+  }
+}
+];
+
+/* ===== Spring capstone ===== */
+const STACK = [
+{ n:"1", title:"Entity + Enum", desc:"@Enumerated stores the readable name", tag:"@Entity",
+code:
+`public enum Role { USER, ADMIN }
+
+@Entity
+public class User {
+    @Id @GeneratedValue
+    private Long id;
+    private String name;
+    private String email;
+
+    @Enumerated(EnumType.STRING)     // "USER" / "ADMIN"
+    private Role role = Role.USER;
+}` },
+{ n:"2", title:"Validated DTO", desc:"A record carrying validation rules", tag:"@Valid target",
+code:
+`public record RegisterRequest(
+        @NotBlank @Size(min = 2) String name,
+        @Email String email,
+        @Min(18) int age) {}` },
+{ n:"3", title:"Domain Exception", desc:"Auto-mapped to HTTP 409", tag:"@ResponseStatus",
+code:
+`@ResponseStatus(HttpStatus.CONFLICT)         // -> 409
+public class EmailTakenException extends RuntimeException {
+    public EmailTakenException(String msg) { super(msg); }
+}` },
+{ n:"4", title:"Service", desc:"Optional + custom exception + @Async email", tag:"@Service",
+code:
+`@Service
+public class UserService {
+
+    private final UserRepository repo;
+    private final EmailService email;
+    public UserService(UserRepository repo, EmailService email) {
+        this.repo = repo;
+        this.email = email;
+    }
+
+    public User register(RegisterRequest req) {
+        repo.findByEmail(req.email())                 // Optional<User>
+            .ifPresent(u -> {
+                throw new EmailTakenException(req.email());
+            });
+
+        User saved = repo.save(new User(req.name(), req.email()));
+        email.sendWelcome(req.email());               // @Async - non-blocking
+        return saved;
+    }
+}` },
+{ n:"5", title:"Controller + Global handler", desc:"ResponseEntity<T> + @RestControllerAdvice", tag:"@RestController",
+code:
+`@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    private final UserService service;
+    public UserController(UserService service) { this.service = service; }
+
+    @PostMapping("/register")
+    public ResponseEntity<User> register(
+            @Valid @RequestBody RegisterRequest req) {
+        return ResponseEntity.status(HttpStatus.CREATED)   // 201
+                             .body(service.register(req));
+    }
+}
+
+@RestControllerAdvice
+class ApiErrors {
+    @ExceptionHandler(EmailTakenException.class)
+    ResponseEntity<String> taken(EmailTakenException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                             .body(e.getMessage());
+    }
+}` }
+];
+
+/* ===== Annotation glossary ===== */
+const GLOSS = [
+["@ExceptionHandler","Handle one specific exception type in a method."],
+["@RestControllerAdvice","Global exception handling across all REST controllers."],
+["@ResponseStatus","Map an exception (or handler) to an HTTP status code."],
+["@Valid","Trigger Bean Validation on a method argument."],
+["@NotBlank / @NotNull","Field must be present (and non-empty)."],
+["@Size / @Min / @Email","Length, minimum, and email-format constraints."],
+["@Enumerated","Choose how an enum is stored — use EnumType.STRING."],
+["@Async","Run this method on a background thread."],
+["@EnableAsync","Switch on @Async processing for the app."],
+["@Aspect / @Around","AOP: run behavior around matched methods."],
+["@Component","Register a class as a Spring-managed bean."],
+["@Configuration","A class that declares beans and config."],
+["@interface (Java)","Define your own custom annotation type."],
+["ResponseEntity<T>","A generic, typed HTTP response (body + status)."]
+];
+
+/* ===== Render engine ===== */
+let LANG = "python";
+const LANGS = ["python","java","spring"];
+function levelTag(l){ return '<span class="lv '+l+'">'+({b:"Beginner",i:"Intermediate",p:"Pro"}[l])+'</span>'; }
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function highlight(el){ if(window.Prism){ try{ Prism.highlightElement(el); }catch(e){} } }
+
+function buildCards(){
+  const root = document.getElementById('concepts');
+  CONCEPTS.forEach(c=>{
+    const sec = document.createElement('section');
+    sec.className = 'section';
+    sec.innerHTML = `
+      <div class="card">
+        <div class="card-grid">
+          <div class="cinfo">
+            <div class="cnum">${c.n}</div>
+            <div class="chead"><h3>${c.title}</h3>${levelTag(c.level)}</div>
+            <div class="blurb">${c.blurb}</div>
+            <div class="glance">
+              <div class="t">at a glance</div>
+              <div class="chips">
+                ${LANGS.map(l=>`
+                  <div class="chip" data-l="${l}" data-cl="${l}">
+                    <span class="nm"><i></i>${l==='spring'?'Spring':l[0].toUpperCase()+l.slice(1)}</span>
+                    <span class="vl">${esc(c.glance[l])}</span>
+                  </div>`).join('')}
+              </div>
+            </div>
+            <div class="note"><span class="b">💡</span><span class="x" data-note></span></div>
+            <div class="note warn" data-warnbox style="display:none"><span class="b">⚠️</span><span class="x" data-warn></span></div>
+          </div>
+          <div class="cpane">
+            <div class="cbar">
+              <span class="dots"><i></i><i></i><i></i></span>
+              <span class="fname"><b data-fname></b></span>
+              <button class="copy" data-copy>⧉ Copy</button>
+            </div>
+            <pre><code data-code class="language-python"></code></pre>
+          </div>
+        </div>
+      </div>`;
+    root.appendChild(sec);
+    sec._concept = c;
+  });
+}
+
+function buildStack(){
+  const root = document.getElementById('stack');
+  STACK.forEach((s,i)=>{
+    if(i>0){ const f=document.createElement('div'); f.className='flowline'; f.innerHTML='<span>▼</span>'; root.appendChild(f); }
+    const l=document.createElement('div'); l.className='layer';
+    l.innerHTML = `
+      <div class="lhead">
+        <div class="lbadge">${s.n}</div>
+        <div class="lt"><b>${s.title}</b><span>${s.desc}</span></div>
+        <div class="ltag">${s.tag}</div>
+      </div>
+      <pre><code class="language-java">${esc(s.code)}</code></pre>`;
+    root.appendChild(l);
+  });
+}
+
+function buildGloss(){
+  document.getElementById('gloss').innerHTML =
+    GLOSS.map(g=>`<div class="gitem"><span class="a">${esc(g[0])}</span><span class="d">${g[1]}</span></div>`).join('');
+}
+
+function paint(animate){
+  document.querySelectorAll('#concepts .section').forEach(sec=>{
+    const c = sec._concept;
+    const card = sec.querySelector('.card');
+    const codeEl = card.querySelector('[data-code]');
+    const fname = card.querySelector('[data-fname]');
+    const note = card.querySelector('[data-note]');
+    const warnBox = card.querySelector('[data-warnbox]');
+    const warnEl = card.querySelector('[data-warn]');
+    const apply = ()=>{
+      codeEl.className = 'language-'+c.lang[LANG];
+      codeEl.textContent = c.code[LANG];
+      highlight(codeEl);
+      fname.textContent = c.file[LANG];
+      note.innerHTML = c.note[LANG];
+      const w = (c.warn && c.warn[LANG]) ? c.warn[LANG] : '';
+      if(w){ warnEl.innerHTML = w; warnBox.style.display='flex'; }
+      else { warnBox.style.display='none'; }
+      card.querySelectorAll('.chip').forEach(ch=>ch.classList.toggle('act', ch.dataset.cl===LANG));
+    };
+    if(animate){
+      card.querySelector('.cpane').classList.add('swapping');
+      setTimeout(()=>{ apply(); card.querySelector('.cpane').classList.remove('swapping'); }, 190);
+    } else apply();
+  });
+}
+
+function setLang(l){
+  if(l===LANG) return;
+  LANG=l;
+  document.body.className='lang-'+l;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('on', p.dataset.l===l));
+  paint(true);
+}
+document.getElementById('switch').addEventListener('click',e=>{
+  const b=e.target.closest('.pill'); if(b) setLang(b.dataset.l);
+});
+
+document.addEventListener('click', e=>{
+  const btn = e.target.closest('[data-copy]');
+  if(!btn) return;
+  const code = btn.closest('.cpane').querySelector('[data-code]').textContent;
+  const ok = ()=>{ btn.classList.add('done'); btn.textContent='✓ Copied'; setTimeout(()=>{btn.classList.remove('done');btn.textContent='⧉ Copy';},1400); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(code).then(ok).catch(()=>fallback(code,ok));
+  } else fallback(code,ok);
+});
+function fallback(text,ok){
+  const t=document.createElement('textarea'); t.value=text; t.style.position='fixed'; t.style.opacity=0;
+  document.body.appendChild(t); t.select();
+  try{ document.execCommand('copy'); ok(); }catch(e){}
+  document.body.removeChild(t);
+}
+
+const io = new IntersectionObserver((es)=>{ es.forEach(en=>{ if(en.isIntersecting) en.target.classList.add('in'); }); },{threshold:.1});
+function onScroll(){ const h=document.documentElement; const sc=(h.scrollTop)/(h.scrollHeight-h.clientHeight)*100; document.getElementById('prog').style.width=sc+'%'; }
+window.addEventListener('scroll',onScroll,{passive:true});
+
+function boot(){
+  buildCards();
+  buildStack();
+  buildGloss();
+  paint(false);
+  document.querySelectorAll('#stack code').forEach(highlight);
+  document.querySelectorAll('.section').forEach(s=>io.observe(s));
+  onScroll();
+}
+if(window.Prism) boot();
+else window.addEventListener('load', boot);
+</script>
+</body>
+</html>
