@@ -127,8 +127,31 @@ body.lang-spring .spring-only .section{opacity:1;transform:none}
 .copy.done{color:#28c840;border-color:#28c840}
 pre{margin:0;overflow:auto;padding:20px 22px;flex:1}
 pre code{font-family:'JetBrains Mono'!important;font-size:12.7px;line-height:1.72;background:none!important;white-space:pre;tab-size:4}
-.swapping pre,.swapping .fname b{opacity:0;transform:translateY(6px)}
-pre,.fname b{transition:opacity .2s,transform .2s}
+.swapping pre,.swapping .fname b,.swapping .run-line,.swapping .out-block,.swapping .tree{opacity:0;transform:translateY(6px)}
+pre,.fname b,.run-line,.out-block,.tree{transition:opacity .2s,transform .2s}
+
+/* ===== 3-step code pane: Code · Execution · Result ===== */
+.step-h{font-family:'JetBrains Mono';font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--faint);padding:13px 16px 9px;display:flex;align-items:center;gap:8px;border-top:1px solid var(--line);background:#0b101a}
+.step-h.first{border-top:0}
+.step-h .n{width:17px;height:17px;border-radius:6px;background:var(--glow);color:var(--accent2);display:grid;place-items:center;font-size:10px;font-weight:700;border:1px solid var(--accent);font-family:'JetBrains Mono';flex:none}
+.tree{font-family:'JetBrains Mono';font-size:11.5px;color:var(--muted);background:#0b0f17;border-top:1px solid var(--line2);padding:12px 16px;white-space:pre;line-height:1.65;overflow-x:auto}
+.tree .tt{display:block;color:var(--faint);text-transform:uppercase;letter-spacing:.12em;font-size:10px;margin-bottom:9px}
+.tree b{color:var(--accent2);font-weight:500}
+.run-line{font-family:'JetBrains Mono';font-size:12.3px;color:var(--ink);padding:11px 16px 14px;white-space:pre-wrap;word-break:break-word;background:#070b12}
+.run-line .p{color:var(--accent2);user-select:none}
+.out-block{font-family:'JetBrains Mono';font-size:12.3px;color:#a9e8b6;background:#06090f;padding:13px 16px 16px;white-space:pre-wrap;word-break:break-word;margin:0;line-height:1.7}
+.cpane pre{flex:none}
+
+/* ===== variants (multiple ways, same result) ===== */
+.variants{display:flex;flex-direction:column}
+.vcount{font-family:'JetBrains Mono';font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent2);padding:11px 16px;background:#0c111b;border-bottom:1px solid var(--line)}
+.variant{border-top:1px solid var(--line)}
+.variant:first-of-type{border-top:0}
+.vhead{display:flex;align-items:center;gap:11px;padding:12px 16px;background:#0b101a;border-bottom:1px solid var(--line)}
+.vn{width:20px;height:20px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#06090f;display:grid;place-items:center;font-size:11px;font-weight:800;font-family:'JetBrains Mono';flex:none;box-shadow:0 0 12px var(--glow)}
+.vlabel{font-family:'Hanken Grotesk';font-size:13.5px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+.vfile{font-family:'JetBrains Mono';font-size:11px;color:var(--faint)}
+.vhead .copy{margin-left:auto}
 
 code[class*="language-"],pre[class*="language-"]{color:var(--ink);text-shadow:none}
 .token.comment,.token.prolog,.token.doctype,.token.cdata{color:var(--code-com);font-style:italic}
@@ -282,137 +305,514 @@ pre::-webkit-scrollbar-thumb,.tablewrap::-webkit-scrollbar-thumb{background:var(
 const CONCEPTS = [
 {
   id:"vars", n:"01", title:"Variables & Data Types", level:"b",
-  blurb:"A name that holds a value. Python figures out the type for you; Java fixes the type when you declare it.",
-  glance:{ python:"age = 25", java:"int age = 25;", spring:'@Value("${...}")' },
-  file:{ python:"vars.py", java:"Vars.java", spring:"AppInfo.java" },
-  lang:{ python:"python", java:"java", spring:"java" },
+  blurb:"A name that holds a value. Python infers the type; Java fixes it at declaration. Below: every common way to declare the same three variables.",
+  glance:{ python:"name = \"Aarav\"", java:"String name = ...;", spring:"@Value / @ConfigurationProperties" },
   note:{
-    python:"No type keyword - Python infers it, and a variable can even change type later (<b>dynamic typing</b>).",
-    java:"The type is written and <b>locked at compile time</b> (<b>static typing</b>). <b>var</b> lets the compiler infer it.",
-    spring:"Variables are plain Java. Spring's twist: <b>@Value</b> reads a value from <code>application.properties</code> (a <code>key=value</code> file) into a field; the <code>:default</code> after the key is the fallback used if the key is missing."
+    python:"Python has no type keyword (<b>dynamic typing</b>). You can assign one per line, unpack several at once, or add <b>type hints</b> - all equivalent.",
+    java:"The type is <b>locked at compile time</b> (<b>static typing</b>). You can write the type, let <b>var</b> infer it, split declaration from assignment, or mark it <b>final</b>.",
+    spring:"Variables are plain Java; the Spring twist is <i>where the value comes from</i>. <b>@Value</b> (field or constructor), <b>@ConfigurationProperties</b>, or <b>Environment</b> all read from <code>application.properties</code>. Spring logs its banner first, then prints the output."
   },
   warn:{
-    python:"Python is <b>dynamically typed</b> - a variable can change type at runtime. Flexible, but Java locks the type so mistakes are caught earlier."
+    python:"Python is <b>dynamically typed</b> - a variable can even change type at runtime. Flexible, but Java catches type mistakes earlier."
   },
-  code:{
-python:
-`name = "Aarav"          # str   (type is inferred)
-age = 25                # int
-price = 49.99           # float
-active = True           # bool
-nothing = None          # NoneType
+  variants:{
+    python:[
+      { label:"One assignment per line", file:"vars_basic.py", lang:"python",
+        code:`name = "Aarav"      # str
+age = 25            # int
+price = 49.99       # float
 
-age = "twenty-five"     # allowed - types can change
-print(type(age))        # <class 'str'>`,
-java:
-`String name = "Aarav";   // the type is fixed (static)
-int age = 25;
-double price = 49.99;
-boolean active = true;
-String nothing = null;
+print(f"Name: {name}")
+print(f"Age: {age}")
+print(f"Price: {price}")`,
+        run:"python vars_basic.py", out:"Name: Aarav\nAge: 25\nPrice: 49.99" },
+      { label:"Multiple assignment (unpacking)", file:"vars_unpack.py", lang:"python",
+        code:`name, age, price = "Aarav", 25, 49.99   # one line, unpacked
 
-// age = "twenty-five";  // compile error - type is locked
-var city = "Hyderabad";  // 'var' infers String (Java 10+)`,
-spring:
-`// application.properties  (your config file):
-//     app.name=Acme Store
-//     server.port=9090
+print(f"Name: {name}")
+print(f"Age: {age}")
+print(f"Price: {price}")`,
+        run:"python vars_unpack.py", out:"Name: Aarav\nAge: 25\nPrice: 49.99" },
+      { label:"With type hints (PEP 526)", file:"vars_typed.py", lang:"python",
+        code:`name: str = "Aarav"      # optional type hints
+age: int = 25
+price: float = 49.99
 
-// Java reads those values with @Value:
+print(f"Name: {name}")
+print(f"Age: {age}")
+print(f"Price: {price}")`,
+        run:"python vars_typed.py", out:"Name: Aarav\nAge: 25\nPrice: 49.99" }
+    ],
+    java:[
+      { label:"Explicit types", file:"VarsExplicit.java", lang:"java",
+        code:`public class VarsExplicit {
+    public static void main(String[] args) {
+        String name = "Aarav";   // type is written out
+        int age = 25;
+        double price = 49.99;
+
+        System.out.println("Name: " + name);
+        System.out.println("Age: " + age);
+        System.out.println("Price: " + price);
+    }
+}`,
+        run:"javac VarsExplicit.java && java VarsExplicit", out:"Name: Aarav\nAge: 25\nPrice: 49.99" },
+      { label:"var type inference (Java 10+)", file:"VarsVar.java", lang:"java",
+        code:`public class VarsVar {
+    public static void main(String[] args) {
+        var name = "Aarav";    // compiler infers String
+        var age = 25;          // infers int
+        var price = 49.99;     // infers double
+
+        System.out.println("Name: " + name);
+        System.out.println("Age: " + age);
+        System.out.println("Price: " + price);
+    }
+}`,
+        run:"javac VarsVar.java && java VarsVar", out:"Name: Aarav\nAge: 25\nPrice: 49.99" },
+      { label:"Declare, then assign", file:"VarsDeclare.java", lang:"java",
+        code:`public class VarsDeclare {
+    public static void main(String[] args) {
+        String name;     // declared
+        int age;
+        double price;
+
+        name = "Aarav";  // assigned later
+        age = 25;
+        price = 49.99;
+
+        System.out.println("Name: " + name);
+        System.out.println("Age: " + age);
+        System.out.println("Price: " + price);
+    }
+}`,
+        run:"javac VarsDeclare.java && java VarsDeclare", out:"Name: Aarav\nAge: 25\nPrice: 49.99" },
+      { label:"final (cannot be reassigned)", file:"VarsFinal.java", lang:"java",
+        code:`public class VarsFinal {
+    public static void main(String[] args) {
+        final String name = "Aarav";   // constant binding
+        final int age = 25;
+        final double price = 49.99;
+
+        System.out.println("Name: " + name);
+        System.out.println("Age: " + age);
+        System.out.println("Price: " + price);
+    }
+}`,
+        run:"javac VarsFinal.java && java VarsFinal", out:"Name: Aarav\nAge: 25\nPrice: 49.99" }
+    ],
+    spring:[
+      { label:"@Value on fields", file:"AppValue.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/
+   ├─ java/com/example/demo/
+   │  ├─ Application.java
+   │  └─ AppValue.java
+   └─ resources/
+      └─ application.properties`,
+        code:`// ===== application.properties =====
+app.name=Aarav
+app.age=25
+app.price=49.99
+
+// ===== AppValue.java =====
+package com.example.demo;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+@Component
+public class AppValue {
+    @Value("\${app.name}")  private String name;
+    @Value("\${app.age}")   private int age;
+    @Value("\${app.price}") private double price;
+
+    public void show() {
+        System.out.println("Name: " + name);
+        System.out.println("Age: " + age);
+        System.out.println("Price: " + price);
+    }
+}
+
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final AppValue app;
+    public Application(AppValue app) { this.app = app; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) { app.show(); }
+}`,
+        run:"./mvnw spring-boot:run", out:"Name: Aarav\nAge: 25\nPrice: 49.99" },
+      { label:"@Value via constructor", file:"AppInfo.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/
+   ├─ java/com/example/demo/
+   │  ├─ Application.java
+   │  └─ AppInfo.java
+   └─ resources/
+      └─ application.properties`,
+        code:`// ===== application.properties =====
+app.name=Aarav
+app.age=25
+app.price=49.99
+
+// ===== AppInfo.java =====
+package com.example.demo;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
 @Component
 public class AppInfo {
+    private final String name;
+    private final int age;
+    private final double price;
 
-    @Value("\${app.name:MyApp}")     // -> "Acme Store"  (else "MyApp")
+    public AppInfo(@Value("\${app.name}") String name,
+                   @Value("\${app.age}") int age,
+                   @Value("\${app.price}") double price) {
+        this.name = name; this.age = age; this.price = price;
+    }
+
+    public void show() {
+        System.out.println("Name: " + name);
+        System.out.println("Age: " + age);
+        System.out.println("Price: " + price);
+    }
+}
+
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final AppInfo app;
+    public Application(AppInfo app) { this.app = app; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) { app.show(); }
+}`,
+        run:"./mvnw spring-boot:run", out:"Name: Aarav\nAge: 25\nPrice: 49.99" },
+      { label:"@ConfigurationProperties (typed bean)", file:"AppProps.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/
+   ├─ java/com/example/demo/
+   │  ├─ Application.java
+   │  └─ AppProps.java
+   └─ resources/
+      └─ application.properties`,
+        code:`// ===== application.properties =====
+app.name=Aarav
+app.age=25
+app.price=49.99
+
+// ===== AppProps.java =====
+package com.example.demo;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+@Component
+@ConfigurationProperties(prefix = "app")   // binds app.* keys
+public class AppProps {
     private String name;
+    private int age;
+    private double price;
 
-    @Value("\${server.port:8080}")   // -> 9090  (else 8080)
-    private int port;
-}`
+    // getters + setters (used by the binder)
+    public void setName(String n)   { this.name = n; }
+    public void setAge(int a)        { this.age = a; }
+    public void setPrice(double p)   { this.price = p; }
+    public String getName()  { return name; }
+    public int getAge()      { return age; }
+    public double getPrice() { return price; }
+}
+
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final AppProps app;
+    public Application(AppProps app) { this.app = app; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) {
+        System.out.println("Name: " + app.getName());
+        System.out.println("Age: " + app.getAge());
+        System.out.println("Price: " + app.getPrice());
+    }
+}`,
+        run:"./mvnw spring-boot:run", out:"Name: Aarav\nAge: 25\nPrice: 49.99" }
+    ]
   }
 },
 {
   id:"ops", n:"02", title:"Operators", level:"b",
-  blurb:"Do arithmetic, compare values, and combine booleans. Mostly the same — with a few traps worth knowing.",
-  glance:{ python:"** , // , and/or", java:"Math.pow , && , .equals", spring:"pure Java + @Service" },
-  file:{ python:"ops.py", java:"Ops.java", spring:"Calculator.java" },
-  lang:{ python:"python", java:"java", spring:"java" },
+  blurb:"Arithmetic, comparison, and boolean logic. Same math, reachable through symbols or library calls.",
+  glance:{ python:"** , // , %", java:"Math.floorDiv , %", spring:"pure Java + @Service" },
   note:{
-    python:"<b>/</b> always gives a float; <b>//</b> is floor division, <b>**</b> is power, and booleans use words <b>and/or/not</b>.",
-    java:"<b>/</b> on two ints is integer division; there is no <b>**</b> (use <b>Math.pow</b>); booleans use <b>&amp;&amp; || !</b>.",
-    spring:"Operators are <b>pure Java</b> - Spring changes nothing. Here they just live inside a <b>@Service</b>."
+    python:"Symbols (<b>+ // % **</b>) are normal, but the <b>operator</b> module and built-ins (<b>divmod</b>, <b>pow</b>) compute the very same results.",
+    java:"Symbols work, and so do library methods: <b>Integer.sum</b>, <b>Math.floorDiv</b>, <b>Math.floorMod</b>, <b>Math.pow</b> (cast to int).",
+    spring:"Operators are <b>pure Java</b> inside a <b>@Service</b> - reachable by symbols or by Math methods. Spring logs its banner first, then prints the output."
   },
   warn:{
-    java:"Two classic Java traps: <code>7 / 2</code> is <b>3</b> (integer division - use <code>7.0 / 2</code> for 3.5), and you compare text with <code>.equals()</code>, never <code>==</code> (which checks object identity)."
+    java:"Classic trap: <code>7 / 2</code> is <b>3</b> (integer division). Use <code>7.0 / 2</code> for 3.5, or <code>Math.floorDiv</code> to be explicit."
   },
-  code:{
-python:
-`print(7 + 2)      # 9
-print(7 / 2)      # 3.5   (true division)
-print(7 // 2)     # 3     (floor division)
-print(7 % 2)      # 1     (remainder)
-print(2 ** 3)     # 8     (power)
+  variants:{
+    python:[
+      { label:"Operator symbols", file:"ops_symbols.py", lang:"python",
+        code:`print(7 + 2)      # 9
+print(7 // 2)     # 3   (floor division)
+print(7 % 2)      # 1   (remainder)
+print(2 ** 3)     # 8   (power)`,
+        run:"python ops_symbols.py", out:"9\n3\n1\n8" },
+      { label:"operator module", file:"ops_module.py", lang:"python",
+        code:`import operator
 
-print(3 > 2 and 5 < 9)    # True   (and / or / not)
-print("a" == "a")         # True   (== compares values)`,
-java:
-`System.out.println(7 + 2);          // 9
-System.out.println(7 / 2);          // 3    (integer division!)
-System.out.println(7.0 / 2);        // 3.5  (need a double)
-System.out.println(7 % 2);          // 1
-System.out.println(Math.pow(2, 3)); // 8.0  (no ** operator)
+print(operator.add(7, 2))       # 9
+print(operator.floordiv(7, 2))  # 3
+print(operator.mod(7, 2))       # 1
+print(operator.pow(2, 3))       # 8`,
+        run:"python ops_module.py", out:"9\n3\n1\n8" },
+      { label:"Built-in functions", file:"ops_builtins.py", lang:"python",
+        code:`print(sum((7, 2)))        # 9
+print(divmod(7, 2)[0])    # 3   (quotient)
+print(divmod(7, 2)[1])    # 1   (remainder)
+print(pow(2, 3))          # 8`,
+        run:"python ops_builtins.py", out:"9\n3\n1\n8" }
+    ],
+    java:[
+      { label:"Operator symbols", file:"OpsSymbols.java", lang:"java",
+        code:`public class OpsSymbols {
+    public static void main(String[] args) {
+        System.out.println(7 + 2);                 // 9
+        System.out.println(7 / 2);                 // 3   (integer division)
+        System.out.println(7 % 2);                 // 1   (remainder)
+        System.out.println((int) Math.pow(2, 3));  // 8   (no ** operator)
+    }
+}`,
+        run:"javac OpsSymbols.java && java OpsSymbols", out:"9\n3\n1\n8" },
+      { label:"Library methods", file:"OpsMethods.java", lang:"java",
+        code:`public class OpsMethods {
+    public static void main(String[] args) {
+        System.out.println(Integer.sum(7, 2));     // 9
+        System.out.println(Math.floorDiv(7, 2));   // 3
+        System.out.println(Math.floorMod(7, 2));   // 1
+        System.out.println((int) Math.pow(2, 3));  // 8
+    }
+}`,
+        run:"javac OpsMethods.java && java OpsMethods", out:"9\n3\n1\n8" }
+    ],
+    spring:[
+      { label:"@Service with symbols", file:"Calculator.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/java/com/example/demo/
+   ├─ Application.java
+   └─ Calculator.java`,
+        code:`// ===== Calculator.java =====
+package com.example.demo;
 
-System.out.println(3 > 2 && 5 < 9);   // true   (&& || !)
-System.out.println("a".equals("a"));  // true   (.equals, not ==)`,
-spring:
-`// Operators are pure Java - Spring changes nothing.
+import org.springframework.stereotype.Service;
+
 @Service
 public class Calculator {
-    public int add(int a, int b)         { return a + b; }
-    public double power(double b, int e) { return Math.pow(b, e); }
-    public boolean inRange(int x)        { return x > 0 && x < 100; }
-}`
+    public int add(int a, int b)      { return a + b; }
+    public int divide(int a, int b)   { return a / b; }
+    public int mod(int a, int b)      { return a % b; }
+    public int power(int base, int e) { return (int) Math.pow(base, e); }
+}
+
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final Calculator calc;
+    public Application(Calculator calc) { this.calc = calc; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) {
+        System.out.println(calc.add(7, 2));     // 9
+        System.out.println(calc.divide(7, 2));  // 3
+        System.out.println(calc.mod(7, 2));     // 1
+        System.out.println(calc.power(2, 3));   // 8
+    }
+}`,
+        run:"./mvnw spring-boot:run", out:"9\n3\n1\n8" },
+      { label:"@Service with Math methods", file:"MathCalculator.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/java/com/example/demo/
+   ├─ Application.java
+   └─ MathCalculator.java`,
+        code:`// ===== MathCalculator.java =====
+package com.example.demo;
+
+import org.springframework.stereotype.Service;
+
+@Service
+public class MathCalculator {
+    public int add(int a, int b)      { return Integer.sum(a, b); }
+    public int divide(int a, int b)   { return Math.floorDiv(a, b); }
+    public int mod(int a, int b)      { return Math.floorMod(a, b); }
+    public int power(int base, int e) { return (int) Math.pow(base, e); }
+}
+
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final MathCalculator calc;
+    public Application(MathCalculator calc) { this.calc = calc; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) {
+        System.out.println(calc.add(7, 2));     // 9
+        System.out.println(calc.divide(7, 2));  // 3
+        System.out.println(calc.mod(7, 2));     // 1
+        System.out.println(calc.power(2, 3));   // 8
+    }
+}`,
+        run:"./mvnw spring-boot:run", out:"9\n3\n1\n8" }
+    ]
   }
 },
 {
   id:"cond", n:"03", title:"Conditionals", level:"b",
-  blurb:"Run different code depending on a condition. Same logic everywhere; the keyword for \u201Celse-if\u201D differs.",
+  blurb:"Choose a branch from a condition. score = 82 must yield grade \"B\" - here are several routes to it.",
   glance:{ python:"if / elif / else", java:"if / else if / else", spring:"pure Java + @Service" },
-  file:{ python:"grade.py", java:"Grade.java", spring:"Grader.java" },
-  lang:{ python:"python", java:"java", spring:"java" },
   note:{
-    python:"Blocks are defined by <b>indentation</b>; the else-if keyword is <b>elif</b>. Ternary reads <b>a if cond else b</b>.",
-    java:"Blocks use <b>{ }</b> and conditions need <b>( )</b>; else-if is <b>else if</b>. Ternary is <b>cond ? a : b</b>.",
-    spring:"Conditionals are <b>pure Java</b> - identical inside a <b>@Service</b>."
+    python:"<b>if / elif / else</b> is the workhorse, but a <b>chained ternary</b>, <b>guard clauses</b> (early <b>return</b>), or <b>match</b> with <b>case _ if</b> guards all decide the same grade.",
+    java:"<b>if / else if / else</b>, a <b>chained ?:</b> ternary, or <b>guard clauses</b> with early <b>return</b> are all equivalent.",
+    spring:"Conditionals are <b>pure Java</b> inside a <b>@Service</b>. Spring logs its banner first, then prints the output."
   },
-  code:{
-python:
-`score = 82
+  variants:{
+    python:[
+      { label:"if / elif / else", file:"grade_if.py", lang:"python",
+        code:`score = 82
 
 if score >= 90:
     grade = "A"
-elif score >= 80:        # elif
+elif score >= 80:
     grade = "B"
 else:
     grade = "C"
 
-# ternary (one-liner)
-status = "pass" if score >= 50 else "fail"`,
-java:
-`int score = 82;
-String grade;
+print(grade)   # B`,
+        run:"python grade_if.py", out:"B" },
+      { label:"Chained ternary", file:"grade_ternary.py", lang:"python",
+        code:`score = 82
 
-if (score >= 90) {
-    grade = "A";
-} else if (score >= 80) {    // else if
-    grade = "B";
-} else {
-    grade = "C";
-}
+grade = "A" if score >= 90 else "B" if score >= 80 else "C"
 
-// ternary
-String status = score >= 50 ? "pass" : "fail";`,
-spring:
-`// Conditionals are pure Java - identical inside a @Service.
+print(grade)   # B`,
+        run:"python grade_ternary.py", out:"B" },
+      { label:"Guard clauses (early return)", file:"grade_guard.py", lang:"python",
+        code:`def grade_of(score):
+    if score >= 90:
+        return "A"
+    if score >= 80:
+        return "B"
+    return "C"
+
+print(grade_of(82))   # B`,
+        run:"python grade_guard.py", out:"B" },
+      { label:"match with guards (3.10+)", file:"grade_match.py", lang:"python",
+        code:`score = 82
+
+match score:
+    case s if s >= 90:
+        grade = "A"
+    case s if s >= 80:
+        grade = "B"
+    case _:
+        grade = "C"
+
+print(grade)   # B`,
+        run:"python grade_match.py", out:"B" }
+    ],
+    java:[
+      { label:"if / else if / else", file:"GradeIf.java", lang:"java",
+        code:`public class GradeIf {
+    public static void main(String[] args) {
+        int score = 82;
+        String grade;
+
+        if (score >= 90) {
+            grade = "A";
+        } else if (score >= 80) {
+            grade = "B";
+        } else {
+            grade = "C";
+        }
+
+        System.out.println(grade);   // B
+    }
+}`,
+        run:"javac GradeIf.java && java GradeIf", out:"B" },
+      { label:"Chained ternary", file:"GradeTernary.java", lang:"java",
+        code:`public class GradeTernary {
+    public static void main(String[] args) {
+        int score = 82;
+
+        String grade = score >= 90 ? "A"
+                     : score >= 80 ? "B"
+                     : "C";
+
+        System.out.println(grade);   // B
+    }
+}`,
+        run:"javac GradeTernary.java && java GradeTernary", out:"B" },
+      { label:"Guard clauses (early return)", file:"GradeGuard.java", lang:"java",
+        code:`public class GradeGuard {
+    static String gradeOf(int score) {
+        if (score >= 90) return "A";
+        if (score >= 80) return "B";
+        return "C";
+    }
+
+    public static void main(String[] args) {
+        System.out.println(gradeOf(82));   // B
+    }
+}`,
+        run:"javac GradeGuard.java && java GradeGuard", out:"B" }
+    ],
+    spring:[
+      { label:"@Service with if/else", file:"Grader.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/java/com/example/demo/
+   ├─ Application.java
+   └─ Grader.java`,
+        code:`// ===== Grader.java =====
+package com.example.demo;
+
+import org.springframework.stereotype.Service;
+
 @Service
 public class Grader {
     public String grade(int score) {
@@ -420,190 +820,802 @@ public class Grader {
         else if (score >= 80) return "B";
         else                  return "C";
     }
-}`
+}
+
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final Grader grader;
+    public Application(Grader grader) { this.grader = grader; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) { System.out.println(grader.grade(82)); }  // B
+}`,
+        run:"./mvnw spring-boot:run", out:"B" },
+      { label:"@Service with ternary", file:"TernaryGrader.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/java/com/example/demo/
+   ├─ Application.java
+   └─ TernaryGrader.java`,
+        code:`// ===== TernaryGrader.java =====
+package com.example.demo;
+
+import org.springframework.stereotype.Service;
+
+@Service
+public class TernaryGrader {
+    public String grade(int score) {
+        return score >= 90 ? "A" : score >= 80 ? "B" : "C";
+    }
+}
+
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final TernaryGrader grader;
+    public Application(TernaryGrader grader) { this.grader = grader; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) { System.out.println(grader.grade(82)); }  // B
+}`,
+        run:"./mvnw spring-boot:run", out:"B" }
+    ]
   }
 },
 {
   id:"loops", n:"04", title:"Loops", level:"b",
-  blurb:"Repeat work. Python loops over sequences; Java also has the classic C-style counter loop.",
-  glance:{ python:"for i in range()", java:"for(int i=0;...)", spring:"pure Java + @Service" },
-  file:{ python:"loops.py", java:"Loops.java", spring:"Printer.java" },
-  lang:{ python:"python", java:"java", spring:"java" },
+  blurb:"Repeat work. Every variant below prints 0 1 2 3 4 - the difference is purely how the repetition is expressed.",
+  glance:{ python:"for / while / enumerate", java:"for / while / stream", spring:"for / for-each / stream" },
   note:{
-    python:"<b>for</b> always walks a sequence (<b>range()</b>, a list...). Decrement with <b>n -= 1</b>.",
-    java:"The C-style <b>for(init; cond; step)</b> plus a <b>for-each</b> (<b>for (T x : items)</b>). Decrement with <b>n--</b>.",
-    spring:"Loops are <b>pure Java</b> - identical inside a <b>@Service</b>."
+    python:"<b>for ... range()</b> is the default. A <b>while</b> counter, iterating a <b>list</b>, <b>enumerate</b> for the index, or <b>while True + break</b> (do-while style) all do the same job.",
+    java:"The C-style <b>for</b>, a <b>while</b>, a <b>do-while</b>, the enhanced <b>for-each</b>, <b>IntStream.range</b>, and an explicit <b>Iterator</b> are all loops.",
+    spring:"Loops are <b>pure Java</b> inside a <b>@Service</b> - classic <b>for</b>, <b>for-each</b>, or <b>IntStream</b>. Spring logs its banner first, then prints the output."
   },
-  code:{
-python:
-`# count 0..4
-for i in range(5):
-    print(i)
-
-# iterate items directly
-for item in ["a", "b", "c"]:
-    print(item)
-
-# while loop
-n = 3
-while n > 0:
+  variants:{
+    python:[
+      { label:"for-in over range()", file:"loop_range.py", lang:"python",
+        code:`for i in range(5):   # 0..4
+    print(i)`,
+        run:"python loop_range.py", out:"0\n1\n2\n3\n4" },
+      { label:"while with a counter", file:"loop_while.py", lang:"python",
+        code:`n = 0
+while n < 5:
     print(n)
-    n -= 1`,
-java:
-`// count 0..4
-for (int i = 0; i < 5; i++) {
-    System.out.println(i);
-}
-
-// enhanced for-each
-for (String item : List.of("a", "b", "c")) {
-    System.out.println(item);
-}
-
-// while loop
-int n = 3;
-while (n > 0) {
-    System.out.println(n);
-    n--;
+    n += 1`,
+        run:"python loop_while.py", out:"0\n1\n2\n3\n4" },
+      { label:"for-in over a list", file:"loop_list.py", lang:"python",
+        code:`for i in [0, 1, 2, 3, 4]:
+    print(i)`,
+        run:"python loop_list.py", out:"0\n1\n2\n3\n4" },
+      { label:"enumerate (index of items)", file:"loop_enumerate.py", lang:"python",
+        code:`items = ["a", "b", "c", "d", "e"]
+for i, item in enumerate(items):
+    print(i)   # the index`,
+        run:"python loop_enumerate.py", out:"0\n1\n2\n3\n4" },
+      { label:"while True + break (do-while)", file:"loop_dowhile.py", lang:"python",
+        code:`n = 0
+while True:
+    print(n)
+    n += 1
+    if n == 5:
+        break`,
+        run:"python loop_dowhile.py", out:"0\n1\n2\n3\n4" }
+    ],
+    java:[
+      { label:"Classic for", file:"ForClassic.java", lang:"java",
+        code:`public class ForClassic {
+    public static void main(String[] args) {
+        for (int i = 0; i < 5; i++) {
+            System.out.println(i);
+        }
+    }
 }`,
-spring:
-`// Loops are pure Java - identical inside a @Service.
+        run:"javac ForClassic.java && java ForClassic", out:"0\n1\n2\n3\n4" },
+      { label:"while", file:"WhileLoop.java", lang:"java",
+        code:`public class WhileLoop {
+    public static void main(String[] args) {
+        int n = 0;
+        while (n < 5) {
+            System.out.println(n);
+            n++;
+        }
+    }
+}`,
+        run:"javac WhileLoop.java && java WhileLoop", out:"0\n1\n2\n3\n4" },
+      { label:"do-while", file:"DoWhile.java", lang:"java",
+        code:`public class DoWhile {
+    public static void main(String[] args) {
+        int n = 0;
+        do {
+            System.out.println(n);
+            n++;
+        } while (n < 5);
+    }
+}`,
+        run:"javac DoWhile.java && java DoWhile", out:"0\n1\n2\n3\n4" },
+      { label:"Enhanced for-each (array)", file:"ForEach.java", lang:"java",
+        code:`public class ForEach {
+    public static void main(String[] args) {
+        for (int i : new int[]{0, 1, 2, 3, 4}) {
+            System.out.println(i);
+        }
+    }
+}`,
+        run:"javac ForEach.java && java ForEach", out:"0\n1\n2\n3\n4" },
+      { label:"IntStream.range", file:"StreamLoop.java", lang:"java",
+        code:`import java.util.stream.IntStream;
+
+public class StreamLoop {
+    public static void main(String[] args) {
+        IntStream.range(0, 5)
+                 .forEach(System.out::println);
+    }
+}`,
+        run:"javac StreamLoop.java && java StreamLoop", out:"0\n1\n2\n3\n4" },
+      { label:"Explicit Iterator", file:"IteratorLoop.java", lang:"java",
+        code:`import java.util.Iterator;
+import java.util.List;
+
+public class IteratorLoop {
+    public static void main(String[] args) {
+        Iterator<Integer> it = List.of(0, 1, 2, 3, 4).iterator();
+        while (it.hasNext()) {
+            System.out.println(it.next());
+        }
+    }
+}`,
+        run:"javac IteratorLoop.java && java IteratorLoop", out:"0\n1\n2\n3\n4" }
+    ],
+    spring:[
+      { label:"@Service classic for", file:"ForCounter.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/java/com/example/demo/
+   ├─ Application.java
+   └─ ForCounter.java`,
+        code:`// ===== ForCounter.java =====
+package com.example.demo;
+
+import org.springframework.stereotype.Service;
+
 @Service
-public class Printer {
-    public void countTo(int max) {
+public class ForCounter {
+    public void run(int max) {
         for (int i = 0; i < max; i++) {
             System.out.println(i);
         }
     }
-}`
+}
+
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final ForCounter counter;
+    public Application(ForCounter counter) { this.counter = counter; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) { counter.run(5); }
+}`,
+        run:"./mvnw spring-boot:run", out:"0\n1\n2\n3\n4" },
+      { label:"@Service for-each", file:"ForEachCounter.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/java/com/example/demo/
+   ├─ Application.java
+   └─ ForEachCounter.java`,
+        code:`// ===== ForEachCounter.java =====
+package com.example.demo;
+
+import org.springframework.stereotype.Service;
+
+@Service
+public class ForEachCounter {
+    public void run() {
+        for (int i : new int[]{0, 1, 2, 3, 4}) {
+            System.out.println(i);
+        }
+    }
+}
+
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final ForEachCounter counter;
+    public Application(ForEachCounter counter) { this.counter = counter; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) { counter.run(); }
+}`,
+        run:"./mvnw spring-boot:run", out:"0\n1\n2\n3\n4" },
+      { label:"@Service IntStream", file:"StreamCounter.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/java/com/example/demo/
+   ├─ Application.java
+   └─ StreamCounter.java`,
+        code:`// ===== StreamCounter.java =====
+package com.example.demo;
+
+import java.util.stream.IntStream;
+import org.springframework.stereotype.Service;
+
+@Service
+public class StreamCounter {
+    public void run(int max) {
+        IntStream.range(0, max).forEach(System.out::println);
+    }
+}
+
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final StreamCounter counter;
+    public Application(StreamCounter counter) { this.counter = counter; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) { counter.run(5); }
+}`,
+        run:"./mvnw spring-boot:run", out:"0\n1\n2\n3\n4" }
+    ]
   }
 },
 {
   id:"func", n:"05", title:"Functions / Methods", level:"i",
-  blurb:"A reusable block that takes inputs and returns a result. Python has default arguments; Java uses overloads instead.",
-  glance:{ python:"def f(x, y=1)", java:"overloads", spring:"@Bean method" },
-  file:{ python:"funcs.py", java:"Funcs.java", spring:"AppConfig.java" },
-  lang:{ python:"python", java:"java", spring:"java" },
+  blurb:"A reusable block with inputs and a result. Each variant greets the same two ways: a default \"Hi\" and an explicit \"Hello\".",
+  glance:{ python:"def f(x, y=1)", java:"overloads / varargs", spring:"@Bean / @Service" },
   note:{
-    python:"<b>def</b> with optional type hints. Supports <b>default arguments</b> and <b>*args</b> for variable inputs.",
-    java:"Types are required. No default args - write <b>overloaded</b> methods (one calls the next). <b>int...</b> is varargs.",
-    spring:"In Spring a <b>@Bean</b> method is a factory function - Spring calls it once and manages the returned object."
+    python:"A <b>default argument</b> is idiomatic, but <b>keyword-only</b> defaults, a <b>lambda</b>, or <b>functools.partial</b> reach the same two outputs.",
+    java:"No default args - use <b>overloaded</b> methods, <b>varargs</b>, a <b>null-check default</b>, or <b>functional interfaces</b>.",
+    spring:"In Spring the function can be a <b>@Bean</b> factory object, a <b>@Service</b>, or a <b>@Component</b> whose default greeting is injected with <b>@Value</b>. Spring logs its banner first, then prints the output."
   },
   warn:{
-    java:"Java has <b>no default parameter values</b> - you provide several overloaded methods, and the short one delegates to the full one."
+    java:"Java has <b>no default parameter values</b> - you simulate them with overloads where the short method delegates to the full one."
   },
-  code:{
-python:
-`def greet(name: str, greeting: str = "Hi") -> str:   # default arg
+  variants:{
+    python:[
+      { label:"Default argument", file:"greet_default.py", lang:"python",
+        code:`def greet(name, greeting="Hi"):
     return f"{greeting}, {name}!"
 
-print(greet("Aarav"))             # Hi, Aarav!
-print(greet("Bela", "Hello"))     # Hello, Bela!
+print(greet("Aarav"))            # Hi, Aarav!
+print(greet("Bela", "Hello"))    # Hello, Bela!`,
+        run:"python greet_default.py", out:"Hi, Aarav!\nHello, Bela!" },
+      { label:"Keyword-only default", file:"greet_kwonly.py", lang:"python",
+        code:`def greet(name, *, greeting="Hi"):   # greeting must be named
+    return f"{greeting}, {name}!"
 
-def total(*nums):                 # variable arguments
-    return sum(nums)`,
-java:
-`// no default args - use overloads instead
-String greet(String name) {
-    return greet(name, "Hi");
-}
-String greet(String name, String greeting) {
-    return greeting + ", " + name + "!";
-}
+print(greet("Aarav"))                  # Hi, Aarav!
+print(greet("Bela", greeting="Hello")) # Hello, Bela!`,
+        run:"python greet_kwonly.py", out:"Hi, Aarav!\nHello, Bela!" },
+      { label:"Lambda", file:"greet_lambda.py", lang:"python",
+        code:`greet = lambda name, greeting="Hi": f"{greeting}, {name}!"
 
-int total(int... nums) {          // varargs
-    int s = 0;
-    for (int n : nums) s += n;
-    return s;
+print(greet("Aarav"))            # Hi, Aarav!
+print(greet("Bela", "Hello"))    # Hello, Bela!`,
+        run:"python greet_lambda.py", out:"Hi, Aarav!\nHello, Bela!" },
+      { label:"functools.partial", file:"greet_partial.py", lang:"python",
+        code:`from functools import partial
+
+def greet(greeting, name):
+    return f"{greeting}, {name}!"
+
+hi = partial(greet, "Hi")        # pre-fill the greeting
+
+print(hi("Aarav"))               # Hi, Aarav!
+print(greet("Hello", "Bela"))    # Hello, Bela!`,
+        run:"python greet_partial.py", out:"Hi, Aarav!\nHello, Bela!" }
+    ],
+    java:[
+      { label:"Overloaded methods", file:"GreetOverload.java", lang:"java",
+        code:`public class GreetOverload {
+    static String greet(String name) {
+        return greet(name, "Hi");          // delegates
+    }
+    static String greet(String name, String greeting) {
+        return greeting + ", " + name + "!";
+    }
+
+    public static void main(String[] args) {
+        System.out.println(greet("Aarav"));          // Hi, Aarav!
+        System.out.println(greet("Bela", "Hello"));  // Hello, Bela!
+    }
 }`,
-spring:
-`// A @Bean method is a "function" whose result Spring manages.
+        run:"javac GreetOverload.java && java GreetOverload", out:"Hi, Aarav!\nHello, Bela!" },
+      { label:"Varargs", file:"GreetVarargs.java", lang:"java",
+        code:`public class GreetVarargs {
+    static String greet(String name, String... greeting) {
+        String g = greeting.length > 0 ? greeting[0] : "Hi";
+        return g + ", " + name + "!";
+    }
+
+    public static void main(String[] args) {
+        System.out.println(greet("Aarav"));          // Hi, Aarav!
+        System.out.println(greet("Bela", "Hello"));  // Hello, Bela!
+    }
+}`,
+        run:"javac GreetVarargs.java && java GreetVarargs", out:"Hi, Aarav!\nHello, Bela!" },
+      { label:"Null-check default", file:"GreetNull.java", lang:"java",
+        code:`public class GreetNull {
+    static String greet(String name, String greeting) {
+        if (greeting == null) greeting = "Hi";    // default
+        return greeting + ", " + name + "!";
+    }
+
+    public static void main(String[] args) {
+        System.out.println(greet("Aarav", null));     // Hi, Aarav!
+        System.out.println(greet("Bela", "Hello"));   // Hello, Bela!
+    }
+}`,
+        run:"javac GreetNull.java && java GreetNull", out:"Hi, Aarav!\nHello, Bela!" },
+      { label:"Functional interfaces", file:"GreetFunctional.java", lang:"java",
+        code:`import java.util.function.Function;
+import java.util.function.BiFunction;
+
+public class GreetFunctional {
+    public static void main(String[] args) {
+        Function<String, String> hi = n -> "Hi, " + n + "!";
+        BiFunction<String, String, String> greet = (g, n) -> g + ", " + n + "!";
+
+        System.out.println(hi.apply("Aarav"));            // Hi, Aarav!
+        System.out.println(greet.apply("Hello", "Bela")); // Hello, Bela!
+    }
+}`,
+        run:"javac GreetFunctional.java && java GreetFunctional", out:"Hi, Aarav!\nHello, Bela!" }
+    ],
+    spring:[
+      { label:"@Bean factory object", file:"AppConfig.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/java/com/example/demo/
+   ├─ Application.java
+   ├─ AppConfig.java
+   └─ Greeter.java`,
+        code:`// ===== Greeter.java =====
+package com.example.demo;
+
+public class Greeter {
+    public String greet(String name) { return greet(name, "Hi"); }
+    public String greet(String name, String greeting) {
+        return greeting + ", " + name + "!";
+    }
+}
+
+// ===== AppConfig.java =====
+package com.example.demo;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
 @Configuration
 public class AppConfig {
+    @Bean
+    public Greeter greeter() { return new Greeter(); }
+}
 
-    @Bean                         // registers the returned object as a bean
-    public Greeter greeter() {
-        return new Greeter("Hi");
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final Greeter greeter;
+    public Application(Greeter greeter) { this.greeter = greeter; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) {
+        System.out.println(greeter.greet("Aarav"));         // Hi, Aarav!
+        System.out.println(greeter.greet("Bela", "Hello")); // Hello, Bela!
     }
-}`
+}`,
+        run:"./mvnw spring-boot:run", out:"Hi, Aarav!\nHello, Bela!" },
+      { label:"@Service", file:"GreetService.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/java/com/example/demo/
+   ├─ Application.java
+   └─ GreetService.java`,
+        code:`// ===== GreetService.java =====
+package com.example.demo;
+
+import org.springframework.stereotype.Service;
+
+@Service
+public class GreetService {
+    public String greet(String name) { return greet(name, "Hi"); }
+    public String greet(String name, String greeting) {
+        return greeting + ", " + name + "!";
+    }
+}
+
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final GreetService svc;
+    public Application(GreetService svc) { this.svc = svc; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) {
+        System.out.println(svc.greet("Aarav"));         // Hi, Aarav!
+        System.out.println(svc.greet("Bela", "Hello")); // Hello, Bela!
+    }
+}`,
+        run:"./mvnw spring-boot:run", out:"Hi, Aarav!\nHello, Bela!" },
+      { label:"@Component + @Value default", file:"InjectedGreeter.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/
+   ├─ java/com/example/demo/
+   │  ├─ Application.java
+   │  └─ InjectedGreeter.java
+   └─ resources/
+      └─ application.properties`,
+        code:`// ===== application.properties =====
+app.greeting=Hi
+
+// ===== InjectedGreeter.java =====
+package com.example.demo;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+@Component
+public class InjectedGreeter {
+    @Value("\${app.greeting}") private String defaultGreeting;
+
+    public String greet(String name) { return greet(name, defaultGreeting); }
+    public String greet(String name, String greeting) {
+        return greeting + ", " + name + "!";
+    }
+}
+
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final InjectedGreeter greeter;
+    public Application(InjectedGreeter greeter) { this.greeter = greeter; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) {
+        System.out.println(greeter.greet("Aarav"));         // Hi, Aarav!
+        System.out.println(greeter.greet("Bela", "Hello")); // Hello, Bela!
+    }
+}`,
+        run:"./mvnw spring-boot:run", out:"Hi, Aarav!\nHello, Bela!" }
+    ]
   }
 },
 {
   id:"str", n:"06", title:"Strings & Formatting", level:"i",
-  blurb:"Build and shape text. The idea is identical; the formatting syntax and method names differ.",
-  glance:{ python:'f"{x}"', java:"String.format()", spring:"pure Java + @Service" },
-  file:{ python:"text.py", java:"Text.java", spring:"Formatter.java" },
-  lang:{ python:"python", java:"java", spring:"java" },
+  blurb:"Build and shape text. Each variant produces \"Aarav is 25\" then \"AARAV\" - only the formatting tool changes.",
+  glance:{ python:'f"{x}" / .format()', java:".formatted() / +", spring:"pure Java + @Service" },
   note:{
-    python:"<b>f-strings</b> (<b>f\"{name}\"</b>) are the modern way. Methods: <b>upper()</b>, <b>split()</b>, <b>strip()</b>.",
-    java:"Use <b>+</b>, <b>String.format(\"%s\")</b>, or <b>.formatted()</b> (15+). Methods: <b>toUpperCase()</b>, <b>split()</b>, <b>strip()</b>.",
-    spring:"Strings are <b>pure Java</b> - Spring changes nothing."
+    python:"<b>f-strings</b> are the modern default; <b>str.format()</b>, <b>%</b>-formatting, and plain <b>+</b> concatenation produce the same text. Uppercase with <b>.upper()</b>.",
+    java:"Use <b>.formatted()</b>, <b>String.format()</b>, <b>+</b> concatenation, or a <b>StringBuilder</b>. Uppercase with <b>.toUpperCase()</b>.",
+    spring:"Strings are <b>pure Java</b> inside a <b>@Service</b>. Spring logs its banner first, then prints the output."
   },
-  code:{
-python:
-`name, age = "Aarav", 25
+  variants:{
+    python:[
+      { label:"f-string", file:"text_fstring.py", lang:"python",
+        code:`name, age = "Aarav", 25
 
-s = "Hi " + name                # concatenation
-s = f"{name} is {age}"          # f-string (best)
-s = "{} is {}".format(name, age)
+print(f"{name} is {age}")   # Aarav is 25
+print(name.upper())         # AARAV`,
+        run:"python text_fstring.py", out:"Aarav is 25\nAARAV" },
+      { label:"str.format()", file:"text_format.py", lang:"python",
+        code:`name, age = "Aarav", 25
 
-print(name.upper())             # AARAV
-print("a,b,c".split(","))       # ['a', 'b', 'c']
-print("  hi  ".strip())         # 'hi'`,
-java:
-`String name = "Aarav"; int age = 25;
+print("{} is {}".format(name, age))   # Aarav is 25
+print(name.upper())                   # AARAV`,
+        run:"python text_format.py", out:"Aarav is 25\nAARAV" },
+      { label:"%-formatting", file:"text_percent.py", lang:"python",
+        code:`name, age = "Aarav", 25
 
-String s = "Hi " + name;                   // concatenation
-s = String.format("%s is %d", name, age);  // format
-s = "%s is %d".formatted(name, age);       // Java 15+
+print("%s is %d" % (name, age))   # Aarav is 25
+print(name.upper())               # AARAV`,
+        run:"python text_percent.py", out:"Aarav is 25\nAARAV" },
+      { label:"Concatenation", file:"text_concat.py", lang:"python",
+        code:`name, age = "Aarav", 25
 
-System.out.println(name.toUpperCase());    // AARAV
-"a,b,c".split(",");                        // ["a", "b", "c"]
-"  hi  ".strip();                          // "hi"`,
-spring:
-`// Strings are pure Java - Spring changes nothing.
+print(name + " is " + str(age))   # Aarav is 25
+print(name.upper())               # AARAV`,
+        run:"python text_concat.py", out:"Aarav is 25\nAARAV" }
+    ],
+    java:[
+      { label:".formatted() (Java 15+)", file:"TextFormatted.java", lang:"java",
+        code:`public class TextFormatted {
+    public static void main(String[] args) {
+        String name = "Aarav";
+        int age = 25;
+
+        System.out.println("%s is %d".formatted(name, age));  // Aarav is 25
+        System.out.println(name.toUpperCase());               // AARAV
+    }
+}`,
+        run:"javac TextFormatted.java && java TextFormatted", out:"Aarav is 25\nAARAV" },
+      { label:"String.format()", file:"TextFormat.java", lang:"java",
+        code:`public class TextFormat {
+    public static void main(String[] args) {
+        String name = "Aarav";
+        int age = 25;
+
+        System.out.println(String.format("%s is %d", name, age));  // Aarav is 25
+        System.out.println(name.toUpperCase());                    // AARAV
+    }
+}`,
+        run:"javac TextFormat.java && java TextFormat", out:"Aarav is 25\nAARAV" },
+      { label:"Concatenation", file:"TextConcat.java", lang:"java",
+        code:`public class TextConcat {
+    public static void main(String[] args) {
+        String name = "Aarav";
+        int age = 25;
+
+        System.out.println(name + " is " + age);   // Aarav is 25
+        System.out.println(name.toUpperCase());     // AARAV
+    }
+}`,
+        run:"javac TextConcat.java && java TextConcat", out:"Aarav is 25\nAARAV" },
+      { label:"StringBuilder", file:"TextBuilder.java", lang:"java",
+        code:`public class TextBuilder {
+    public static void main(String[] args) {
+        String name = "Aarav";
+        int age = 25;
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(name).append(" is ").append(age);
+
+        System.out.println(sb.toString());        // Aarav is 25
+        System.out.println(name.toUpperCase());    // AARAV
+    }
+}`,
+        run:"javac TextBuilder.java && java TextBuilder", out:"Aarav is 25\nAARAV" }
+    ],
+    spring:[
+      { label:"@Service with .formatted()", file:"Formatter.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/java/com/example/demo/
+   ├─ Application.java
+   └─ Formatter.java`,
+        code:`// ===== Formatter.java =====
+package com.example.demo;
+
+import org.springframework.stereotype.Service;
+
 @Service
 public class Formatter {
     public String describe(String name, int age) {
         return "%s is %d".formatted(name, age);
     }
-}`
+    public String shout(String text) {
+        return text.toUpperCase();
+    }
+}
+
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final Formatter fmt;
+    public Application(Formatter fmt) { this.fmt = fmt; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) {
+        System.out.println(fmt.describe("Aarav", 25));  // Aarav is 25
+        System.out.println(fmt.shout("Aarav"));         // AARAV
+    }
+}`,
+        run:"./mvnw spring-boot:run", out:"Aarav is 25\nAARAV" },
+      { label:"@Service with String.format()", file:"FormatService.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/java/com/example/demo/
+   ├─ Application.java
+   └─ FormatService.java`,
+        code:`// ===== FormatService.java =====
+package com.example.demo;
+
+import org.springframework.stereotype.Service;
+
+@Service
+public class FormatService {
+    public String describe(String name, int age) {
+        return String.format("%s is %d", name, age);
+    }
+    public String shout(String text) {
+        return text.toUpperCase();
+    }
+}
+
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final FormatService fmt;
+    public Application(FormatService fmt) { this.fmt = fmt; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) {
+        System.out.println(fmt.describe("Aarav", 25));  // Aarav is 25
+        System.out.println(fmt.shout("Aarav"));         // AARAV
+    }
+}`,
+        run:"./mvnw spring-boot:run", out:"Aarav is 25\nAARAV" }
+    ]
   }
 },
 {
   id:"switch", n:"07", title:"Switch / Match", level:"i",
-  blurb:"Pick a branch by matching a value. Both languages added a modern, expression form that returns a value.",
-  glance:{ python:"match / case", java:"switch ... ->", spring:"pure Java + @Service" },
-  file:{ python:"days.py", java:"Days.java", spring:"Scheduler.java" },
-  lang:{ python:"python", java:"java", spring:"java" },
+  blurb:"Map a value to a branch. day 3 -> \"weekday\", day 7 -> \"weekend\". Several constructs reach the same result.",
+  glance:{ python:"match / dict", java:"switch / Set", spring:"pure Java + @Service" },
   note:{
-    python:"<b>match / case</b> (3.10+). Combine values with <b>|</b>; <b>case _</b> is the default.",
-    java:"Arrow <b>switch</b> expression (14+). Group values with commas; <b>default</b> handles the rest. It returns a value.",
-    spring:"<b>switch</b> is <b>pure Java</b> - identical inside a <b>@Service</b>."
+    python:"<b>match / case</b> (3.10+) is the modern pick, but <b>if/else</b>, <b>set membership</b> (<b>day in {6,7}</b>), or a <b>ternary</b> select the same kind.",
+    java:"The arrow <b>switch</b> expression, a classic <b>switch</b> with <b>break</b>, an <b>if/else</b>, or <b>Set.of(6,7).contains(day)</b> all work.",
+    spring:"<b>switch</b> is <b>pure Java</b> inside a <b>@Service</b>. Spring logs its banner first, then prints the output."
   },
-  code:{
-python:
-`day = 3   # 1 = Mon ... 7 = Sun
+  variants:{
+    python:[
+      { label:"match / case", file:"days_match.py", lang:"python",
+        code:`def kind_of(day):            # 1 = Mon ... 7 = Sun
+    match day:
+        case 6 | 7:
+            return "weekend"
+        case _:
+            return "weekday"
 
-match day:
-    case 6 | 7:           # multiple values
-        kind = "weekend"
-    case _:               # default
-        kind = "weekday"
+print(kind_of(3))   # weekday
+print(kind_of(7))   # weekend`,
+        run:"python days_match.py", out:"weekday\nweekend" },
+      { label:"if / else", file:"days_if.py", lang:"python",
+        code:`def kind_of(day):
+    if day == 6 or day == 7:
+        return "weekend"
+    else:
+        return "weekday"
 
-print(kind)               # weekday`,
-java:
-`int day = 3;   // 1 = Mon ... 7 = Sun
+print(kind_of(3))   # weekday
+print(kind_of(7))   # weekend`,
+        run:"python days_if.py", out:"weekday\nweekend" },
+      { label:"Set membership", file:"days_set.py", lang:"python",
+        code:`def kind_of(day):
+    return "weekend" if day in {6, 7} else "weekday"
 
-// switch EXPRESSION (Java 14+) - returns a value
-String kind = switch (day) {
-    case 6, 7 -> "weekend";
-    default   -> "weekday";
-};
+print(kind_of(3))   # weekday
+print(kind_of(7))   # weekend`,
+        run:"python days_set.py", out:"weekday\nweekend" },
+      { label:"Ternary", file:"days_ternary.py", lang:"python",
+        code:`def kind_of(day):
+    return "weekend" if (day == 6 or day == 7) else "weekday"
 
-System.out.println(kind);   // weekday`,
-spring:
-`// switch is pure Java - identical inside a @Service.
+print(kind_of(3))   # weekday
+print(kind_of(7))   # weekend`,
+        run:"python days_ternary.py", out:"weekday\nweekend" }
+    ],
+    java:[
+      { label:"Arrow switch (Java 14+)", file:"DaysArrow.java", lang:"java",
+        code:`public class DaysArrow {
+    static String kindOf(int day) {     // 1 = Mon ... 7 = Sun
+        return switch (day) {
+            case 6, 7 -> "weekend";
+            default   -> "weekday";
+        };
+    }
+
+    public static void main(String[] args) {
+        System.out.println(kindOf(3));   // weekday
+        System.out.println(kindOf(7));   // weekend
+    }
+}`,
+        run:"javac DaysArrow.java && java DaysArrow", out:"weekday\nweekend" },
+      { label:"Classic switch + break", file:"DaysClassic.java", lang:"java",
+        code:`public class DaysClassic {
+    static String kindOf(int day) {
+        String kind;
+        switch (day) {
+            case 6:
+            case 7:
+                kind = "weekend";
+                break;
+            default:
+                kind = "weekday";
+        }
+        return kind;
+    }
+
+    public static void main(String[] args) {
+        System.out.println(kindOf(3));   // weekday
+        System.out.println(kindOf(7));   // weekend
+    }
+}`,
+        run:"javac DaysClassic.java && java DaysClassic", out:"weekday\nweekend" },
+      { label:"if / else", file:"DaysIf.java", lang:"java",
+        code:`public class DaysIf {
+    static String kindOf(int day) {
+        if (day == 6 || day == 7) {
+            return "weekend";
+        } else {
+            return "weekday";
+        }
+    }
+
+    public static void main(String[] args) {
+        System.out.println(kindOf(3));   // weekday
+        System.out.println(kindOf(7));   // weekend
+    }
+}`,
+        run:"javac DaysIf.java && java DaysIf", out:"weekday\nweekend" },
+      { label:"Set.contains", file:"DaysSet.java", lang:"java",
+        code:`import java.util.Set;
+
+public class DaysSet {
+    static String kindOf(int day) {
+        return Set.of(6, 7).contains(day) ? "weekend" : "weekday";
+    }
+
+    public static void main(String[] args) {
+        System.out.println(kindOf(3));   // weekday
+        System.out.println(kindOf(7));   // weekend
+    }
+}`,
+        run:"javac DaysSet.java && java DaysSet", out:"weekday\nweekend" }
+    ],
+    spring:[
+      { label:"@Service arrow switch", file:"Scheduler.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/java/com/example/demo/
+   ├─ Application.java
+   └─ Scheduler.java`,
+        code:`// ===== Scheduler.java =====
+package com.example.demo;
+
+import org.springframework.stereotype.Service;
+
 @Service
 public class Scheduler {
     public String kindOf(int day) {
@@ -612,44 +1624,199 @@ public class Scheduler {
             default   -> "weekday";
         };
     }
-}`
+}
+
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final Scheduler scheduler;
+    public Application(Scheduler scheduler) { this.scheduler = scheduler; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) {
+        System.out.println(scheduler.kindOf(3));   // weekday
+        System.out.println(scheduler.kindOf(7));   // weekend
+    }
+}`,
+        run:"./mvnw spring-boot:run", out:"weekday\nweekend" },
+      { label:"@Service Set.contains", file:"SetScheduler.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/java/com/example/demo/
+   ├─ Application.java
+   └─ SetScheduler.java`,
+        code:`// ===== SetScheduler.java =====
+package com.example.demo;
+
+import java.util.Set;
+import org.springframework.stereotype.Service;
+
+@Service
+public class SetScheduler {
+    public String kindOf(int day) {
+        return Set.of(6, 7).contains(day) ? "weekend" : "weekday";
+    }
+}
+
+// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    private final SetScheduler scheduler;
+    public Application(SetScheduler scheduler) { this.scheduler = scheduler; }
+    public static void main(String[] args) { SpringApplication.run(Application.class, args); }
+    @Override public void run(String... a) {
+        System.out.println(scheduler.kindOf(3));   // weekday
+        System.out.println(scheduler.kindOf(7));   // weekend
+    }
+}`,
+        run:"./mvnw spring-boot:run", out:"weekday\nweekend" }
+    ]
   }
 },
 {
   id:"main", n:"08", title:"Program Entry Point", level:"p",
-  blurb:"Where execution begins. This is the one basic where Spring genuinely differs — one annotation boots the whole framework.",
-  glance:{ python:'if __name__ == "__main__"', java:"public static void main", spring:"@SpringBootApplication" },
-  file:{ python:"app.py", java:"App.java", spring:"Application.java" },
-  lang:{ python:"python", java:"java", spring:"java" },
+  blurb:"Where execution begins. Each variant prints \"App started\" - the difference is how the runtime finds the start.",
+  glance:{ python:'if __name__ ...', java:"static void main", spring:"@SpringBootApplication" },
   note:{
-    python:"The <b>if __name__ == \"__main__\"</b> guard runs <b>main()</b> only when the file is executed directly (not imported).",
-    java:"A fixed signature: <b>public static void main(String[] args)</b>. The JVM calls it to start the program.",
-    spring:"<b>@SpringBootApplication</b> on the main class boots the whole app (auto-config, component scan, embedded server) via <b>SpringApplication.run(...)</b>."
+    python:"The <b>if __name__ == \"__main__\"</b> guard is best practice, but a bare top-level statement or an unguarded <b>main()</b> call also start the script.",
+    java:"<b>public static void main(String[] args)</b> is fixed - it may print directly, delegate to an <b>instance</b> method, or run a <b>Runnable</b>.",
+    spring:"<b>@SpringBootApplication</b> boots the framework; the startup hook can be <b>CommandLineRunner</b> (implemented or a <b>@Bean</b> lambda) or <b>ApplicationRunner</b>. Spring logs its banner first, then prints the output."
   },
-  code:{
-python:
-`# app.py
-def main():
+  variants:{
+    python:[
+      { label:"__main__ guard", file:"app_guard.py", lang:"python",
+        code:`def main():
     print("App started")
 
-if __name__ == "__main__":   # runs only when executed directly
+if __name__ == "__main__":   # only when run directly
     main()`,
-java:
-`// App.java  (public class name matches the file name)
-public class App {
+        run:"python app_guard.py", out:"App started" },
+      { label:"Top-level statement", file:"app_toplevel.py", lang:"python",
+        code:`# runs the moment the file is executed
+print("App started")`,
+        run:"python app_toplevel.py", out:"App started" },
+      { label:"Unguarded main() call", file:"app_call.py", lang:"python",
+        code:`def main():
+    print("App started")
+
+main()   # called immediately`,
+        run:"python app_call.py", out:"App started" }
+    ],
+    java:[
+      { label:"Standard main", file:"AppMain.java", lang:"java",
+        code:`public class AppMain {
     public static void main(String[] args) {   // fixed entry signature
         System.out.println("App started");
     }
-}
-// run:  javac App.java && java App`,
-spring:
-`// One annotation boots the entire framework + embedded server.
-@SpringBootApplication   // = @Configuration + @ComponentScan + @EnableAutoConfiguration
+}`,
+        run:"javac AppMain.java && java AppMain", out:"App started" },
+      { label:"Delegate to instance method", file:"AppInstance.java", lang:"java",
+        code:`public class AppInstance {
+    void start() {
+        System.out.println("App started");
+    }
+
+    public static void main(String[] args) {
+        new AppInstance().start();   // main delegates
+    }
+}`,
+        run:"javac AppInstance.java && java AppInstance", out:"App started" },
+      { label:"Run a Runnable", file:"AppRunnable.java", lang:"java",
+        code:`public class AppRunnable {
+    public static void main(String[] args) {
+        Runnable task = () -> System.out.println("App started");
+        task.run();
+    }
+}`,
+        run:"javac AppRunnable.java && java AppRunnable", out:"App started" }
+    ],
+    spring:[
+      { label:"CommandLineRunner (implements)", file:"Application.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/java/com/example/demo/
+   └─ Application.java`,
+        code:`// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class Application implements CommandLineRunner {
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+
+    @Override
+    public void run(String... args) {   // runs once after startup
+        System.out.println("App started");
+    }
+}`,
+        run:"./mvnw spring-boot:run", out:"App started" },
+      { label:"@Bean CommandLineRunner (lambda)", file:"Application.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/java/com/example/demo/
+   └─ Application.java`,
+        code:`// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+
+@SpringBootApplication
 public class Application {
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
     }
-}`
+
+    @Bean
+    CommandLineRunner runner() {
+        return args -> System.out.println("App started");
+    }
+}`,
+        run:"./mvnw spring-boot:run", out:"App started" },
+      { label:"ApplicationRunner", file:"Application.java", lang:"java",
+        tree:`demo/
+├─ pom.xml
+└─ src/main/java/com/example/demo/
+   └─ Application.java`,
+        code:`// ===== Application.java =====
+package com.example.demo;
+
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+
+@SpringBootApplication
+public class Application {
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+
+    @Bean
+    ApplicationRunner runner() {
+        return args -> System.out.println("App started");
+    }
+}`,
+        run:"./mvnw spring-boot:run", out:"App started" }
+    ]
   }
 }
 ];
@@ -699,12 +1866,7 @@ function buildCards(){
             <div class="note warn" data-warnbox style="display:none"><span class="b">⚠️</span><span class="x" data-warn></span></div>
           </div>
           <div class="cpane">
-            <div class="cbar">
-              <span class="dots"><i></i><i></i><i></i></span>
-              <span class="fname"><b data-fname></b></span>
-              <button class="copy" data-copy>⧉ Copy</button>
-            </div>
-            <pre><code data-code class="language-python"></code></pre>
+            <div class="variants" data-variants></div>
           </div>
         </div>
       </div>`;
@@ -722,21 +1884,40 @@ function paint(animate){
   document.querySelectorAll('#concepts .section').forEach(sec=>{
     const c = sec._concept;
     const card = sec.querySelector('.card');
-    const codeEl = card.querySelector('[data-code]');
-    const fname = card.querySelector('[data-fname]');
+    const vwrap = card.querySelector('[data-variants]');
     const note = card.querySelector('[data-note]');
     const warnBox = card.querySelector('[data-warnbox]');
     const warnEl = card.querySelector('[data-warn]');
     const apply = ()=>{
-      codeEl.className = 'language-'+c.lang[LANG];
-      codeEl.textContent = c.code[LANG];
-      highlight(codeEl);
-      fname.textContent = c.file[LANG];
       note.innerHTML = c.note[LANG];
       const w = (c.warn && c.warn[LANG]) ? c.warn[LANG] : '';
       if(w){ warnEl.innerHTML = w; warnBox.style.display='flex'; }
       else { warnBox.style.display='none'; }
       card.querySelectorAll('.chip').forEach(ch=>ch.classList.toggle('act', ch.dataset.cl===LANG));
+
+      const list = c.variants[LANG] || [];
+      const plural = list.length===1 ? 'way' : 'ways';
+      vwrap.innerHTML =
+        `<div class="vcount">${list.length} ${plural} &middot; same result</div>` +
+        list.map((v,i)=>{
+          const tree = v.tree ? `<div class="tree"><span class="tt">project structure</span>${esc(v.tree)}</div>` : '';
+          return `
+          <div class="variant">
+            <div class="vhead">
+              <span class="vn">${i+1}</span>
+              <span class="vlabel">${esc(v.label)}</span>
+              <span class="vfile">${esc(v.file)}</span>
+              <button class="copy" data-copy>⧉ Copy</button>
+            </div>
+            ${tree}
+            <pre><code class="v-code language-${v.lang}">${esc(v.code)}</code></pre>
+            <div class="step-h"><span class="n">▶</span> Code execution</div>
+            <div class="run-line"><span class="p">$ </span>${esc(v.run)}</div>
+            <div class="step-h"><span class="n">✓</span> Result</div>
+            <pre class="out-block">${esc(v.out)}</pre>
+          </div>`;
+        }).join('');
+      vwrap.querySelectorAll('code.v-code').forEach(highlight);
     };
     if(animate){
       card.querySelector('.cpane').classList.add('swapping');
@@ -759,7 +1940,7 @@ document.getElementById('switch').addEventListener('click',e=>{
 document.addEventListener('click', e=>{
   const btn = e.target.closest('[data-copy]');
   if(!btn) return;
-  const code = btn.closest('.cpane').querySelector('[data-code]').textContent;
+  const code = btn.closest('.variant').querySelector('code.v-code').textContent;
   const ok = ()=>{ btn.classList.add('done'); btn.textContent='✓ Copied'; setTimeout(()=>{btn.classList.remove('done');btn.textContent='⧉ Copy';},1400); };
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(code).then(ok).catch(()=>fallback(code,ok));
