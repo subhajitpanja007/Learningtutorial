@@ -1,0 +1,2052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GCP Data Lakehouse — Interactive Animated Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============ DESIGN TOKENS ============ */
+:root{
+  --ink:#0B1220;          /* deep navy night-ops canvas */
+  --panel:#101A2E;
+  --panel2:#0E1626;
+  --line:rgba(146,176,224,.16);
+  --line2:rgba(146,176,224,.30);
+  --text:#E9EFFB;
+  --muted:#9DAECB;
+  --faint:#6F81A3;
+
+  --g-blue:#4285F4; --g-red:#EA4335; --g-yellow:#FBBC04; --g-green:#34A853;
+  --bronze:#CD7F32; --silver:#C7D0DC; --gold:#F5C518;
+  --ice:#5FD4F4; --violet:#A78BFA;
+
+  --r:16px;
+  --shadow:0 10px 30px rgba(2,8,20,.55);
+  --font-d:'Space Grotesk',sans-serif;
+  --font-b:'IBM Plex Sans',sans-serif;
+  --font-m:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font-b);color:var(--text);background:
+    radial-gradient(1100px 560px at 88% -8%, rgba(66,133,244,.16), transparent 60%),
+    radial-gradient(900px 520px at -8% 108%, rgba(52,168,83,.11), transparent 60%),
+    radial-gradient(760px 420px at 108% 78%, rgba(245,197,24,.08), transparent 60%),
+    radial-gradient(700px 420px at 8% 30%, rgba(167,139,250,.07), transparent 60%),
+    var(--ink);
+  min-height:100vh; line-height:1.55;
+}
+body::before{ /* blueprint grid */
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    linear-gradient(rgba(146,176,224,.05) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(146,176,224,.05) 1px,transparent 1px);
+  background-size:44px 44px;
+  -webkit-mask-image:radial-gradient(1200px 800px at 50% 18%,#000 38%,transparent 86%);
+          mask-image:radial-gradient(1200px 800px at 50% 18%,#000 38%,transparent 86%);
+}
+.wrap{position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:0 20px}
+
+/* ============ HEADER ============ */
+header{padding:34px 0 10px}
+.eyebrow{font-family:var(--font-m);font-size:.74rem;letter-spacing:.22em;color:var(--ice);text-transform:uppercase}
+h1{font-family:var(--font-d);font-weight:700;font-size:clamp(1.7rem,3.6vw,2.7rem);line-height:1.12;margin:.45rem 0 .55rem}
+h1 .hl{background:linear-gradient(90deg,var(--bronze),var(--silver) 45%,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--muted);max-width:860px;font-size:1.02rem}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.btn{
+  font-family:var(--font-m);font-size:.8rem;letter-spacing:.04em;cursor:pointer;
+  color:var(--text);background:linear-gradient(180deg,#15223C,#0F1A30);
+  border:1px solid var(--line2);border-radius:999px;padding:9px 16px;
+  display:inline-flex;align-items:center;gap:8px;transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.btn:hover{transform:translateY(-1px);border-color:var(--ice);box-shadow:0 6px 18px rgba(95,212,244,.15)}
+.btn:focus-visible{outline:2px solid var(--ice);outline-offset:2px}
+.btn .dot{width:8px;height:8px;border-radius:50%;background:var(--g-green);box-shadow:0 0 10px var(--g-green)}
+.btn.paused .dot{background:var(--g-red);box-shadow:0 0 10px var(--g-red)}
+.btn.tour-btn{border-color:rgba(245,197,24,.5)}
+.btn.tour-btn:hover{border-color:var(--gold);box-shadow:0 6px 18px rgba(245,197,24,.18)}
+
+/* ============ NAV TABS ============ */
+nav{position:sticky;top:0;z-index:50;background:rgba(11,18,32,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);margin-top:18px}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding:10px 0;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  font-family:var(--font-m);font-size:.78rem;white-space:nowrap;cursor:pointer;color:var(--muted);
+  background:transparent;border:1px solid transparent;border-radius:999px;padding:8px 14px;
+  display:inline-flex;align-items:center;gap:8px;transition:.18s;
+}
+.tab .sw{width:9px;height:9px;border-radius:3px;background:var(--tabc,#6F81A3);box-shadow:0 0 8px var(--tabc,transparent)}
+.tab:hover{color:var(--text);border-color:var(--line2)}
+.tab.active{color:var(--text);background:rgba(146,176,224,.08);border-color:var(--line2)}
+.tab:focus-visible{outline:2px solid var(--ice);outline-offset:2px}
+
+/* ============ PAGES ============ */
+.page{display:none;padding:26px 0 10px;animation:pagein .45s ease both}
+.page.active{display:block}
+@keyframes pagein{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+h2{font-family:var(--font-d);font-size:clamp(1.25rem,2.4vw,1.7rem);margin-bottom:6px}
+h2 .accent{color:var(--ac,var(--ice))}
+.lead{color:var(--muted);max-width:880px;margin-bottom:14px}
+.analogy{
+  border:1px dashed rgba(245,197,24,.45);background:rgba(245,197,24,.06);
+  border-radius:12px;padding:10px 14px;margin:10px 0 18px;max-width:880px;color:#F3E4B0;font-size:.95rem;
+}
+.analogy b{color:var(--gold)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;margin:6px 0 12px;font-family:var(--font-m);font-size:.72rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.lg-line{width:26px;height:0;border-top:2.5px solid var(--g-blue);display:inline-block;border-radius:2px}
+.lg-dash{width:26px;height:0;border-top:2.5px dashed var(--violet);display:inline-block}
+.lg-dot{width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold)}
+.hint{font-family:var(--font-m);font-size:.72rem;color:var(--faint);margin:8px 0 0}
+.hint b{color:var(--ice);font-weight:500}
+
+/* ============ STAGE (SVG diagrams) ============ */
+.stage{
+  background:linear-gradient(180deg,rgba(18,28,50,.7),rgba(13,21,38,.85));
+  border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
+  padding:8px;overflow:hidden;position:relative;
+}
+.stage svg{width:100%;height:auto;display:block}
+svg text{font-family:var(--font-b)}
+.t1{font-family:var(--font-d);font-weight:600;font-size:15px;fill:var(--text)}
+.t2{font-size:11px;fill:var(--muted)}
+.t3{font-family:var(--font-m);font-size:10px;fill:var(--faint);letter-spacing:.08em}
+.tlabel{font-family:var(--font-m);font-size:10.5px;fill:#A9B9D6;letter-spacing:.04em}
+.tzone{font-family:var(--font-d);font-weight:700;font-size:18px}
+.tmini{font-family:var(--font-m);font-size:9.5px;fill:var(--muted)}
+
+/* nodes */
+.node{cursor:pointer;transition:opacity .3s}
+.node rect.body, .node path.body, .node ellipse.body{
+  fill:rgba(15,24,44,.92);stroke:var(--c,#8aa);stroke-width:1.6;
+  transition:filter .2s, stroke-width .2s;
+}
+.node:hover rect.body,.node:focus-visible rect.body,
+.node:hover path.body,.node:focus-visible path.body,
+.node:hover ellipse.body,.node:focus-visible ellipse.body{
+  stroke-width:2.4;filter:drop-shadow(0 0 10px var(--c));
+}
+.node:focus-visible{outline:none}
+.node .ic{stroke:var(--c);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.node .icf{fill:var(--c)}
+.node .badge{font-family:var(--font-m);font-size:9px;fill:var(--ink);font-weight:600}
+.nd-blue{--c:var(--g-blue)} .nd-red{--c:var(--g-red)} .nd-yellow{--c:var(--g-yellow)}
+.nd-green{--c:var(--g-green)} .nd-bronze{--c:var(--bronze)} .nd-silver{--c:var(--silver)}
+.nd-gold{--c:var(--gold)} .nd-ice{--c:var(--ice)} .nd-violet{--c:var(--violet)} .nd-grey{--c:#8FA3C4}
+
+/* pipes & beams */
+.pipe{fill:none;stroke-width:2.4;stroke-linecap:round}
+.pipe.data{stroke:rgba(143,163,196,.5)}
+.pipe.ctrl{stroke:var(--violet);stroke-dasharray:6 7;opacity:.85;animation:dashmove 1.4s linear infinite}
+.beam{fill:none;stroke-width:2.4;stroke-linecap:round;stroke-dasharray:3 9;animation:dashmove 1.1s linear infinite}
+@keyframes dashmove{to{stroke-dashoffset:-32}}
+.pk{filter:drop-shadow(0 0 6px currentColor)}
+.pk.c-blue{fill:var(--g-blue);color:var(--g-blue)} .pk.c-bronze{fill:var(--bronze);color:var(--bronze)}
+.pk.c-silver{fill:var(--silver);color:var(--silver)} .pk.c-gold{fill:var(--gold);color:var(--gold)}
+.pk.c-green{fill:var(--g-green);color:var(--g-green)} .pk.c-ice{fill:var(--ice);color:var(--ice)}
+.pk.c-violet{fill:var(--violet);color:var(--violet)} .pk.c-red{fill:var(--g-red);color:var(--g-red)}
+.zoneglow{opacity:.5;animation:breathe 4.5s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.35}50%{opacity:.75}}
+.pulse{animation:pulse 2.6s ease-in-out infinite;transform-origin:center;transform-box:fill-box}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+
+/* guided-tour dimming */
+.stage.dimmed .node,.stage.dimmed .pipe,.stage.dimmed .beam,.stage.dimmed .pk,.stage.dimmed .freefloat{opacity:.13}
+.stage.dimmed .node.spot{opacity:1}
+.stage.dimmed .node.spot rect.body,.stage.dimmed .node.spot path.body{
+  stroke-width:2.6;filter:drop-shadow(0 0 14px var(--c));
+}
+
+/* tour card */
+.tourcard{
+  display:none;margin-top:14px;border:1px solid rgba(245,197,24,.45);border-radius:var(--r);
+  background:linear-gradient(180deg,rgba(38,32,14,.55),rgba(20,18,10,.6));padding:16px 18px;
+  animation:pagein .35s ease both;
+}
+.tourcard.show{display:block}
+.tourcard .step{font-family:var(--font-m);font-size:.72rem;color:var(--gold);letter-spacing:.14em}
+.tourcard h3{font-family:var(--font-d);margin:.3rem 0 .35rem;font-size:1.12rem}
+.tourcard p{color:var(--muted);max-width:900px}
+.tourcard .tnav{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+
+/* ============ DETAIL DRAWER ============ */
+.drawer{
+  position:fixed;top:0;right:0;height:100%;width:min(440px,94vw);z-index:90;
+  background:linear-gradient(180deg,#121D34,#0D1628);border-left:1px solid var(--line2);
+  box-shadow:-20px 0 50px rgba(0,0,0,.5);transform:translateX(105%);transition:transform .34s cubic-bezier(.2,.8,.2,1);
+  display:flex;flex-direction:column;
+}
+.drawer.open{transform:none}
+.drawer-head{padding:18px 20px 12px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start}
+.drawer-head .bar{width:6px;align-self:stretch;border-radius:4px;background:var(--dc,var(--ice));box-shadow:0 0 12px var(--dc,var(--ice))}
+.drawer-head h3{font-family:var(--font-d);font-size:1.15rem;line-height:1.25;flex:1}
+.drawer-head .kicker{font-family:var(--font-m);font-size:.68rem;letter-spacing:.18em;color:var(--dc,var(--ice));text-transform:uppercase;display:block;margin-bottom:3px}
+.drawer-close{background:none;border:1px solid var(--line2);color:var(--muted);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:15px;flex:none}
+.drawer-close:hover{color:var(--text);border-color:var(--ice)}
+.drawer-body{padding:16px 20px 30px;overflow-y:auto;font-size:.95rem}
+.drawer-body p{color:var(--muted);margin-bottom:10px}
+.drawer-body .an{border-left:3px solid var(--gold);background:rgba(245,197,24,.07);padding:8px 12px;border-radius:0 10px 10px 0;color:#F3E4B0;margin:12px 0;font-size:.9rem}
+.drawer-body h4{font-family:var(--font-m);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--dc,var(--ice));margin:16px 0 6px}
+.drawer-body ul{list-style:none}
+.drawer-body li{color:var(--muted);padding:5px 0 5px 18px;position:relative}
+.drawer-body li::before{content:"▸";position:absolute;left:0;color:var(--dc,var(--ice))}
+.drawer-body li b{color:var(--text);font-weight:600}
+.drawer-body code{font-family:var(--font-m);font-size:.8rem;background:#0A1322;border:1px solid var(--line);padding:1.5px 6px;border-radius:6px;color:var(--ice)}
+.scrim{position:fixed;inset:0;background:rgba(4,8,16,.5);z-index:80;opacity:0;pointer-events:none;transition:opacity .3s}
+.scrim.show{opacity:1;pointer-events:auto}
+
+/* ============ CARDS / CHIPS ============ */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.chip{
+  font-family:var(--font-m);font-size:.72rem;color:var(--text);cursor:pointer;
+  border:1px solid color-mix(in srgb,var(--cc,#8FA3C4) 55%, transparent);
+  background:color-mix(in srgb,var(--cc,#8FA3C4) 10%, transparent);
+  padding:6px 12px;border-radius:999px;transition:.15s;
+}
+.chip:hover{transform:translateY(-1px);box-shadow:0 4px 14px color-mix(in srgb,var(--cc) 28%,transparent)}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:16px}
+.kcard{
+  background:linear-gradient(180deg,rgba(20,31,56,.8),rgba(14,22,40,.9));
+  border:1px solid var(--line);border-left:3px solid var(--cc,var(--ice));
+  border-radius:14px;padding:14px 16px;transition:transform .18s, box-shadow .18s;cursor:pointer;
+}
+.kcard:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(2,8,20,.5)}
+.kcard h4{font-family:var(--font-d);font-size:1rem;margin-bottom:4px;color:var(--text)}
+.kcard p{font-size:.86rem;color:var(--muted)}
+.kcard .km{font-family:var(--font-m);font-size:.66rem;letter-spacing:.14em;color:var(--cc,var(--ice));text-transform:uppercase}
+
+/* ============ ICEBERG TIME TRAVEL ============ */
+.split{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;margin-top:16px}
+.panel{background:linear-gradient(180deg,rgba(18,28,50,.7),rgba(13,21,38,.85));border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow)}
+.panel h3{font-family:var(--font-d);font-size:1.05rem;margin-bottom:4px}
+.panel .pm{font-family:var(--font-m);font-size:.68rem;letter-spacing:.16em;color:var(--ice);text-transform:uppercase}
+.tt-slider{width:100%;margin:14px 0 4px;accent-color:var(--ice)}
+.tt-marks{display:flex;justify-content:space-between;font-family:var(--font-m);font-size:.68rem;color:var(--faint)}
+.tt-marks span.on{color:var(--ice)}
+.snapdesc{min-height:64px;color:var(--muted);font-size:.9rem;margin:10px 0}
+.snapdesc b{color:var(--text)}
+.ttq{font-family:var(--font-m);font-size:.74rem;background:#0A1322;border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--ice);overflow-x:auto;white-space:nowrap}
+table.mini{width:100%;border-collapse:collapse;margin-top:12px;font-size:.84rem}
+table.mini th{font-family:var(--font-m);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line2)}
+table.mini td{padding:6px 8px;border-bottom:1px solid var(--line);color:var(--muted)}
+table.mini td.new{color:var(--g-green);font-weight:600}
+table.mini td.chg{color:var(--g-yellow);font-weight:600}
+table.mini th.newcol,table.mini td.newcol{background:rgba(95,212,244,.08)}
+tr.rowin{animation:rowin .5s ease both}
+@keyframes rowin{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+
+/* ============ SERVICES ACCORDION ============ */
+.svcgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+.svc{
+  background:linear-gradient(180deg,rgba(20,31,56,.85),rgba(13,21,38,.92));
+  border:1px solid var(--line);border-top:3px solid var(--sc,var(--ice));border-radius:14px;overflow:hidden;
+  transition:box-shadow .2s;
+}
+.svc:hover{box-shadow:0 12px 28px rgba(2,8,20,.5)}
+.svc-head{display:flex;align-items:center;gap:14px;padding:15px 18px;cursor:pointer;background:none;border:none;width:100%;text-align:left;color:var(--text)}
+.svc-head:focus-visible{outline:2px solid var(--ice);outline-offset:-3px}
+.svc-ic{width:42px;height:42px;flex:none;border-radius:11px;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--sc) 14%,transparent);border:1px solid color-mix(in srgb,var(--sc) 45%,transparent)}
+.svc-ic svg{width:26px;height:26px}
+.svc-head h3{font-family:var(--font-d);font-size:1.02rem}
+.svc-head .one{font-size:.82rem;color:var(--muted);display:block}
+.svc-head .caret{margin-left:auto;color:var(--faint);transition:transform .25s;font-size:.8rem}
+.svc.open .caret{transform:rotate(180deg)}
+.svc-body{max-height:0;overflow:hidden;transition:max-height .45s ease}
+.svc.open .svc-body{max-height:900px}
+.svc-inner{padding:2px 18px 18px;font-size:.9rem}
+.svc-inner h5{font-family:var(--font-m);font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;color:var(--sc);margin:12px 0 5px}
+.svc-inner p{color:var(--muted)}
+.svc-inner ul{list-style:none}
+.svc-inner li{color:var(--muted);padding:4px 0 4px 17px;position:relative}
+.svc-inner li::before{content:"▸";position:absolute;left:0;color:var(--sc)}
+.svc-inner li b{color:var(--text)}
+.svc-inner .role{border:1px dashed color-mix(in srgb,var(--sc) 50%,transparent);background:color-mix(in srgb,var(--sc) 7%,transparent);border-radius:10px;padding:8px 12px;margin-top:12px;font-size:.85rem;color:var(--text)}
+
+/* ============ FOOTER ============ */
+footer{margin:46px 0 40px;border-top:1px solid var(--line);padding-top:22px;color:var(--faint);font-size:.86rem}
+footer b{color:var(--muted)}
+.recap{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-m);font-size:.7rem}
+.recap span{border:1px solid var(--line2);border-radius:999px;padding:5px 11px;color:var(--muted)}
+.recap .arrow{border:none;color:var(--faint);padding:5px 0}
+
+/* ============ RESPONSIVE & MOTION ============ */
+@media(max-width:880px){
+  .split{grid-template-columns:1fr}
+  .svcgrid{grid-template-columns:1fr}
+}
+@media(max-width:720px){
+  .drawer{top:auto;bottom:0;height:min(78vh,640px);width:100%;border-left:none;border-top:1px solid var(--line2);
+    border-radius:18px 18px 0 0;transform:translateY(105%)}
+  .drawer.open{transform:none}
+}
+body.no-anim .beam,body.no-anim .pipe.ctrl,body.no-anim .zoneglow,body.no-anim .pulse{animation:none}
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ================= HEADER ================= -->
+<header>
+  <div class="brandrow">
+    <svg class="gcl" viewBox="6 12 98 76" aria-hidden="true">
+      <path d="M18.6 40.2 A26 26 0 0 1 60.7 26.1" fill="none" stroke="#EA4335" stroke-width="16" stroke-linecap="round"/>
+      <path d="M18.3 49.6 A26 26 0 0 0 39.5 71.6" fill="none" stroke="#FBBC04" stroke-width="16" stroke-linecap="round"/>
+      <path d="M52 74 L83 74" fill="none" stroke="#34A853" stroke-width="16" stroke-linecap="round"/>
+      <path d="M68.5 37.6 A20 20 0 0 1 91.5 70.4" fill="none" stroke="#4285F4" stroke-width="16" stroke-linecap="round"/>
+    </svg>
+    <span class="gclt">Google <b>Cloud</b></span>
+  </div>
+  <div class="eyebrow">GCP DATA LAKEHOUSE // INTERACTIVE FIELD GUIDE</div>
+  <h1>From raw files to business answers —<br>watch the data turn <span class="hl">bronze → silver → gold</span></h1>
+  <p class="sub">One living diagram of a modern Google Cloud lakehouse: <b>BigLake</b>, the <b>Medallion architecture</b>, <b>Apache Iceberg</b> tables, and the GCP services that move the data. Click any glowing box to learn what it does — no prior experience needed.</p>
+  <div class="controls">
+    <button class="btn" id="playBtn"><span class="dot"></span><span id="playLabel">Animation: playing</span></button>
+    <button class="btn tour-btn" id="tourBtn">★ Start guided tour (10 steps)</button>
+  </div>
+</header>
+
+<!-- ================= NAV ================= -->
+<nav><div class="tabs" role="tablist">
+  <button class="tab active" data-page="pipeline" style="--tabc:var(--ice)"><span class="sw"></span>End-to-end Pipeline</button>
+  <button class="tab" data-page="medallion" style="--tabc:var(--gold)"><span class="sw"></span>Medallion Zones</button>
+  <button class="tab" data-page="biglake" style="--tabc:var(--g-blue)"><span class="sw"></span>BigLake</button>
+  <button class="tab" data-page="iceberg" style="--tabc:#5FD4F4"><span class="sw"></span>Iceberg Tables</button>
+  <button class="tab" data-page="pyspark" style="--tabc:var(--g-red)"><span class="sw"></span>PySpark Engine</button>
+  <button class="tab" data-page="bq" style="--tabc:#669DF6"><span class="sw"></span>BigQuery Internals</button>
+  <button class="tab" data-page="services" style="--tabc:var(--g-green)"><span class="sw"></span>GCP Services</button>
+</div></nav>
+
+<!-- ================= PAGE 1 · PIPELINE ================= -->
+<section class="page active" id="page-pipeline" style="--ac:var(--ice)">
+  <h2>The <span class="accent">end-to-end pipeline</span> — everything in one picture</h2>
+  <p class="lead">Every night this pipeline wakes up, collects raw data, refines it in stages, and serves it to dashboards, APIs and ML models. Solid lines carry <b>data</b>; dashed purple lines carry <b>control signals</b> ("go run now!"). The moving dots are batches of records — notice how they change colour as they get cleaner.</p>
+  <div class="analogy">🍳 <b>Kitchen analogy:</b> Scheduler = the alarm clock, Cloud Run Job = the delivery van, GCS = the pantry, Dataproc = the kitchen crew, Iceberg tables = labelled airtight containers, BigQuery = the head chef serving plates, Composer = the kitchen manager coordinating everyone.</div>
+  <div class="legend">
+    <span><span class="lg-line"></span>data flow</span>
+    <span><span class="lg-dash"></span>control / trigger</span>
+    <span><span class="lg-dot"></span>a batch of records</span>
+  </div>
+
+  <div class="stage" id="stage-pipeline">
+  <svg viewBox="0 0 1280 760" role="img" aria-label="Animated GCP lakehouse pipeline diagram">
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="#8FA3C4"/>
+      </marker>
+      <marker id="ahv" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="#A78BFA"/>
+      </marker>
+    </defs>
+
+    <!-- lane labels -->
+    <text class="t3 freefloat" x="40" y="48">DATA LANE · INGEST</text>
+    <text class="t3 freefloat" x="40" y="284">CONTROL LANE · ORCHESTRATION</text>
+    <text class="t3 freefloat" x="820" y="440">SERVING LANE · ANALYTICS</text>
+
+    <!-- ====== pipes (under nodes) ====== -->
+    <path class="pipe data" d="M 200 90 C 235 90 235 112 268 112" marker-end="url(#ah)"/>
+    <path class="pipe data" d="M 200 140 C 230 140 230 128 268 128" marker-end="url(#ah)"/>
+    <path class="pipe data" d="M 200 190 C 240 190 240 146 268 146" marker-end="url(#ah)"/>
+    <path class="pipe data" d="M 460 128 H 556" marker-end="url(#ah)"/>
+    <path class="pipe data" d="M 665 176 V 296" marker-end="url(#ah)"/>
+    <path class="pipe data" d="M 770 344 H 836" marker-end="url(#ah)"/>
+    <path class="pipe data" d="M 1030 344 H 1076" marker-end="url(#ah)"/>
+    <path class="pipe data" d="M 935 390 V 448" marker-end="url(#ah)"/>
+    <path class="pipe data" d="M 1165 390 V 448" marker-end="url(#ah)"/>
+    <path class="pipe data" d="M 1040 512 V 556" marker-end="url(#ah)"/>
+    <path class="pipe data" d="M 1050 650 C 1050 672 785 660 785 682" marker-end="url(#ah)"/>
+    <path class="pipe data" d="M 1050 650 C 1050 668 990 668 990 682" marker-end="url(#ah)"/>
+    <path class="pipe data" d="M 1050 650 C 1050 668 1185 660 1185 682" marker-end="url(#ah)"/>
+    <!-- control dashed -->
+    <path class="pipe ctrl" d="M 365 234 V 178" marker-end="url(#ahv)"/>
+    <path class="pipe ctrl" d="M 244 344 H 552" marker-end="url(#ahv)"/>
+    <path class="pipe ctrl" d="M 140 390 C 140 560 690 604 940 604" marker-end="url(#ahv)"/>
+
+    <!-- pipe labels -->
+    <text class="tlabel freefloat" x="468" y="116">writes Parquet</text>
+    <text class="tlabel freefloat" x="678" y="240">raw files in</text>
+    <text class="tlabel freefloat" x="690" y="334" text-anchor="start"></text>
+    <text class="tlabel freefloat" x="775" y="332">clean · dedupe</text>
+    <text class="tlabel freefloat" x="1000" y="332">aggregate</text>
+    <text class="tlabel freefloat" x="380" y="226" fill="#C4B5FD">fires 02:00 cron</text>
+    <text class="tlabel freefloat" x="300" y="336" fill="#C4B5FD">orchestrates the DAG</text>
+    <text class="tlabel freefloat" x="470" y="585" fill="#C4B5FD">runs SQL · loads Gold</text>
+    <text class="tlabel freefloat" x="948" y="540">secured SQL over the lake</text>
+    <text class="tlabel freefloat" x="700" y="745">dashboards · APIs · ML features</text>
+
+    <!-- ====== particles ====== -->
+    <circle class="pk c-blue" r="5"><animateMotion dur="2.4s" repeatCount="indefinite" path="M 200 90 C 235 90 235 112 268 112"/></circle>
+    <circle class="pk c-blue" r="5"><animateMotion dur="2.4s" begin="-0.9s" repeatCount="indefinite" path="M 200 140 C 230 140 230 128 268 128"/></circle>
+    <circle class="pk c-blue" r="5"><animateMotion dur="2.4s" begin="-1.7s" repeatCount="indefinite" path="M 200 190 C 240 190 240 146 268 146"/></circle>
+    <circle class="pk c-blue" r="5.5"><animateMotion dur="2.2s" repeatCount="indefinite" path="M 460 128 H 556"/></circle>
+    <circle class="pk c-blue" r="5.5"><animateMotion dur="2.2s" begin="-1.1s" repeatCount="indefinite" path="M 460 128 H 556"/></circle>
+    <circle class="pk c-bronze" r="5.5"><animateMotion dur="2.4s" repeatCount="indefinite" path="M 665 176 V 296"/></circle>
+    <circle class="pk c-bronze" r="5.5"><animateMotion dur="2.4s" begin="-1.2s" repeatCount="indefinite" path="M 665 176 V 296"/></circle>
+    <circle class="pk c-silver" r="5.5"><animateMotion dur="1.8s" repeatCount="indefinite" path="M 770 344 H 836"/></circle>
+    <circle class="pk c-gold" r="5.5"><animateMotion dur="1.6s" repeatCount="indefinite" path="M 1030 344 H 1076"/></circle>
+    <circle class="pk c-silver" r="5"><animateMotion dur="1.8s" repeatCount="indefinite" path="M 935 390 V 448"/></circle>
+    <circle class="pk c-gold" r="5"><animateMotion dur="1.8s" begin="-0.7s" repeatCount="indefinite" path="M 1165 390 V 448"/></circle>
+    <circle class="pk c-ice" r="5.5"><animateMotion dur="1.5s" repeatCount="indefinite" path="M 1040 512 V 556"/></circle>
+    <circle class="pk c-green" r="5"><animateMotion dur="2.1s" repeatCount="indefinite" path="M 1050 650 C 1050 672 785 660 785 682"/></circle>
+    <circle class="pk c-green" r="5"><animateMotion dur="2.1s" begin="-0.8s" repeatCount="indefinite" path="M 1050 650 C 1050 668 990 668 990 682"/></circle>
+    <circle class="pk c-green" r="5"><animateMotion dur="2.1s" begin="-1.5s" repeatCount="indefinite" path="M 1050 650 C 1050 668 1185 660 1185 682"/></circle>
+
+    <!-- ====== source chips ====== -->
+    <g class="node nd-grey" data-info="sources" tabindex="0" role="button" aria-label="Source systems">
+      <rect class="body" x="40" y="70" width="160" height="40" rx="11"/>
+      <path class="ic" transform="translate(54,80)" d="M5 2 C2 2 2 5 2 8 C2 11 2 14 5 14 M13 2 C16 2 16 5 16 8 C16 11 16 14 13 14"/>
+      <text class="t1" x="82" y="95" font-size="13">SaaS APIs</text>
+    </g>
+    <g class="node nd-grey" data-info="sources" tabindex="0" role="button" aria-label="Operational databases">
+      <rect class="body" x="40" y="120" width="160" height="40" rx="11"/>
+      <g class="ic" transform="translate(54,128)"><ellipse cx="9" cy="4" rx="7" ry="3"/><path d="M2 4 V12 C2 14 16 14 16 12 V4"/></g>
+      <text class="t1" x="82" y="145" font-size="13">OLTP databases</text>
+    </g>
+    <g class="node nd-grey" data-info="sources" tabindex="0" role="button" aria-label="File drops">
+      <rect class="body" x="40" y="170" width="160" height="40" rx="11"/>
+      <g class="ic" transform="translate(56,178)"><path d="M2 2 H10 L14 6 V16 H2 Z"/><path d="M10 2 V6 H14"/></g>
+      <text class="t1" x="82" y="195" font-size="13">CSV / SFTP drops</text>
+    </g>
+
+    <!-- ====== Cloud Run Job ====== -->
+    <g class="node nd-blue" id="n-runjob" data-info="runjob" tabindex="0" role="button" aria-label="Cloud Run Job, containerized ingestion">
+      <rect class="body" x="270" y="86" width="190" height="88" rx="15"/>
+      <text class="t3" x="288" y="106" fill="#7AA7F8">STEP 02 · INGEST</text>
+      <g class="ic" transform="translate(288,118)"><rect x="0" y="2" width="20" height="20" rx="4"/><path class="icf" d="M8 8 L15 12 L8 16 Z" stroke="none"/></g>
+      <text class="t1" x="320" y="130">Cloud Run Job</text>
+      <text class="t2" x="320" y="147">container that pulls data,</text>
+      <text class="t2" x="320" y="161">then exits when done</text>
+    </g>
+
+    <!-- ====== Cloud Scheduler ====== -->
+    <g class="node nd-violet" id="n-sched" data-info="scheduler" tabindex="0" role="button" aria-label="Cloud Scheduler cron trigger">
+      <rect class="body" x="270" y="236" width="190" height="60" rx="15"/>
+      <g class="ic" transform="translate(288,252)"><circle cx="11" cy="11" r="10"/><path d="M11 5 V11 L15 14"/></g>
+      <text class="t3" x="320" y="254" fill="#C4B5FD">STEP 01 · TRIGGER</text>
+      <text class="t1" x="320" y="274" font-size="14">Cloud Scheduler</text>
+      <text class="t2" x="320" y="289">managed cron · "0 2 * * *"</text>
+    </g>
+
+    <!-- ====== Bronze GCS ====== -->
+    <rect class="zoneglow" x="548" y="78" width="226" height="104" rx="20" fill="var(--bronze)" opacity=".12"/>
+    <g class="node nd-bronze" id="n-bronze" data-info="bronze" tabindex="0" role="button" aria-label="GCS raw zone with Parquet files">
+      <rect class="body" x="560" y="86" width="200" height="88" rx="15"/>
+      <text class="t3" x="578" y="106" fill="#E2A35E">STEP 03 · RAW ZONE</text>
+      <g class="ic" transform="translate(578,118)"><path d="M2 3 H20 L17 20 H5 Z"/><path d="M6 8 H16"/></g>
+      <text class="t1" x="610" y="130">GCS · Bronze</text>
+      <text class="t2" x="610" y="147">raw Parquet, exactly as</text>
+      <text class="t2" x="610" y="161">received · append-only</text>
+    </g>
+
+    <!-- ====== Composer ====== -->
+    <g class="node nd-violet" id="n-composer" data-info="composer" tabindex="0" role="button" aria-label="Cloud Composer managed Airflow">
+      <rect class="body" x="40" y="300" width="204" height="90" rx="15"/>
+      <text class="t3" x="58" y="320" fill="#C4B5FD">STEP 04 · ORCHESTRATE</text>
+      <g class="ic" transform="translate(58,332)"><circle cx="3" cy="4" r="2.6"/><circle cx="3" cy="17" r="2.6"/><circle cx="18" cy="10.5" r="3"/><path d="M6 5 L14 9 M6 16 L14 12"/></g>
+      <text class="t1" x="92" y="342" font-size="14">Cloud Composer</text>
+      <text class="t2" x="92" y="359">managed Apache Airflow —</text>
+      <text class="t2" x="92" y="373">runs the DAG, retries, alerts</text>
+    </g>
+
+    <!-- ====== Dataproc ====== -->
+    <g class="node nd-red" id="n-dataproc" data-info="dataproc" tabindex="0" role="button" aria-label="Dataproc managed Spark">
+      <rect class="body" x="560" y="300" width="200" height="88" rx="15"/>
+      <text class="t3" x="578" y="320" fill="#F08A7E">STEP 05 · TRANSFORM</text>
+      <g class="ic" transform="translate(578,332)"><circle cx="4" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><circle cx="11" cy="4" r="3"/><path d="M6 14.5 L9.5 7 M12.5 7 L16 14.5 M7 17 H15"/></g>
+      <text class="t1" x="610" y="342">Dataproc</text>
+      <text class="t2" x="610" y="359">managed Apache Spark —</text>
+      <text class="t2" x="610" y="373">cleans &amp; reshapes at scale</text>
+    </g>
+
+    <!-- ====== Silver ====== -->
+    <rect class="zoneglow" x="828" y="292" width="218" height="104" rx="20" fill="var(--silver)" opacity=".10"/>
+    <g class="node nd-silver" id="n-silver" data-info="silver" tabindex="0" role="button" aria-label="Silver conformance zone, Iceberg tables">
+      <rect class="body" x="840" y="300" width="192" height="88" rx="15"/>
+      <text class="t3" x="858" y="320" fill="#D7E0EC">STEP 06 · CONFORMANCE</text>
+      <g class="ic" transform="translate(858,332)"><polygon points="11,1 20,8 16,20 6,20 2,8"/><path d="M2 8 H20"/></g>
+      <text class="t1" x="890" y="342">Silver · Iceberg</text>
+      <text class="t2" x="890" y="359">cleaned, deduped, typed,</text>
+      <text class="t2" x="890" y="373">one row per real thing</text>
+    </g>
+
+    <!-- ====== Gold ====== -->
+    <rect class="zoneglow" x="1068" y="292" width="194" height="104" rx="20" fill="var(--gold)" opacity=".10"/>
+    <g class="node nd-gold" id="n-gold" data-info="gold" tabindex="0" role="button" aria-label="Gold curated zone, business tables">
+      <rect class="body" x="1080" y="300" width="170" height="88" rx="15"/>
+      <text class="t3" x="1096" y="320" fill="#F2D879">STEP 07 · CURATED</text>
+      <g class="ic" transform="translate(1096,332)"><rect x="1" y="6" width="18" height="14" rx="2"/><path d="M1 11 H19 M7 6 V20 M13 6 V20"/><path class="icf" stroke="none" d="M16 0 L17.2 2.8 L20 4 L17.2 5.2 L16 8 L14.8 5.2 L12 4 L14.8 2.8 Z"/></g>
+      <text class="t1" x="1126" y="342">Gold zone</text>
+      <text class="t2" x="1126" y="359">KPIs, star schemas,</text>
+      <text class="t2" x="1126" y="373">ready for the business</text>
+    </g>
+
+    <!-- ====== BigLake band ====== -->
+    <g class="node nd-blue" id="n-biglake" data-info="biglake" tabindex="0" role="button" aria-label="BigLake unified table layer">
+      <rect class="body" x="820" y="452" width="440" height="60" rx="15"/>
+      <g class="ic" transform="translate(842,466)"><path d="M11 1 L20 4 V10 C20 16 16 20 11 22 C6 20 2 16 2 10 V4 Z"/><path d="M7.5 11 L10 13.5 L15 8"/></g>
+      <text class="t1" x="876" y="478" font-size="14.5">BigLake · STEP 08</text>
+      <text class="t2" x="876" y="495">one secure table layer over GCS — fine-grained access for every engine</text>
+    </g>
+
+    <!-- ====== BigQuery ====== -->
+    <g class="node nd-blue" id="n-bigquery" data-info="bigquery" tabindex="0" role="button" aria-label="BigQuery serverless data warehouse">
+      <rect class="body" x="945" y="560" width="210" height="90" rx="15"/>
+      <text class="t3" x="963" y="580" fill="#7AA7F8">STEP 09 · ANALYZE</text>
+      <g class="ic" transform="translate(963,592)"><circle cx="9" cy="9" r="8"/><path d="M15 15 L21 21"/><path d="M5.5 11 V8 M9 11 V6 M12.5 11 V9.5"/></g>
+      <text class="t1" x="996" y="602">BigQuery</text>
+      <text class="t2" x="996" y="619">serverless SQL warehouse —</text>
+      <text class="t2" x="996" y="633">petabytes in seconds</text>
+    </g>
+
+    <!-- ====== consumers ====== -->
+    <g id="n-consumers">
+      <g class="node nd-green" data-info="bi" tabindex="0" role="button" aria-label="BI dashboards">
+        <rect class="body" x="700" y="684" width="170" height="46" rx="12"/>
+        <g class="ic" transform="translate(716,695)"><path d="M2 16 V9 M8 16 V3 M14 16 V12 M20 16 V6"/></g>
+        <text class="t1" x="746" y="712" font-size="13">Looker / BI</text>
+      </g>
+      <g class="node nd-green" data-info="runservice" tabindex="0" role="button" aria-label="Cloud Run Service data API">
+        <rect class="body" x="892" y="684" width="200" height="46" rx="12"/>
+        <g class="ic" transform="translate(908,695)"><path d="M8 2 V7 M14 2 V7"/><path d="M5 7 H17 V11 C17 14 14 16 11 16 C8 16 5 14 5 11 Z"/><path d="M11 16 V21"/></g>
+        <text class="t1" x="938" y="712" font-size="13">Cloud Run Service</text>
+      </g>
+      <g class="node nd-green" data-info="ml" tabindex="0" role="button" aria-label="Vertex AI machine learning">
+        <rect class="body" x="1114" y="684" width="146" height="46" rx="12"/>
+        <g class="ic" transform="translate(1130,695)"><circle cx="11" cy="11" r="6"/><circle cx="11" cy="11" r="1.6" class="icf" stroke="none"/><path d="M11 1 V5 M11 17 V21 M1 11 H5 M17 11 H21"/></g>
+        <text class="t1" x="1160" y="712" font-size="13">Vertex AI</text>
+      </g>
+      <text class="t3" x="700" y="672">STEP 10 · CONSUME</text>
+    </g>
+  </svg>
+  </div>
+
+  <p class="hint">▶ Tip: click <b>any box</b> for a beginner-friendly deep dive, or press <b>★ Start guided tour</b> above to walk the 10 steps in order.</p>
+
+  <div class="tourcard" id="tourcard">
+    <div class="step" id="tourStep">STEP 1 / 10</div>
+    <h3 id="tourTitle"></h3>
+    <p id="tourText"></p>
+    <div class="tnav">
+      <button class="btn" id="tourPrev">← Back</button>
+      <button class="btn" id="tourNext">Next →</button>
+      <button class="btn" id="tourEnd">✕ End tour</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PAGE 2 · MEDALLION ================= -->
+<section class="page" id="page-medallion" style="--ac:var(--gold)">
+  <h2>Medallion architecture — <span class="accent">Bronze, Silver, Gold</span></h2>
+  <p class="lead">Instead of cleaning data in one giant risky step, a lakehouse refines it through <b>three zones</b>. Each zone has one job and one quality promise. If anything breaks downstream, you can always replay from Bronze — the untouched original.</p>
+  <div class="analogy">🥕 <b>Cooking analogy:</b> Bronze = groceries straight from the farm (dirt and all), Silver = washed, peeled and chopped ingredients, Gold = the finished plated dish served to guests.</div>
+  <div class="legend">
+    <span><span class="lg-line"></span>data flow</span>
+    <span><span class="lg-dot"></span>records getting cleaner</span>
+    <span>⚙ Spark transformation</span>
+  </div>
+
+  <div class="stage" id="stage-medallion">
+  <svg viewBox="0 0 1180 470" role="img" aria-label="Animated medallion architecture: bronze to silver to gold">
+    <defs>
+      <marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="#8FA3C4"/>
+      </marker>
+    </defs>
+
+    <!-- pipes -->
+    <path class="pipe data" d="M 130 167 C 152 167 152 208 166 211" marker-end="url(#ah2)"/>
+    <path class="pipe data" d="M 130 212 H 166" marker-end="url(#ah2)"/>
+    <path class="pipe data" d="M 130 257 C 152 257 152 216 166 213" marker-end="url(#ah2)"/>
+    <path class="pipe data" d="M 440 235 H 516" marker-end="url(#ah2)"/>
+    <path class="pipe data" d="M 790 235 H 866" marker-end="url(#ah2)"/>
+    <path class="pipe data" d="M 1140 235 H 1170" marker-end="url(#ah2)"/>
+    <text class="tlabel freefloat" x="446" y="218">clean · dedupe</text>
+    <text class="tlabel freefloat" x="446" y="262">validate · type</text>
+    <text class="tlabel freefloat" x="800" y="218">join · aggregate</text>
+    <text class="tlabel freefloat" x="800" y="262">model · KPIs</text>
+    <text class="tlabel freefloat" x="1118" y="262">BI · ML</text>
+
+    <!-- particles -->
+    <circle class="pk c-blue" r="4.5"><animateMotion dur="2.2s" repeatCount="indefinite" path="M 130 167 C 152 167 152 208 166 211"/></circle>
+    <circle class="pk c-blue" r="4.5"><animateMotion dur="2.2s" begin="-0.8s" repeatCount="indefinite" path="M 130 212 H 166"/></circle>
+    <circle class="pk c-blue" r="4.5"><animateMotion dur="2.2s" begin="-1.5s" repeatCount="indefinite" path="M 130 257 C 152 257 152 216 166 213"/></circle>
+    <circle class="pk c-silver" r="5.5"><animateMotion dur="1.7s" repeatCount="indefinite" path="M 440 235 H 516"/></circle>
+    <circle class="pk c-silver" r="5.5"><animateMotion dur="1.7s" begin="-0.85s" repeatCount="indefinite" path="M 440 235 H 516"/></circle>
+    <circle class="pk c-gold" r="5.5"><animateMotion dur="1.7s" repeatCount="indefinite" path="M 790 235 H 866"/></circle>
+    <circle class="pk c-gold" r="5.5"><animateMotion dur="1.7s" begin="-0.85s" repeatCount="indefinite" path="M 790 235 H 866"/></circle>
+    <circle class="pk c-green" r="5"><animateMotion dur="1.4s" repeatCount="indefinite" path="M 1140 235 H 1170"/></circle>
+
+    <!-- transformation gears -->
+    <g class="spinslow freefloat" transform="translate(478,235)"><circle r="11" fill="#0F1A30" stroke="#8FA3C4" stroke-width="1.4"/><path d="M0 -11 V -15 M0 11 V 15 M-11 0 H -15 M11 0 H 15 M-7.8 -7.8 L -10.6 -10.6 M7.8 7.8 L 10.6 10.6 M-7.8 7.8 L -10.6 10.6 M7.8 -7.8 L 10.6 -10.6" stroke="#8FA3C4" stroke-width="2"/><circle r="4" fill="none" stroke="#8FA3C4" stroke-width="1.6"/></g>
+    <g class="spinslow freefloat" transform="translate(828,235)"><circle r="11" fill="#0F1A30" stroke="#8FA3C4" stroke-width="1.4"/><path d="M0 -11 V -15 M0 11 V 15 M-11 0 H -15 M11 0 H 15 M-7.8 -7.8 L -10.6 -10.6 M7.8 7.8 L 10.6 10.6 M-7.8 7.8 L -10.6 10.6 M7.8 -7.8 L 10.6 -10.6" stroke="#8FA3C4" stroke-width="2"/><circle r="4" fill="none" stroke="#8FA3C4" stroke-width="1.6"/></g>
+
+    <!-- sources -->
+    <g class="node nd-grey" data-info="sources" tabindex="0" role="button" aria-label="Source systems">
+      <rect class="body" x="20" y="150" width="110" height="34" rx="10"/><text class="t1" x="36" y="172" font-size="12">APIs</text>
+    </g>
+    <g class="node nd-grey" data-info="sources" tabindex="0" role="button" aria-label="Databases">
+      <rect class="body" x="20" y="195" width="110" height="34" rx="10"/><text class="t1" x="36" y="217" font-size="12">Databases</text>
+    </g>
+    <g class="node nd-grey" data-info="sources" tabindex="0" role="button" aria-label="Files">
+      <rect class="body" x="20" y="240" width="110" height="34" rx="10"/><text class="t1" x="36" y="262" font-size="12">Files</text>
+    </g>
+
+    <!-- ====== BRONZE ZONE ====== -->
+    <rect class="zoneglow" x="158" y="78" width="294" height="316" rx="22" fill="var(--bronze)" opacity=".10"/>
+    <g class="node nd-bronze" data-info="bronze" tabindex="0" role="button" aria-label="Bronze raw zone details">
+      <rect class="body" x="170" y="90" width="270" height="292" rx="16"/>
+      <rect x="170" y="90" width="270" height="48" rx="16" fill="var(--bronze)" opacity=".16"/>
+      <line x1="170" y1="138" x2="440" y2="138" stroke="var(--bronze)" stroke-opacity=".4"/>
+      <text class="tzone" x="190" y="121" fill="#E2A35E">🥉 Bronze · Raw</text>
+      <text class="t3" x="356" y="116">LAYER 01</text>
+      <!-- parquet file chips -->
+      <g class="dropin">
+        <rect x="192" y="156" width="226" height="34" rx="8" fill="#0A1322" stroke="var(--bronze)" stroke-opacity=".55"/>
+        <path d="M204 164 l6 9 m0 -9 l-6 9" stroke="var(--bronze)" stroke-width="2.2" fill="none"/>
+        <text class="tmini" x="220" y="177" fill="#D8B58C">orders_2026-06-11.parquet</text>
+      </g>
+      <rect x="192" y="198" width="226" height="34" rx="8" fill="#0A1322" stroke="var(--bronze)" stroke-opacity=".45"/>
+      <path d="M204 206 l6 9 m0 -9 l-6 9" stroke="var(--bronze)" stroke-width="2.2" fill="none"/>
+      <text class="tmini" x="220" y="219" fill="#C5A57F">orders_2026-06-10.parquet</text>
+      <rect x="192" y="240" width="226" height="34" rx="8" fill="#0A1322" stroke="var(--bronze)" stroke-opacity=".35"/>
+      <path d="M204 248 l6 9 m0 -9 l-6 9" stroke="var(--bronze)" stroke-width="2.2" fill="none"/>
+      <text class="tmini" x="220" y="261" fill="#B2966F">customers_2026-06-10.parquet</text>
+      <text class="tmini" x="192" y="300" fill="#9DAECB">✦ exact copy of the source — never edited</text>
+      <text class="tmini" x="192" y="320" fill="#9DAECB">✦ append-only · partitioned by dt=YYYY-MM-DD</text>
+      <text class="tmini" x="192" y="340" fill="#9DAECB">✦ columnar Parquet = small + fast to scan</text>
+      <text class="tmini" x="192" y="360" fill="#9DAECB">✦ your replay button when anything breaks</text>
+    </g>
+
+    <!-- ====== SILVER ZONE ====== -->
+    <rect class="zoneglow" x="508" y="78" width="294" height="316" rx="22" fill="var(--silver)" opacity=".08"/>
+    <g class="node nd-silver" data-info="silver" tabindex="0" role="button" aria-label="Silver conformance zone details">
+      <rect class="body" x="520" y="90" width="270" height="292" rx="16"/>
+      <rect x="520" y="90" width="270" height="48" rx="16" fill="var(--silver)" opacity=".13"/>
+      <line x1="520" y1="138" x2="790" y2="138" stroke="var(--silver)" stroke-opacity=".4"/>
+      <text class="tzone" x="540" y="121" fill="#D7E0EC">🥈 Silver · Conformance</text>
+      <text class="t3" x="706" y="116">LAYER 02</text>
+      <!-- iceberg table chips -->
+      <g>
+        <rect x="542" y="156" width="226" height="34" rx="8" fill="#0A1322" stroke="var(--ice)" stroke-opacity=".55"/>
+        <polygon points="556,162 564,168 561,176 551,176 548,168" fill="none" stroke="var(--ice)" stroke-width="1.6"/>
+        <text class="tmini" x="572" y="177" fill="#BFE9F7">fct_orders · Iceberg</text>
+        <text class="tmini" x="700" y="177" fill="#34A853">✓ tested</text>
+      </g>
+      <g>
+        <rect x="542" y="198" width="226" height="34" rx="8" fill="#0A1322" stroke="var(--ice)" stroke-opacity=".45"/>
+        <polygon points="556,204 564,210 561,218 551,218 548,210" fill="none" stroke="var(--ice)" stroke-width="1.6"/>
+        <text class="tmini" x="572" y="219" fill="#BFE9F7">dim_customer · Iceberg</text>
+        <text class="tmini" x="694" y="219" fill="#34A853">✓ deduped</text>
+      </g>
+      <g>
+        <rect x="542" y="240" width="226" height="34" rx="8" fill="#0A1322" stroke="var(--ice)" stroke-opacity=".4"/>
+        <polygon points="556,246 564,252 561,260 551,260 548,252" fill="none" stroke="var(--ice)" stroke-width="1.6"/>
+        <text class="tmini" x="572" y="261" fill="#BFE9F7">dim_product · Iceberg</text>
+        <text class="tmini" x="690" y="261" fill="#34A853">✓ PII masked</text>
+      </g>
+      <text class="tmini" x="542" y="300" fill="#9DAECB">✦ one row per real-world thing (deduplicated)</text>
+      <text class="tmini" x="542" y="320" fill="#9DAECB">✦ correct types · standard names · valid values</text>
+      <text class="tmini" x="542" y="340" fill="#9DAECB">✦ Iceberg = ACID updates + time travel</text>
+      <text class="tmini" x="542" y="360" fill="#9DAECB">✦ the trusted base every team builds on</text>
+    </g>
+
+    <!-- ====== GOLD ZONE ====== -->
+    <rect class="zoneglow" x="858" y="78" width="294" height="316" rx="22" fill="var(--gold)" opacity=".09"/>
+    <g class="node nd-gold" data-info="gold" tabindex="0" role="button" aria-label="Gold curated zone details">
+      <rect class="body" x="870" y="90" width="270" height="292" rx="16"/>
+      <rect x="870" y="90" width="270" height="48" rx="16" fill="var(--gold)" opacity=".13"/>
+      <line x1="870" y1="138" x2="1140" y2="138" stroke="var(--gold)" stroke-opacity=".4"/>
+      <text class="tzone" x="890" y="121" fill="#F2D879">🥇 Gold · Curated</text>
+      <text class="t3" x="1056" y="116">LAYER 03</text>
+      <!-- star schema -->
+      <g class="freefloat" stroke="var(--gold)" stroke-opacity=".5">
+        <line x1="1005" y1="225" x2="935" y2="180"/><line x1="1005" y1="225" x2="1075" y2="180"/>
+        <line x1="1005" y1="225" x2="935" y2="272"/><line x1="1005" y1="225" x2="1075" y2="272"/>
+      </g>
+      <g class="pulse">
+        <rect x="955" y="203" width="100" height="44" rx="9" fill="#0A1322" stroke="var(--gold)" stroke-width="1.8"/>
+        <text class="tmini" x="971" y="222" fill="#F2D879">fct_daily_</text>
+        <text class="tmini" x="971" y="236" fill="#F2D879">revenue</text>
+      </g>
+      <g fill="#0A1322" stroke="var(--gold)" stroke-opacity=".7">
+        <circle cx="935" cy="178" r="22"/><circle cx="1075" cy="178" r="22"/>
+        <circle cx="935" cy="274" r="22"/><circle cx="1075" cy="274" r="22"/>
+      </g>
+      <text class="tmini" x="935" y="182" text-anchor="middle" fill="#E8D9A0">date</text>
+      <text class="tmini" x="1075" y="182" text-anchor="middle" fill="#E8D9A0">store</text>
+      <text class="tmini" x="935" y="278" text-anchor="middle" fill="#E8D9A0">product</text>
+      <text class="tmini" x="1075" y="278" text-anchor="middle" fill="#E8D9A0">customer</text>
+      <text class="tmini" x="892" y="320" fill="#9DAECB">✦ business language: revenue, churn, margin</text>
+      <text class="tmini" x="892" y="340" fill="#9DAECB">✦ star schemas + pre-built KPIs for BI speed</text>
+      <text class="tmini" x="892" y="360" fill="#9DAECB">✦ served via BigQuery / BigLake · SLA-backed</text>
+    </g>
+  </svg>
+  </div>
+
+  <div class="chips">
+    <button class="chip" style="--cc:var(--bronze)" data-info="parquet">Why Parquet in Bronze?</button>
+    <button class="chip" style="--cc:var(--ice)" data-info="whyiceberg">Why Iceberg in Silver?</button>
+    <button class="chip" style="--cc:var(--silver)" data-info="quality">What are quality gates?</button>
+    <button class="chip" style="--cc:var(--gold)" data-info="star">What is a star schema?</button>
+  </div>
+  <p class="hint">▶ Click a <b>zone</b> or a <b>question chip</b> for the full beginner explanation.</p>
+
+  <div class="grid3">
+    <div class="kcard" style="--cc:var(--bronze)">
+      <span class="km">Design rule 01</span><h4>Never edit Bronze</h4>
+      <p>Bronze is your insurance policy. Because it's an untouched, append-only copy of the source, you can delete and rebuild Silver and Gold any time a bug slips through — without re-asking the source systems for data.</p>
+    </div>
+    <div class="kcard" style="--cc:var(--silver)">
+      <span class="km">Design rule 02</span><h4>Silver is the contract</h4>
+      <p>Teams agree that anything in Silver is deduplicated, correctly typed and validated. Analysts and ML engineers build on Silver without re-checking the basics — that shared trust is what makes the platform fast.</p>
+    </div>
+    <div class="kcard" style="--cc:var(--gold)">
+      <span class="km">Design rule 03</span><h4>Gold speaks business</h4>
+      <p>Gold tables are named after business concepts (daily revenue, customer churn), not source systems. They're small, pre-aggregated and fast — a dashboard should never need to scan billions of raw rows.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PAGE 3 · BIGLAKE ================= -->
+<section class="page" id="page-biglake" style="--ac:var(--g-blue)">
+  <h2><span class="accent">BigLake</span> — one secure table layer over your data lake</h2>
+  <p class="lead">Your files live once in Google Cloud Storage. <b>BigLake</b> wraps them in a governed "table layer" so BigQuery, Spark and open engines all see the <b>same tables with the same security</b> — no copies, no exports, no per-engine permission chaos. Watch the queries beam down and rows beam back up.</p>
+  <div class="analogy">📚 <b>Library analogy:</b> GCS is the book warehouse, BigLake is the librarian's front desk. Nobody wanders the shelves directly — every reader (BigQuery, Spark, Trino) asks the desk, which checks their library card (row/column security) and fetches pages fast using its catalogue (metadata cache).</div>
+
+  <div class="stage" id="stage-biglake">
+  <svg viewBox="0 0 1180 590" role="img" aria-label="BigLake architecture: engines query through BigLake to cloud storage">
+    <text class="t3 freefloat" x="40" y="44">QUERY ENGINES · COMPUTE</text>
+    <text class="t3 freefloat" x="40" y="226">TABLE LAYER · GOVERNANCE</text>
+    <text class="t3 freefloat" x="40" y="442">OBJECT STORAGE · ONE COPY OF DATA</text>
+
+    <!-- beams down (queries) -->
+    <path class="beam" d="M 205 130 V 232" stroke="var(--g-blue)"/>
+    <path class="beam" d="M 570 130 V 232" stroke="var(--g-red)"/>
+    <path class="beam" d="M 920 130 V 232" stroke="var(--violet)"/>
+    <path class="beam" d="M 460 386 V 448" stroke="var(--ice)"/>
+    <path class="beam" d="M 760 386 V 448" stroke="var(--ice)"/>
+    <!-- rows up (results) -->
+    <circle class="pk c-ice" r="4"><animateMotion dur="1.6s" repeatCount="indefinite" path="M 222 232 V 132"/></circle>
+    <circle class="pk c-ice" r="4"><animateMotion dur="1.6s" begin="-0.8s" repeatCount="indefinite" path="M 587 232 V 132"/></circle>
+    <circle class="pk c-ice" r="4"><animateMotion dur="1.6s" begin="-0.4s" repeatCount="indefinite" path="M 937 232 V 132"/></circle>
+    <circle class="pk c-bronze" r="4"><animateMotion dur="1.5s" repeatCount="indefinite" path="M 477 448 V 388"/></circle>
+    <circle class="pk c-bronze" r="4"><animateMotion dur="1.5s" begin="-0.7s" repeatCount="indefinite" path="M 777 448 V 388"/></circle>
+    <text class="tlabel freefloat" x="236" y="186">SQL ↓ · rows ↑</text>
+    <text class="tlabel freefloat" x="601" y="186">jobs ↓ · rows ↑</text>
+    <text class="tlabel freefloat" x="951" y="186">queries ↓ · rows ↑</text>
+    <text class="tlabel freefloat" x="490" y="424">reads bytes via Storage API</text>
+
+    <!-- engines -->
+    <g class="node nd-blue" data-info="engines-bq" tabindex="0" role="button" aria-label="BigQuery as query engine">
+      <rect class="body" x="90" y="56" width="230" height="74" rx="14"/>
+      <g class="ic" transform="translate(110,72)"><circle cx="9" cy="9" r="8"/><path d="M15 15 L21 21"/><path d="M5.5 11 V8 M9 11 V6 M12.5 11 V9.5"/></g>
+      <text class="t1" x="144" y="86">BigQuery</text>
+      <text class="t2" x="144" y="104">analysts run plain SQL</text>
+    </g>
+    <g class="node nd-red" data-info="engines-spark" tabindex="0" role="button" aria-label="Dataproc Spark as engine">
+      <rect class="body" x="455" y="56" width="230" height="74" rx="14"/>
+      <g class="ic" transform="translate(475,72)"><circle cx="4" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><circle cx="11" cy="4" r="3"/><path d="M6 14.5 L9.5 7 M12.5 7 L16 14.5 M7 17 H15"/></g>
+      <text class="t1" x="509" y="86">Dataproc · Spark</text>
+      <text class="t2" x="509" y="104">pipelines &amp; data science</text>
+    </g>
+    <g class="node nd-violet" data-info="engines-other" tabindex="0" role="button" aria-label="Open engines like Trino and Vertex AI">
+      <rect class="body" x="790" y="56" width="260" height="74" rx="14"/>
+      <g class="ic" transform="translate(810,72)"><rect x="1" y="1" width="8" height="8" rx="2"/><rect x="13" y="1" width="8" height="8" rx="2"/><rect x="1" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></g>
+      <text class="t1" x="844" y="86">Trino · Flink · Vertex AI</text>
+      <text class="t2" x="844" y="104">open engines, same tables</text>
+    </g>
+
+    <!-- BigLake band -->
+    <g class="node nd-ice" id="n-bllayer" data-info="biglake" tabindex="0" role="button" aria-label="BigLake table layer">
+      <rect class="body" x="120" y="236" width="940" height="150" rx="18"/>
+      <g class="ic" transform="translate(148,252)"><path d="M11 1 L20 4 V10 C20 16 16 20 11 22 C6 20 2 16 2 10 V4 Z"/><path d="M7.5 11 L10 13.5 L15 8"/></g>
+      <text class="t1" x="182" y="266" font-size="16">BigLake — unified table layer</text>
+      <text class="t2" x="182" y="284">defines tables over files · enforces security · accelerates reads · works across clouds</text>
+    </g>
+    <g class="node nd-grey" data-info="conn" tabindex="0" role="button" aria-label="BigLake connection">
+      <rect class="body" x="150" y="300" width="270" height="70" rx="12"/>
+      <g class="ic" transform="translate(168,316)"><path d="M8 14 L14 8 M5 11 a5 5 0 0 1 0-7 l2 -2 a5 5 0 0 1 7 0 M17 11 a5 5 0 0 1 0 7 l-2 2 a5 5 0 0 1 -7 0"/></g>
+      <text class="t1" x="200" y="328" font-size="13.5">Connection</text>
+      <text class="t2" x="200" y="345">a service account that reads</text>
+      <text class="t2" x="200" y="359">GCS on users' behalf</text>
+    </g>
+    <g class="node nd-green" data-info="security" tabindex="0" role="button" aria-label="Fine-grained security">
+      <rect class="body" x="450" y="300" width="290" height="70" rx="12"/>
+      <g class="ic" transform="translate(468,316)"><path d="M11 1 L20 4 V10 C20 16 16 20 11 22 C6 20 2 16 2 10 V4 Z"/><path d="M11 7 V12 M11 15 V15.5"/></g>
+      <text class="t1" x="500" y="328" font-size="13.5">Fine-grained security</text>
+      <text class="t2" x="500" y="345">row-level · column-level ·</text>
+      <text class="t2" x="500" y="359">dynamic data masking</text>
+    </g>
+    <g class="node nd-yellow" data-info="metacache" tabindex="0" role="button" aria-label="Metadata cache">
+      <rect class="body" x="770" y="300" width="260" height="70" rx="12"/>
+      <g class="ic" transform="translate(788,316)"><path d="M12 1 L4 13 H11 L9 21 L18 9 H11 Z"/></g>
+      <text class="t1" x="820" y="328" font-size="13.5">Metadata cache</text>
+      <text class="t2" x="820" y="345">remembers file stats so queries</text>
+      <text class="t2" x="820" y="359">skip irrelevant data — fast scans</text>
+    </g>
+
+    <!-- storage -->
+    <g class="node nd-yellow" data-info="gcsfiles" tabindex="0" role="button" aria-label="Google Cloud Storage data lake files">
+      <rect class="body" x="290" y="452" width="600" height="96" rx="16"/>
+      <g class="ic" transform="translate(316,472)"><path d="M2 3 H22 L18.5 22 H5.5 Z"/><path d="M7 9 H17"/></g>
+      <text class="t1" x="352" y="482">Google Cloud Storage — the lake</text>
+      <text class="t2" x="352" y="500">open file formats, stored once, 11 nines of durability</text>
+      <g font-family="IBM Plex Mono" font-size="10">
+        <rect x="352" y="510" width="78" height="24" rx="7" fill="#0A1322" stroke="var(--bronze)" stroke-opacity=".6"/>
+        <text x="366" y="526" fill="#E2A35E">Parquet</text>
+        <rect x="440" y="510" width="58" height="24" rx="7" fill="#0A1322" stroke="#8FA3C4" stroke-opacity=".5"/>
+        <text x="452" y="526" fill="#9DAECB">ORC</text>
+        <rect x="508" y="510" width="62" height="24" rx="7" fill="#0A1322" stroke="#8FA3C4" stroke-opacity=".5"/>
+        <text x="520" y="526" fill="#9DAECB">Avro</text>
+        <rect x="580" y="510" width="124" height="24" rx="7" fill="#0A1322" stroke="var(--ice)" stroke-opacity=".7"/>
+        <text x="594" y="526" fill="#BFE9F7">Iceberg tables</text>
+      </g>
+    </g>
+    <text class="tmini freefloat" x="40" y="578" fill="#6F81A3">BigQuery Omni: the same BigLake tables can sit on AWS S3 or Azure ADLS — query them from BigQuery without moving data.</text>
+  </svg>
+  </div>
+
+  <div class="chips">
+    <button class="chip" style="--cc:var(--g-green)" data-info="bl-rls">Row-level security</button>
+    <button class="chip" style="--cc:var(--g-green)" data-info="bl-mask">Column masking</button>
+    <button class="chip" style="--cc:var(--g-yellow)" data-info="metacache">Metadata caching</button>
+    <button class="chip" style="--cc:var(--g-blue)" data-info="bl-omni">BigQuery Omni (S3 / Azure)</button>
+    <button class="chip" style="--cc:var(--violet)" data-info="bl-dataplex">Dataplex governance</button>
+    <button class="chip" style="--cc:var(--ice)" data-info="bl-vs">BigLake vs plain external table</button>
+  </div>
+  <p class="hint">▶ Click any layer in the diagram, or a chip above, for details.</p>
+
+  <div class="grid3">
+    <div class="kcard" style="--cc:var(--g-red)">
+      <span class="km">The problem</span><h4>Before BigLake: two worlds</h4>
+      <p>Warehouse data was secure but expensive to copy in; lake files were cheap but had only coarse bucket-level permissions. Teams duplicated data between both — twice the storage, twice the pipelines, and security drift everywhere.</p>
+    </div>
+    <div class="kcard" style="--cc:var(--g-blue)">
+      <span class="km">How a query flows</span><h4>Four quick hops</h4>
+      <p>1) You run SQL in BigQuery. 2) BigLake checks your row/column permissions. 3) The connection's service account reads only the needed Parquet bytes from GCS (helped by the metadata cache). 4) Filtered rows stream back. You never get raw file access.</p>
+    </div>
+    <div class="kcard" style="--cc:var(--g-green)">
+      <span class="km">When to use</span><h4>Lake data, warehouse manners</h4>
+      <p>Use BigLake whenever data should stay in open formats on GCS (for Spark, cost, or multi-engine reasons) but must still be queryable in BigQuery with real governance — exactly our Silver and Gold Iceberg tables.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PAGE 4 · ICEBERG ================= -->
+<section class="page" id="page-iceberg" style="--ac:#5FD4F4">
+  <h2>Apache <span class="accent">Iceberg</span> — database superpowers for plain files</h2>
+  <p class="lead">Parquet files alone can't be safely updated, can't evolve their schema, and don't remember their history. <b>Iceberg</b> is an open <i>table format</i>: a clever stack of metadata files that sits on top of your Parquet and gives it ACID transactions, time travel and painless schema changes — while staying open to every engine.</p>
+  <div class="analogy">🚢 <b>Iceberg analogy:</b> what engines "see" above the waterline is a simple table. Below the waterline sits the metadata machinery — snapshots, manifests, statistics — silently doing the heavy lifting. Data files are never edited; every change just publishes a <b>new snapshot</b> pointing at a new list of files.</div>
+
+  <div class="split">
+    <div class="stage" id="stage-iceberg">
+    <svg viewBox="0 0 620 590" role="img" aria-label="Iceberg metadata tree from catalog to data files">
+      <!-- connector lines -->
+      <g stroke="rgba(143,163,196,.5)" fill="none" stroke-width="2">
+        <path d="M 310 70 V 94"/>
+        <path d="M 310 156 C 310 176 180 176 180 192"/>
+        <path d="M 310 156 C 310 176 440 176 440 192"/>
+        <path d="M 440 248 V 272"/>
+        <path d="M 440 330 C 440 350 330 350 330 364"/>
+        <path d="M 440 330 C 440 350 525 350 525 364"/>
+        <path d="M 330 418 C 330 442 175 440 175 460"/>
+        <path d="M 330 418 C 330 442 297 440 297 460"/>
+        <path d="M 525 418 C 525 442 431 440 431 460"/>
+        <path d="M 525 418 C 525 442 554 440 554 460"/>
+      </g>
+      <!-- scan-planning pulse -->
+      <circle class="pk c-ice" r="5"><animateMotion dur="4.2s" repeatCount="indefinite"
+        path="M310 70 V156 C310 176 440 176 440 196 V330 C440 350 520 350 525 366 V418 C525 442 554 440 554 462"/></circle>
+      <text class="tlabel freefloat" x="22" y="320" fill="#5FD4F4">query planning ⚡</text>
+      <text class="tlabel freefloat" x="22" y="338" fill="#5FD4F4">walks this tree to</text>
+      <text class="tlabel freefloat" x="22" y="356" fill="#5FD4F4">touch only the</text>
+      <text class="tlabel freefloat" x="22" y="374" fill="#5FD4F4">files it needs</text>
+
+      <g class="node nd-violet" data-info="catalog" tabindex="0" role="button" aria-label="Iceberg catalog">
+        <rect class="body" x="200" y="16" width="220" height="54" rx="13"/>
+        <text class="t1" x="220" y="39" font-size="14">Catalog</text>
+        <text class="t2" x="220" y="56">BigLake Metastore — "where is v3?"</text>
+      </g>
+      <g class="node nd-ice" data-info="metafile" tabindex="0" role="button" aria-label="Table metadata file">
+        <rect class="body" x="170" y="98" width="280" height="58" rx="13"/>
+        <text class="t1" x="190" y="121" font-size="14">metadata.json · v3</text>
+        <text class="t2" x="190" y="139">schema · partition spec · snapshot log</text>
+      </g>
+      <g class="node nd-grey" data-info="snapshots" tabindex="0" role="button" aria-label="Older snapshot for time travel">
+        <rect class="body" x="90" y="196" width="180" height="52" rx="12"/>
+        <text class="t1" x="106" y="218" font-size="13">snapshot v2</text>
+        <text class="t2" x="106" y="235">older · ⏪ time travel</text>
+      </g>
+      <g class="node nd-ice pulse" data-info="snapshots" tabindex="0" role="button" aria-label="Current snapshot">
+        <rect class="body" x="350" y="196" width="180" height="52" rx="12"/>
+        <text class="t1" x="366" y="218" font-size="13">snapshot v3</text>
+        <text class="t2" x="366" y="235">★ current state</text>
+      </g>
+      <g class="node nd-ice" data-info="manifestlist" tabindex="0" role="button" aria-label="Manifest list">
+        <rect class="body" x="330" y="276" width="220" height="54" rx="12"/>
+        <text class="t1" x="348" y="298" font-size="13">manifest-list.avro</text>
+        <text class="t2" x="348" y="315">the manifests inside v3 + stats</text>
+      </g>
+      <g class="node nd-ice" data-info="manifest" tabindex="0" role="button" aria-label="Manifest file a">
+        <rect class="body" x="240" y="368" width="180" height="50" rx="11"/>
+        <text class="t1" x="256" y="389" font-size="12.5">manifest-a.avro</text>
+        <text class="t2" x="256" y="405">data files + min/max stats</text>
+      </g>
+      <g class="node nd-ice" data-info="manifest" tabindex="0" role="button" aria-label="Manifest file b">
+        <rect class="body" x="440" y="368" width="170" height="50" rx="11"/>
+        <text class="t1" x="456" y="389" font-size="12.5">manifest-b.avro</text>
+        <text class="t2" x="456" y="405">data files + stats</text>
+      </g>
+      <g class="node nd-bronze" data-info="datafiles" tabindex="0" role="button" aria-label="Parquet data file 1">
+        <rect class="body" x="120" y="462" width="110" height="46" rx="10"/>
+        <path d="M136 472 l6 9 m0 -9 l-6 9" stroke="var(--bronze)" stroke-width="2" fill="none"/>
+        <text class="tmini" x="152" y="489" fill="#D8B58C">01.parquet</text>
+      </g>
+      <g class="node nd-bronze" data-info="datafiles" tabindex="0" role="button" aria-label="Parquet data file 2">
+        <rect class="body" x="242" y="462" width="110" height="46" rx="10"/>
+        <path d="M258 472 l6 9 m0 -9 l-6 9" stroke="var(--bronze)" stroke-width="2" fill="none"/>
+        <text class="tmini" x="274" y="489" fill="#D8B58C">02.parquet</text>
+      </g>
+      <g class="node nd-bronze" data-info="datafiles" tabindex="0" role="button" aria-label="Parquet data file 3">
+        <rect class="body" x="376" y="462" width="110" height="46" rx="10"/>
+        <path d="M392 472 l6 9 m0 -9 l-6 9" stroke="var(--bronze)" stroke-width="2" fill="none"/>
+        <text class="tmini" x="408" y="489" fill="#D8B58C">03.parquet</text>
+      </g>
+      <g class="node nd-bronze" data-info="datafiles" tabindex="0" role="button" aria-label="Parquet data file 4">
+        <rect class="body" x="498" y="462" width="112" height="46" rx="10"/>
+        <path d="M514 472 l6 9 m0 -9 l-6 9" stroke="var(--bronze)" stroke-width="2" fill="none"/>
+        <text class="tmini" x="530" y="489" fill="#D8B58C">04.parquet</text>
+      </g>
+      <text class="tmini freefloat" x="60" y="546" fill="#6F81A3">Data files are immutable. A write = new Parquet files + a new snapshot pointing at them.</text>
+      <text class="tmini freefloat" x="60" y="566" fill="#6F81A3">Old snapshots stick around → instant rollback and time travel.</text>
+    </svg>
+    </div>
+
+    <div class="panel">
+      <span class="pm">Snapshot time machine</span>
+      <h3>Drag the slider — query the past 🕰️</h3>
+      <p style="color:var(--muted);font-size:.88rem">Each nightly run created a snapshot of <code>lake.customers</code>. Slide between them and watch the table change — no backups were restored, this is just Iceberg metadata.</p>
+      <input type="range" min="0" max="2" value="2" step="1" class="tt-slider" id="ttSlider" aria-label="Snapshot selector">
+      <div class="tt-marks"><span id="m0">v1 · Mon</span><span id="m1">v2 · Tue</span><span id="m2">v3 · Wed</span></div>
+      <div class="snapdesc" id="ttDesc"></div>
+      <div class="ttq" id="ttQuery"></div>
+      <table class="mini" id="ttTable" aria-live="polite"></table>
+    </div>
+  </div>
+
+  <p class="hint" style="margin-top:14px">▶ Click any layer of the metadata tree, or a feature card below, for the beginner deep dive.</p>
+  <div class="grid3">
+    <div class="kcard" style="--cc:var(--ice)" data-info="feat-acid" tabindex="0" role="button">
+      <span class="km">Feature 01</span><h4>ACID transactions</h4>
+      <p>Safely UPDATE, DELETE and MERGE on a data lake. Readers never see half-finished writes — a commit either fully happens or doesn't. Click to learn more.</p>
+    </div>
+    <div class="kcard" style="--cc:var(--g-green)" data-info="feat-schema" tabindex="0" role="button">
+      <span class="km">Feature 02</span><h4>Schema evolution</h4>
+      <p>Add, rename, reorder or drop columns instantly — no table rewrite, no broken downstream queries. Columns are tracked by ID, not by position.</p>
+    </div>
+    <div class="kcard" style="--cc:var(--g-yellow)" data-info="feat-hidden" tabindex="0" role="button">
+      <span class="km">Feature 03</span><h4>Hidden partitioning</h4>
+      <p>You query <code>WHERE order_date = …</code> like a human; Iceberg quietly maps it to partitions and prunes files. No more forgetting the magic partition column.</p>
+    </div>
+    <div class="kcard" style="--cc:var(--violet)" data-info="feat-time" tabindex="0" role="button">
+      <span class="km">Feature 04</span><h4>Time travel &amp; rollback</h4>
+      <p>Query the table as it was yesterday, or roll back a bad job in one command — every snapshot is kept until you expire it.</p>
+    </div>
+    <div class="kcard" style="--cc:var(--g-blue)" data-info="feat-partev" tabindex="0" role="button">
+      <span class="km">Feature 05</span><h4>Partition evolution</h4>
+      <p>Outgrew daily partitions? Switch to hourly for new data without rewriting old files — old and new layouts coexist in one table.</p>
+    </div>
+    <div class="kcard" style="--cc:var(--g-red)" data-info="feat-engine" tabindex="0" role="button">
+      <span class="km">Feature 06</span><h4>Open &amp; engine-agnostic</h4>
+      <p>An open spec, not a product: Spark, BigQuery, Trino, Flink and more read/write the same table. No lock-in — your data stays yours, in GCS.</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============ PAGE 6 : PYSPARK DEEP DIVE ============ -->
+<section class="page" id="page-pyspark" style="--ac:var(--g-red)">
+  <div class="pagehead">
+    <span class="eyebrow">05 · Inside the engine</span>
+    <h2>PySpark on Dataproc — what really happens when you press run ⚡</h2>
+    <p class="lede">Your Python script never touches the data itself. It builds a <b>plan</b> on the driver; Dataproc hands out <b>tasks</b> to executors; partitions flow through stages; and the only expensive hop is the <b>shuffle</b>. Watch it live below, then step through the actual job code.</p>
+  </div>
+
+  <div class="stage" id="stage-pyspark">
+  <svg class="stagesvg" viewBox="0 0 1180 600" role="img" aria-label="Animated Spark architecture: driver, executors, partitions and shuffle">
+    <defs>
+      <marker id="ah3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0L10 5L0 10z" fill="#3D5680"/>
+      </marker>
+    </defs>
+
+    <text class="t3 freefloat" x="40" y="34">CONTROL PLANE · ONE DRIVER</text>
+    <text class="t3 freefloat" x="724" y="34">DATA PLANE · MANY EXECUTORS</text>
+    <text class="t3 freefloat" x="1014" y="34">NEXT STAGE</text>
+
+    <!-- pipes -->
+    <path class="pipe data" d="M 240 108 H 296" marker-end="url(#ah2)"/>
+    <path class="pipe ctrl" d="M 425 184 V 220" marker-end="url(#ah2)"/>
+    <path class="pipe ctrl" d="M 556 96 C 650 96 650 86 718 86" marker-end="url(#ah2)"/>
+    <path class="pipe ctrl" d="M 556 116 C 650 116 650 202 718 202" marker-end="url(#ah2)"/>
+    <path class="pipe ctrl" d="M 556 136 C 650 136 650 318 718 318" marker-end="url(#ah2)"/>
+    <path class="pipe data" d="M 482 458 C 600 458 620 380 718 340" marker-end="url(#ah2)"/>
+
+    <text class="tlabel freefloat" x="585" y="76">launch tasks (code →)</text>
+    <text class="tlabel freefloat" x="592" y="252" fill="#8DE3A8">← results · heartbeats</text>
+    <text class="tlabel freefloat" x="560" y="436">1 partition = 1 task</text>
+
+    <!-- code chip -->
+    <g class="node nd-grey" data-info="spark-app" tabindex="0" role="button" aria-label="Your PySpark application">
+      <rect class="body" x="36" y="64" width="204" height="92" rx="14"/>
+      <text class="t3" x="52" y="86" fill="#9FB4D6">YOUR CODE</text>
+      <text class="t1" x="52" y="108">raw_to_silver.py</text>
+      <text class="t2" x="52" y="126">PySpark · ~80 lines</text>
+      <text class="t2" x="52" y="141">describes WHAT, not HOW</text>
+    </g>
+
+    <!-- driver -->
+    <g class="node nd-red" data-info="spark-driver" tabindex="0" role="button" aria-label="Spark driver">
+      <rect class="body" x="300" y="48" width="256" height="136" rx="16"/>
+      <text class="t3" x="318" y="70" fill="#F08A7E">THE BRAIN · JVM #0</text>
+      <text class="t1" x="318" y="94">Driver · SparkSession</text>
+      <text class="t2" x="318" y="112">builds DAG of stages &amp; tasks</text>
+      <rect x="318" y="124" width="106" height="22" rx="11" fill="rgba(234,67,53,.14)" stroke="var(--g-red)" stroke-opacity=".5"/>
+      <text class="tmini" x="331" y="139" fill="#F4A79D">Catalyst plan</text>
+      <rect x="432" y="124" width="106" height="22" rx="11" fill="rgba(234,67,53,.14)" stroke="var(--g-red)" stroke-opacity=".5"/>
+      <text class="tmini" x="442" y="139" fill="#F4A79D">DAG scheduler</text>
+      <text class="t2" x="318" y="170">collects results · retries failures</text>
+    </g>
+
+    <!-- cluster manager -->
+    <g class="node nd-grey" data-info="spark-cm" tabindex="0" role="button" aria-label="Dataproc cluster manager">
+      <rect class="body" x="300" y="224" width="256" height="56" rx="14"/>
+      <text class="t1" x="318" y="248" style="font-size:13px">Dataproc Serverless</text>
+      <text class="t2" x="318" y="266">cluster manager — grants &amp; autoscales executors</text>
+    </g>
+
+    <!-- executors -->
+    <g class="node nd-ice" data-info="spark-executor" tabindex="0" role="button" aria-label="Executor 1">
+      <rect class="body" x="722" y="52" width="232" height="92" rx="14"/>
+      <text class="t3" x="738" y="73" fill="#7FD9F2">EXECUTOR 1 · JVM</text>
+      <text class="t2" x="738" y="90">4 cores · 16 GB</text>
+      <rect x="738" y="100" width="26" height="26" rx="6" fill="#0E2A3C" stroke="#5FD4F4" stroke-opacity=".7"/><rect x="770" y="100" width="26" height="26" rx="6" fill="#0E2A3C" stroke="#5FD4F4" stroke-opacity=".7"/><rect x="802" y="100" width="26" height="26" rx="6" fill="#0E2A3C" stroke="#5FD4F4" stroke-opacity=".7"/><rect x="834" y="100" width="26" height="26" rx="6" fill="#0E2A3C" stroke="#5FD4F4" stroke-opacity=".7"/>
+      <rect x="738" y="100" width="26" height="26" rx="6" fill="#5FD4F4" opacity=".85"><animate attributeName="opacity" values=".85;.15;.85" dur="1.6s" repeatCount="indefinite"/></rect>
+      <rect x="770" y="100" width="26" height="26" rx="6" fill="#5FD4F4" opacity=".5"><animate attributeName="opacity" values=".2;.9;.2" dur="1.9s" begin=".4s" repeatCount="indefinite"/></rect>
+      <text class="tmini" x="872" y="117" fill="#7FD9F2">tasks</text>
+    </g>
+    <g class="node nd-ice" data-info="spark-executor" tabindex="0" role="button" aria-label="Executor 2">
+      <rect class="body" x="722" y="168" width="232" height="92" rx="14"/>
+      <text class="t3" x="738" y="189" fill="#7FD9F2">EXECUTOR 2 · JVM</text>
+      <text class="t2" x="738" y="206">4 cores · 16 GB</text>
+      <rect x="738" y="216" width="26" height="26" rx="6" fill="#0E2A3C" stroke="#5FD4F4" stroke-opacity=".7"/><rect x="770" y="216" width="26" height="26" rx="6" fill="#0E2A3C" stroke="#5FD4F4" stroke-opacity=".7"/><rect x="802" y="216" width="26" height="26" rx="6" fill="#0E2A3C" stroke="#5FD4F4" stroke-opacity=".7"/><rect x="834" y="216" width="26" height="26" rx="6" fill="#0E2A3C" stroke="#5FD4F4" stroke-opacity=".7"/>
+      <rect x="770" y="216" width="26" height="26" rx="6" fill="#5FD4F4" opacity=".7"><animate attributeName="opacity" values=".9;.2;.9" dur="1.4s" begin=".2s" repeatCount="indefinite"/></rect>
+      <rect x="834" y="216" width="26" height="26" rx="6" fill="#5FD4F4" opacity=".5"><animate attributeName="opacity" values=".15;.8;.15" dur="2s" begin=".7s" repeatCount="indefinite"/></rect>
+      <text class="tmini" x="872" y="233" fill="#7FD9F2">tasks</text>
+    </g>
+    <g class="node nd-ice" data-info="spark-executor" tabindex="0" role="button" aria-label="Executor 3">
+      <rect class="body" x="722" y="284" width="232" height="92" rx="14"/>
+      <text class="t3" x="738" y="305" fill="#7FD9F2">EXECUTOR 3 · JVM</text>
+      <text class="t2" x="738" y="322">4 cores · 16 GB</text>
+      <rect x="738" y="332" width="26" height="26" rx="6" fill="#0E2A3C" stroke="#5FD4F4" stroke-opacity=".7"/><rect x="770" y="332" width="26" height="26" rx="6" fill="#0E2A3C" stroke="#5FD4F4" stroke-opacity=".7"/><rect x="802" y="332" width="26" height="26" rx="6" fill="#0E2A3C" stroke="#5FD4F4" stroke-opacity=".7"/><rect x="834" y="332" width="26" height="26" rx="6" fill="#0E2A3C" stroke="#5FD4F4" stroke-opacity=".7"/>
+      <rect x="802" y="332" width="26" height="26" rx="6" fill="#5FD4F4" opacity=".6"><animate attributeName="opacity" values=".25;.95;.25" dur="1.7s" begin=".5s" repeatCount="indefinite"/></rect>
+      <text class="tmini" x="872" y="349" fill="#7FD9F2">tasks</text>
+    </g>
+
+    <!-- task + result particles -->
+    <circle class="pk c-red" r="4.5"><animateMotion dur="2.1s" repeatCount="indefinite" path="M 556 96 C 650 96 650 86 718 86"/></circle>
+    <circle class="pk c-red" r="4.5"><animateMotion dur="2.1s" begin=".7s" repeatCount="indefinite" path="M 556 116 C 650 116 650 202 718 202"/></circle>
+    <circle class="pk c-red" r="4.5"><animateMotion dur="2.1s" begin="1.4s" repeatCount="indefinite" path="M 556 136 C 650 136 650 318 718 318"/></circle>
+    <circle class="pk c-green" r="4"><animateMotion dur="2.6s" begin=".3s" repeatCount="indefinite" path="M 718 110 C 650 110 650 158 556 158"/></circle>
+    <circle class="pk c-green" r="4"><animateMotion dur="2.6s" begin="1.5s" repeatCount="indefinite" path="M 718 226 C 650 226 650 164 556 164"/></circle>
+
+    <!-- partitions band -->
+    <rect class="zoneglow" x="36" y="412" width="450" height="150" rx="18" fill="var(--bronze)" opacity=".10"/>
+    <g class="node nd-bronze" data-info="spark-partition" tabindex="0" role="button" aria-label="Input partitions">
+      <rect class="body" x="36" y="412" width="450" height="150" rx="18" fill-opacity="0"/>
+      <text class="t3" x="56" y="438" fill="#E2A35E">INPUT · GCS PARQUET SPLIT INTO PARTITIONS</text>
+      <g>
+        <rect x="56" y="452" width="92" height="36" rx="8" fill="#0A1322" stroke="var(--bronze)" stroke-opacity=".6"/><text class="tmini" x="70" y="474" fill="#D8B58C">part-000</text>
+        <rect x="158" y="452" width="92" height="36" rx="8" fill="#0A1322" stroke="var(--bronze)" stroke-opacity=".6"/><text class="tmini" x="172" y="474" fill="#D8B58C">part-001</text>
+        <rect x="260" y="452" width="92" height="36" rx="8" fill="#0A1322" stroke="var(--bronze)" stroke-opacity=".6"/><text class="tmini" x="274" y="474" fill="#D8B58C">part-002</text>
+        <rect x="362" y="452" width="92" height="36" rx="8" fill="#0A1322" stroke="var(--bronze)" stroke-opacity=".6"/><text class="tmini" x="376" y="474" fill="#D8B58C">part-003</text>
+        <rect x="56" y="498" width="92" height="36" rx="8" fill="#0A1322" stroke="var(--bronze)" stroke-opacity=".45"/><text class="tmini" x="70" y="520" fill="#C5A57F">part-004</text>
+        <rect x="158" y="498" width="92" height="36" rx="8" fill="#0A1322" stroke="var(--bronze)" stroke-opacity=".45"/><text class="tmini" x="172" y="520" fill="#C5A57F">part-005</text>
+        <rect x="260" y="498" width="92" height="36" rx="8" fill="#0A1322" stroke="var(--bronze)" stroke-opacity=".45"/><text class="tmini" x="274" y="520" fill="#C5A57F">part-006</text>
+        <rect x="362" y="498" width="92" height="36" rx="8" fill="#0A1322" stroke="var(--bronze)" stroke-opacity=".45"/><text class="tmini" x="376" y="520" fill="#C5A57F">part-007</text>
+      </g>
+      <text class="t2" x="56" y="552">~128 MB each · processed independently, in parallel</text>
+    </g>
+    <circle class="pk c-bronze" r="4.5"><animateMotion dur="2.4s" repeatCount="indefinite" path="M 482 458 C 600 458 620 380 718 340"/></circle>
+    <circle class="pk c-bronze" r="4.5"><animateMotion dur="2.4s" begin="1.2s" repeatCount="indefinite" path="M 482 458 C 600 458 620 380 718 340"/></circle>
+
+    <!-- shuffle to next stage -->
+    <text class="t3 freefloat" x="982" y="64" fill="#FBBC04">⇄ SHUFFLE</text>
+    <g class="node nd-yellow" data-info="spark-shuffle" tabindex="0" role="button" aria-label="Shuffle stage boundary">
+      <rect class="body" x="978" y="74" width="168" height="64" rx="12"/>
+      <text class="t2" x="992" y="98" fill="#F3D27C">stage boundary:</text>
+      <text class="t2" x="992" y="114" fill="#F3D27C">network + disk · $$$</text>
+    </g>
+    <rect x="996" y="170" width="132" height="48" rx="10" fill="#101B30" stroke="#3D5680" stroke-dasharray="5 5"/>
+    <text class="tmini" x="1014" y="198" fill="#8FA3C4">stage-2 task</text>
+    <rect x="996" y="232" width="132" height="48" rx="10" fill="#101B30" stroke="#3D5680" stroke-dasharray="5 5"/>
+    <text class="tmini" x="1014" y="260" fill="#8FA3C4">stage-2 task</text>
+    <rect x="996" y="294" width="132" height="48" rx="10" fill="#101B30" stroke="#3D5680" stroke-dasharray="5 5"/>
+    <text class="tmini" x="1014" y="322" fill="#8FA3C4">stage-2 task</text>
+    <path class="pipe ctrl" d="M 956 98 L 994 192"/><path class="pipe ctrl" d="M 956 98 L 994 254"/>
+    <path class="pipe ctrl" d="M 956 214 L 994 196"/><path class="pipe ctrl" d="M 956 214 L 994 318"/>
+    <path class="pipe ctrl" d="M 956 330 L 994 258"/><path class="pipe ctrl" d="M 956 330 L 994 322"/>
+    <circle class="pk c-yellow" r="4"><animateMotion dur="1.6s" repeatCount="indefinite" path="M 956 98 L 994 254"/></circle>
+    <circle class="pk c-yellow" r="4"><animateMotion dur="1.6s" begin=".5s" repeatCount="indefinite" path="M 956 214 L 994 318"/></circle>
+    <circle class="pk c-yellow" r="4"><animateMotion dur="1.6s" begin="1s" repeatCount="indefinite" path="M 956 330 L 994 258"/></circle>
+    <text class="tmini" x="978" y="372" fill="#8FA3C4">rows regrouped by key</text>
+    <text class="tmini" x="978" y="388" fill="#8FA3C4">(groupBy · join · dedupe)</text>
+
+    <!-- AQE chip -->
+    <g class="node nd-violet" data-info="spark-aqe" tabindex="0" role="button" aria-label="Adaptive Query Execution">
+      <rect class="body" x="722" y="478" width="424" height="84" rx="14"/>
+      <text class="t3" x="740" y="500" fill="#C4B5FD">RUNTIME OPTIMIZER</text>
+      <text class="t1" x="740" y="522" style="font-size:14px">AQE · Adaptive Query Execution</text>
+      <text class="t2" x="740" y="540">re-plans mid-job: merges tiny shuffle partitions,</text>
+      <text class="t2" x="740" y="554">switches to broadcast joins, splits skewed keys</text>
+    </g>
+  </svg>
+  </div>
+
+  <p class="hint">▶ Click the <b>driver</b>, an <b>executor</b>, the <b>shuffle</b> box or the <b>partition band</b> — every part has a beginner deep dive.</p>
+  <div class="chips">
+    <span class="chip" data-info="spark-lazy" tabindex="0" role="button">😴 Lazy evaluation — why nothing runs until an action</span>
+    <span class="chip" data-info="spark-catalyst" tabindex="0" role="button">🧪 Catalyst — the SQL optimizer inside Spark</span>
+    <span class="chip" data-info="spark-merge" tabindex="0" role="button">🧊 How MERGE INTO writes Iceberg (CoW vs MoR)</span>
+    <span class="chip" data-info="spark-skew" tabindex="0" role="button">⚖️ Data skew — when one task ruins the night</span>
+    <span class="chip" data-info="spark-tune" tabindex="0" role="button">🎛️ Sizing executors &amp; partitions (rules of thumb)</span>
+    <span class="chip" data-info="spark-when" tabindex="0" role="button">🤔 When NOT to use Spark</span>
+  </div>
+
+  <div class="split" style="margin-top:18px">
+    <div class="panel">
+      <span class="pm">The actual job · raw → silver</span>
+      <h3>Watch Spark read your code 👀</h3>
+      <div class="codeblk" id="spkCode">
+<span class="cl"><span class="k">raw</span> = spark.read.parquet(<span class="s">"gs://lake/raw/orders/dt=2026-06-11/"</span>)</span>
+<span class="cl"><span class="k">clean</span> = (raw.dropDuplicates([<span class="s">"order_id"</span>])</span>
+<span class="cl">      .withColumn(<span class="s">"order_ts"</span>, to_utc_timestamp(...))</span>
+<span class="cl">      .filter(col(<span class="s">"amount"</span>) &gt; 0))</span>
+<span class="cl">clean.createOrReplaceTempView(<span class="s">"staged"</span>)</span>
+<span class="cl">spark.sql(<span class="s">"""</span></span>
+<span class="cl"><span class="f">  MERGE INTO lake.silver.orders t</span></span>
+<span class="cl"><span class="f">  USING staged s ON t.order_id = s.order_id</span></span>
+<span class="cl"><span class="f">  WHEN MATCHED THEN UPDATE SET *</span></span>
+<span class="cl"><span class="f">  WHEN NOT MATCHED THEN INSERT *</span><span class="s">"""</span>)</span>
+      </div>
+    </div>
+    <div class="panel">
+      <span class="pm">Live commentary</span>
+      <h3 id="spkTitle">Step 1 — read (lazy)</h3>
+      <div class="snapdesc" id="spkExplain"></div>
+      <div class="sbadges">
+        <span class="sbadge" id="sb0">STAGE 1 · read + clean</span>
+        <span class="sbadge" id="sb1">SHUFFLE · by order_id</span>
+        <span class="sbadge" id="sb2">STAGE 2 · merge + write</span>
+        <span class="sbadge" id="sb3">ICEBERG · snapshot commit</span>
+      </div>
+      <p style="color:var(--faint);font-size:.8rem">Auto-advances every few seconds · pausing animations pauses this too.</p>
+    </div>
+  </div>
+
+  <div class="grid3">
+    <div class="kcard" style="--cc:var(--g-red)" data-info="spark-lazy" tabindex="0" role="button">
+      <span class="km">Mental model 01</span><h4>Plans, not loops</h4>
+      <p>Transformations only describe a recipe. The first <i>action</i> (write, count, MERGE) hands the whole recipe to Catalyst, which optimizes it before a single byte is read.</p>
+    </div>
+    <div class="kcard" style="--cc:var(--g-yellow)" data-info="spark-shuffle" tabindex="0" role="button">
+      <span class="km">Mental model 02</span><h4>Stages end at shuffles</h4>
+      <p>Anything per-row is cheap and stays in one stage. Anything that needs "all rows with the same key together" forces a shuffle — the slowest, most expensive moment of the job.</p>
+    </div>
+    <div class="kcard" style="--cc:var(--ice)" data-info="spark-tune" tabindex="0" role="button">
+      <span class="km">Mental model 03</span><h4>Parallelism = partitions</h4>
+      <p>You can never use more cores than you have partitions. Too few → idle executors; thousands of tiny ones → scheduling overhead. Aim ~100–200 MB per partition and let AQE tidy up.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PAGE 7 : BIGQUERY INTERNALS ============ -->
+<section class="page" id="page-bq" style="--ac:var(--g-blue)">
+  <div class="pagehead">
+    <span class="eyebrow">06 · Inside the warehouse</span>
+    <h2>BigQuery internals — how one SQL line wakes a thousand workers 🧠</h2>
+    <p class="lede">BigQuery feels like magic because three Google systems team up: the <b>Dremel</b> execution tree fans your query out to <b>slots</b>, the <b>Jupiter</b> network moves data at petabit speed, and <b>Colossus</b> stores everything in columnar files. Storage and compute never live on the same machine — that separation is the whole trick.</p>
+  </div>
+
+  <div class="stage" id="stage-bq">
+  <svg class="stagesvg" viewBox="0 0 1180 640" role="img" aria-label="Animated BigQuery internals: Dremel tree, slots, Jupiter network, Colossus storage">
+
+    <text class="t3 freefloat" x="40" y="34">1 · YOUR QUERY</text>
+    <text class="t3 freefloat" x="520" y="34">2 · DREMEL EXECUTION TREE (COMPUTE)</text>
+    <text class="t3 freefloat" x="40" y="428">4 · COLOSSUS (STORAGE)</text>
+
+    <!-- SQL chip -->
+    <g class="node nd-grey" data-info="bq-sql" tabindex="0" role="button" aria-label="The SQL query">
+      <rect class="body" x="36" y="48" width="318" height="104" rx="14"/>
+      <text class="tmini" x="54" y="74" fill="#79B8FF">SELECT region, SUM(amount)</text>
+      <text class="tmini" x="54" y="92" fill="#9DB3D8">FROM lake.gold.fct_orders</text>
+      <text class="tmini" x="54" y="110" fill="#9DB3D8">WHERE dt = '2026-06-11'</text>
+      <text class="tmini" x="54" y="128" fill="#9DB3D8">GROUP BY region;</text>
+      <text class="t2" x="54" y="146">no indexes · no servers to pick</text>
+    </g>
+
+    <path class="pipe data" d="M 354 100 C 420 100 420 84 470 84" marker-end="url(#ah2)"/>
+    <circle class="pk c-blue" r="5"><animateMotion dur="1.8s" repeatCount="indefinite" path="M 354 100 C 420 100 420 84 470 84"/></circle>
+
+    <!-- root -->
+    <g class="node nd-blue" data-info="bq-dremel" tabindex="0" role="button" aria-label="Dremel root server">
+      <rect class="body" x="474" y="52" width="226" height="64" rx="14"/>
+      <text class="t3" x="492" y="74" fill="#7FAFF7">ROOT SERVER</text>
+      <text class="t1" x="492" y="96" style="font-size:14px">plans · final aggregation</text>
+    </g>
+
+    <!-- result chip -->
+    <g class="node nd-green" data-info="bq-cache" tabindex="0" role="button" aria-label="Query result and cache">
+      <rect class="body" x="924" y="48" width="222" height="86" rx="14"/>
+      <text class="t3" x="940" y="70" fill="#8DE3A8">RESULT · 1.9 s</text>
+      <text class="t2" x="940" y="90">1.8 TB pruned → 96 GB scanned</text>
+      <text class="t2" x="940" y="106">cached free for 24 h</text>
+      <text class="t2" x="940" y="122">region | revenue ✓</text>
+    </g>
+    <path class="pipe data" d="M 700 84 H 920" marker-end="url(#ah2)"/>
+    <circle class="pk c-green" r="5"><animateMotion dur="2s" begin=".9s" repeatCount="indefinite" path="M 700 84 H 920"/></circle>
+
+    <!-- mixers -->
+    <path class="pipe ctrl" d="M 540 116 C 540 150 530 150 530 162" marker-end="url(#ah2)"/>
+    <path class="pipe ctrl" d="M 660 116 C 660 150 760 140 770 162" marker-end="url(#ah2)"/>
+    <g class="node nd-blue" data-info="bq-dremel" tabindex="0" role="button" aria-label="Mixer, partial aggregation">
+      <rect class="body" x="436" y="166" width="190" height="52" rx="12"/>
+      <text class="t2" x="452" y="188" fill="#BCD3FB">MIXER</text>
+      <text class="t2" x="452" y="204">partial SUM per region</text>
+    </g>
+    <g class="node nd-blue" data-info="bq-dremel" tabindex="0" role="button" aria-label="Mixer, partial aggregation">
+      <rect class="body" x="676" y="166" width="190" height="52" rx="12"/>
+      <text class="t2" x="692" y="188" fill="#BCD3FB">MIXER</text>
+      <text class="t2" x="692" y="204">partial SUM per region</text>
+    </g>
+
+    <!-- leaf slot grids -->
+    <path class="pipe ctrl" d="M 530 218 V 244" marker-end="url(#ah2)"/>
+    <path class="pipe ctrl" d="M 770 218 V 244" marker-end="url(#ah2)"/>
+    <g class="node nd-ice" data-info="bq-slots" tabindex="0" role="button" aria-label="Leaf workers, slots">
+      <rect class="body" x="424" y="248" width="190" height="124" rx="12" fill-opacity=".55"/>
+      <rect x="436" y="256" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.00s" repeatCount="indefinite"/></rect>
+        <rect x="460" y="256" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.09s" repeatCount="indefinite"/></rect>
+        <rect x="484" y="256" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.18s" repeatCount="indefinite"/></rect>
+        <rect x="508" y="256" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.27s" repeatCount="indefinite"/></rect>
+        <rect x="532" y="256" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.36s" repeatCount="indefinite"/></rect>
+        <rect x="556" y="256" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.45s" repeatCount="indefinite"/></rect>
+        <rect x="580" y="256" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.54s" repeatCount="indefinite"/></rect>
+        <rect x="436" y="280" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.63s" repeatCount="indefinite"/></rect>
+        <rect x="460" y="280" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.72s" repeatCount="indefinite"/></rect>
+        <rect x="484" y="280" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.81s" repeatCount="indefinite"/></rect>
+        <rect x="508" y="280" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.90s" repeatCount="indefinite"/></rect>
+        <rect x="532" y="280" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.99s" repeatCount="indefinite"/></rect>
+        <rect x="556" y="280" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.08s" repeatCount="indefinite"/></rect>
+        <rect x="580" y="280" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.17s" repeatCount="indefinite"/></rect>
+        <rect x="436" y="304" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.26s" repeatCount="indefinite"/></rect>
+        <rect x="460" y="304" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.35s" repeatCount="indefinite"/></rect>
+        <rect x="484" y="304" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.44s" repeatCount="indefinite"/></rect>
+        <rect x="508" y="304" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.53s" repeatCount="indefinite"/></rect>
+        <rect x="532" y="304" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.62s" repeatCount="indefinite"/></rect>
+        <rect x="556" y="304" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.71s" repeatCount="indefinite"/></rect>
+        <rect x="580" y="304" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.80s" repeatCount="indefinite"/></rect>
+        <rect x="436" y="328" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.89s" repeatCount="indefinite"/></rect>
+        <rect x="460" y="328" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.98s" repeatCount="indefinite"/></rect>
+        <rect x="484" y="328" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="2.07s" repeatCount="indefinite"/></rect>
+        <rect x="508" y="328" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="2.16s" repeatCount="indefinite"/></rect>
+        <rect x="532" y="328" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="2.25s" repeatCount="indefinite"/></rect>
+        <rect x="556" y="328" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="2.34s" repeatCount="indefinite"/></rect>
+        <rect x="580" y="328" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="2.43s" repeatCount="indefinite"/></rect>
+      <text class="tmini" x="436" y="364" fill="#7FD9F2">leaf workers · slots</text>
+    </g>
+    <g class="node nd-ice" data-info="bq-slots" tabindex="0" role="button" aria-label="Leaf workers, slots">
+      <rect class="body" x="664" y="248" width="190" height="124" rx="12" fill-opacity=".55"/>
+      <rect x="676" y="256" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.00s" repeatCount="indefinite"/></rect>
+        <rect x="700" y="256" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.09s" repeatCount="indefinite"/></rect>
+        <rect x="724" y="256" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.18s" repeatCount="indefinite"/></rect>
+        <rect x="748" y="256" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.27s" repeatCount="indefinite"/></rect>
+        <rect x="772" y="256" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.36s" repeatCount="indefinite"/></rect>
+        <rect x="796" y="256" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.45s" repeatCount="indefinite"/></rect>
+        <rect x="820" y="256" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.54s" repeatCount="indefinite"/></rect>
+        <rect x="676" y="280" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.63s" repeatCount="indefinite"/></rect>
+        <rect x="700" y="280" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.72s" repeatCount="indefinite"/></rect>
+        <rect x="724" y="280" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.81s" repeatCount="indefinite"/></rect>
+        <rect x="748" y="280" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.90s" repeatCount="indefinite"/></rect>
+        <rect x="772" y="280" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="0.99s" repeatCount="indefinite"/></rect>
+        <rect x="796" y="280" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.08s" repeatCount="indefinite"/></rect>
+        <rect x="820" y="280" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.17s" repeatCount="indefinite"/></rect>
+        <rect x="676" y="304" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.26s" repeatCount="indefinite"/></rect>
+        <rect x="700" y="304" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.35s" repeatCount="indefinite"/></rect>
+        <rect x="724" y="304" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.44s" repeatCount="indefinite"/></rect>
+        <rect x="748" y="304" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.53s" repeatCount="indefinite"/></rect>
+        <rect x="772" y="304" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.62s" repeatCount="indefinite"/></rect>
+        <rect x="796" y="304" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.71s" repeatCount="indefinite"/></rect>
+        <rect x="820" y="304" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.80s" repeatCount="indefinite"/></rect>
+        <rect x="676" y="328" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.89s" repeatCount="indefinite"/></rect>
+        <rect x="700" y="328" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="1.98s" repeatCount="indefinite"/></rect>
+        <rect x="724" y="328" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="2.07s" repeatCount="indefinite"/></rect>
+        <rect x="748" y="328" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="2.16s" repeatCount="indefinite"/></rect>
+        <rect x="772" y="328" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="2.25s" repeatCount="indefinite"/></rect>
+        <rect x="796" y="328" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="2.34s" repeatCount="indefinite"/></rect>
+        <rect x="820" y="328" width="18" height="18" rx="4" fill="#16243F" stroke="#2C4A77" stroke-width="1"><animate attributeName="fill" values="#16243F;#4285F4;#16243F" dur="2.8s" begin="2.43s" repeatCount="indefinite"/></rect>
+      <text class="tmini" x="676" y="364" fill="#7FD9F2">leaf workers · slots</text>
+    </g>
+    <text class="tlabel freefloat" x="876" y="300">1 slot ≈ 1 virtual CPU</text>
+    <text class="tlabel freefloat" x="876" y="316">2 000 slots = 2 000-way scan</text>
+
+    <!-- results up -->
+    <circle class="pk c-green" r="4"><animateMotion dur="1.7s" repeatCount="indefinite" path="M 519 248 C 519 234 530 232 530 218"/></circle>
+    <circle class="pk c-green" r="4"><animateMotion dur="1.7s" begin=".6s" repeatCount="indefinite" path="M 759 248 C 759 234 770 232 770 218"/></circle>
+    <circle class="pk c-green" r="4"><animateMotion dur="1.6s" begin=".3s" repeatCount="indefinite" path="M 530 162 C 530 146 545 142 552 116"/></circle>
+    <circle class="pk c-green" r="4"><animateMotion dur="1.6s" begin=".9s" repeatCount="indefinite" path="M 770 162 C 770 146 680 142 668 116"/></circle>
+
+    <!-- Jupiter band -->
+    <g class="node nd-violet" data-info="bq-jupiter" tabindex="0" role="button" aria-label="Jupiter network">
+      <rect class="body" x="36" y="396" width="1110" height="36" rx="10" fill-opacity=".5"/>
+      <text class="t3" x="56" y="419" fill="#C4B5FD">3 · JUPITER NETWORK — PETABIT FABRIC · slots ⇄ storage with no shared disk</text>
+    </g>
+    <path class="beam" d="M 519 372 V 452" stroke="#5FD4F4"/>
+    <path class="beam" d="M 759 372 V 452" stroke="#5FD4F4"/>
+    <circle class="pk c-blue" r="4"><animateMotion dur="1.3s" repeatCount="indefinite" path="M 519 372 V 452"/></circle>
+    <circle class="pk c-ice" r="4"><animateMotion dur="1.3s" begin=".5s" repeatCount="indefinite" path="M 759 452 V 372"/></circle>
+    <circle class="pk c-ice" r="4"><animateMotion dur="1.5s" begin=".2s" repeatCount="indefinite" path="M 519 452 V 372"/></circle>
+
+    <!-- Colossus -->
+    <rect class="zoneglow" x="36" y="446" width="730" height="172" rx="18" fill="var(--g-blue)" opacity=".07"/>
+    <g class="node nd-blue" data-info="bq-colossus" tabindex="0" role="button" aria-label="Colossus storage">
+      <rect class="body" x="36" y="446" width="730" height="172" rx="18" fill-opacity="0"/>
+      <text class="t3" x="56" y="472" fill="#7FAFF7">CAPACITOR COLUMNAR FILES · replicated · encrypted</text>
+    </g>
+    <!-- pruned partition group -->
+    <g data-info="bq-pruning" tabindex="0" role="button" aria-label="Pruned partitions" style="cursor:pointer">
+      <rect x="64" y="486" width="22" height="100" rx="4" fill="#1B2A45"/><rect x="92" y="486" width="22" height="100" rx="4" fill="#1B2A45"/><rect x="120" y="486" width="22" height="100" rx="4" fill="#1B2A45"/>
+      <line x1="60" y1="482" x2="148" y2="590" stroke="#EA4335" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+      <line x1="148" y1="482" x2="60" y2="590" stroke="#EA4335" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+      <text class="tmini" x="58" y="606" fill="#F08A7E">dt ≠ 2026-06-11 → skipped</text>
+    </g>
+    <!-- scanned table: 4 columns, 2 hot -->
+    <g data-info="bq-columnar" tabindex="0" role="button" aria-label="Columnar scan" style="cursor:pointer">
+      <text class="tmini" x="248" y="480" fill="#BCD3FB">fct_orders · dt=2026-06-11</text>
+      <rect x="248" y="486" width="22" height="100" rx="4" fill="#27406B"/><text class="tmini" x="246" y="606" fill="#6F86AC">order_id</text>
+      <rect x="312" y="486" width="22" height="100" rx="4" fill="#4285F4"/><text class="tmini" x="312" y="606" fill="#BCD3FB">region</text>
+      <rect x="376" y="486" width="22" height="100" rx="4" fill="#4285F4"/><text class="tmini" x="372" y="606" fill="#BCD3FB">amount</text>
+      <rect x="440" y="486" width="22" height="100" rx="4" fill="#27406B"/><text class="tmini" x="436" y="606" fill="#6F86AC">payload</text>
+      <rect x="312" y="486" width="22" height="9" rx="2" fill="#FFFFFF" opacity=".38"><animateTransform attributeName="transform" type="translate" values="0 0;0 92;0 0" dur="2.4s" repeatCount="indefinite"/></rect>
+      <rect x="376" y="486" width="22" height="9" rx="2" fill="#FFFFFF" opacity=".38"><animateTransform attributeName="transform" type="translate" values="0 0;0 92;0 0" dur="2.4s" repeatCount="indefinite"/></rect>
+      <text class="tmini" x="248" y="466" fill="#8DE3A8">reads ONLY the 2 columns the query touches</text>
+    </g>
+    <!-- biglake external -->
+    <g class="node nd-ice" data-info="bq-external" tabindex="0" role="button" aria-label="BigLake external Iceberg path">
+      <rect class="body" x="800" y="458" width="346" height="150" rx="16"/>
+      <text class="t3" x="818" y="482" fill="#7FD9F2">SAME QUERY, EXTERNAL DATA</text>
+      <text class="t1" x="818" y="506" style="font-size:14px">BigLake → Iceberg in GCS</text>
+      <text class="t2" x="818" y="526">slots read Silver/Gold Parquet straight</text>
+      <text class="t2" x="818" y="541">from your bucket — no load, no copy,</text>
+      <text class="t2" x="818" y="556">same row/column security</text>
+      <text class="tmini" x="818" y="588" fill="#8FA3C4">native table ⇄ lakehouse table: one SQL dialect</text>
+    </g>
+    <path class="pipe ctrl" d="M 854 376 C 880 410 920 420 950 454" marker-end="url(#ah2)"/>
+    <circle class="pk c-ice" r="4"><animateMotion dur="2s" repeatCount="indefinite" path="M 950 454 C 920 420 880 410 854 376"/></circle>
+  </svg>
+  </div>
+
+  <p class="hint">▶ Click the <b>root</b>, <b>slots</b>, <b>Jupiter band</b>, <b>Colossus</b>, the <b>crossed-out partitions</b> or the <b>blue columns</b> — each opens a deep dive.</p>
+  <div class="chips">
+    <span class="chip" data-info="bq-sep" tabindex="0" role="button">🧩 Storage ⟂ compute — why that changes everything</span>
+    <span class="chip" data-info="bq-pruning" tabindex="0" role="button">✂️ Partition + clustering = scan less, pay less</span>
+    <span class="chip" data-info="bq-pricing" tabindex="0" role="button">💸 On-demand vs Editions (slots) pricing</span>
+    <span class="chip" data-info="bq-best" tabindex="0" role="button">✅ 7 habits of cheap, fast queries</span>
+  </div>
+
+  <div class="grid3">
+    <div class="kcard" style="--cc:var(--g-blue)" data-info="bq-mat" tabindex="0" role="button">
+      <span class="km">Go faster 01</span><h4>Materialized views &amp; BI Engine</h4>
+      <p>Pre-compute hot aggregations once; BigQuery rewrites matching queries to use them automatically. BI Engine adds an in-memory layer that makes dashboards feel instant.</p>
+    </div>
+    <div class="kcard" style="--cc:var(--violet)" data-info="bq-tt" tabindex="0" role="button">
+      <span class="km">Safety net 02</span><h4>Time travel built in</h4>
+      <p>Every native table keeps 7 days of history (configurable 2–7): query <code>FOR SYSTEM_TIME AS OF</code>, undelete a dropped table, or diff today vs yesterday — the same idea you saw in Iceberg.</p>
+    </div>
+    <div class="kcard" style="--cc:var(--g-green)" data-info="bq-stream" tabindex="0" role="button">
+      <span class="km">Beyond batch 03</span><h4>Streaming ingest</h4>
+      <p>The Storage Write API streams rows in with exactly-once semantics; they're queryable within seconds. Your nightly lakehouse can grow a real-time lane without changing consumers.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PAGE 5 : GCP SERVICES ============ -->
+<section class="page" id="page-services">
+  <div class="pagehead">
+    <span class="eyebrow">07 · The toolbox</span>
+    <h2>The 7 GCP services, explained like you're new 🧰</h2>
+    <p class="lede">Every box you saw in the pipeline is one of these managed services. Tap a card to expand it — what it is, what it's great at, a beginner analogy, and the exact job it does in <em>our</em> lakehouse.</p>
+  </div>
+
+  <div class="svcgrid">
+
+    <!-- GCS -->
+    <div class="svc" style="--sc:var(--g-yellow)">
+      <button class="svc-head" aria-expanded="false">
+        <span class="svc-ic"><svg viewBox="0 0 48 48"><rect x="2" y="10" width="44" height="12" rx="2.5" fill="#4285F4"/><rect x="2" y="26" width="44" height="12" rx="2.5" fill="#669DF6"/><circle cx="10" cy="16" r="2.6" fill="#AECBFA"/><rect x="26" y="14.4" width="14" height="3.4" rx="1.7" fill="#AECBFA"/><circle cx="10" cy="32" r="2.6" fill="#0B1220"/><rect x="26" y="30.4" width="14" height="3.4" rx="1.7" fill="#0B1220"/></svg></span>
+        <span><h3>Cloud Storage (GCS)</h3><span class="one">Infinite object storage — the lake itself</span></span>
+        <span class="caret">▼</span>
+      </button>
+      <div class="svc-body"><div class="svc-inner">
+        <h5>What it is</h5>
+        <p>Google's object storage: you put files (objects) into <b>buckets</b>, and it scales to exabytes with 11&nbsp;nines of durability. It doesn't run compute — it just holds bytes, extremely well and extremely cheaply.</p>
+        <h5>Key features</h5>
+        <ul>
+          <li><b>Storage classes</b> — Standard, Nearline, Coldline, Archive; lifecycle rules auto-move old files to cheaper tiers.</li>
+          <li><b>Strong consistency</b> — read-after-write, which table formats like Iceberg rely on.</li>
+          <li><b>Fine-grained IAM</b> + uniform bucket-level access for security.</li>
+          <li><b>Versioning &amp; retention locks</b> — protect raw data from accidental deletes.</li>
+        </ul>
+        <div class="an">🪣 <b>Analogy:</b> a bottomless, fire-proof warehouse with perfect shelving labels. It never loses a box, but it won't open the boxes for you — that's the compute engines' job.</div>
+        <div class="role">📍 <b>In our pipeline:</b> hosts all three Medallion zones as buckets/prefixes — <code>raw/</code> Parquet, <code>conformance/</code> and <code>curated/</code> Iceberg files. Every other service reads or writes here.</div>
+      </div></div>
+    </div>
+
+    <!-- Cloud Scheduler -->
+    <div class="svc" style="--sc:var(--violet)">
+      <button class="svc-head" aria-expanded="false">
+        <span class="svc-ic"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="21" fill="#4285F4"/><circle cx="24" cy="24" r="15.5" fill="#AECBFA"/><path d="M24 14v10l7.5 5" stroke="#185ABC" stroke-width="4" fill="none" stroke-linecap="round"/></svg></span>
+        <span><h3>Cloud Scheduler</h3><span class="one">Fully managed cron — the alarm clock</span></span>
+        <span class="caret">▼</span>
+      </button>
+      <div class="svc-body"><div class="svc-inner">
+        <h5>What it is</h5>
+        <p>A serverless <b>cron service</b>. You define a schedule like <code>0 2 * * *</code> (2&nbsp;AM daily) and a target — an HTTP endpoint, a Pub/Sub topic, or a Cloud Run job — and Google guarantees it fires on time.</p>
+        <h5>Key features</h5>
+        <ul>
+          <li><b>Standard cron syntax</b> with time-zone awareness (no DST surprises).</li>
+          <li><b>Retries with backoff</b> if the target fails or times out.</li>
+          <li><b>Targets:</b> HTTP(S), Pub/Sub, App Engine — perfect for kicking off Cloud Run jobs.</li>
+          <li>Pennies per job per month — no server to babysit.</li>
+        </ul>
+        <div class="an">⏰ <b>Analogy:</b> an alarm clock that never needs batteries and can press one button somewhere in the cloud when it rings.</div>
+        <div class="role">📍 <b>In our pipeline:</b> rings at 02:00 every night and triggers the <b>Cloud Run ingestion job</b> that pulls fresh source data into the Raw zone.</div>
+      </div></div>
+    </div>
+
+    <!-- Cloud Run Job -->
+    <div class="svc" style="--sc:var(--ice)">
+      <button class="svc-head" aria-expanded="false">
+        <span class="svc-ic"><svg viewBox="0 0 48 48"><rect x="6" y="6" width="36" height="36" rx="7" fill="#4285F4"/><rect x="11" y="11" width="26" height="26" rx="4.5" fill="#669DF6"/><path d="M20 17 L31 24 L20 31 Z" fill="#AECBFA"/></svg></span>
+        <span><h3>Cloud Run Job</h3><span class="one">Run a container to completion — then vanish</span></span>
+        <span class="caret">▼</span>
+      </button>
+      <div class="svc-body"><div class="svc-inner">
+        <h5>What it is</h5>
+        <p>Serverless <b>batch</b> execution: package any code as a container, and Cloud Run runs it until it exits. No HTTP server needed, no idle cost — it spins up, does the work, writes results, and disappears.</p>
+        <h5>Key features</h5>
+        <ul>
+          <li><b>Run-to-completion</b> semantics with automatic retries on failure.</li>
+          <li><b>Parallel tasks</b> — fan one job out into N workers (e.g. one per source table).</li>
+          <li>Up to 24h runtime, generous CPU/RAM, any language that fits in a container.</li>
+          <li>Triggered by Scheduler, Workflows, Airflow, or <code>gcloud run jobs execute</code>.</li>
+        </ul>
+        <div class="an">📦 <b>Analogy:</b> a day-labourer you summon by text: shows up, does exactly one task from the checklist, leaves, and only invoices for minutes worked.</div>
+        <div class="role">📍 <b>In our pipeline:</b> the <b>ingestion job</b> — calls source APIs / reads source DB extracts and lands them as immutable Parquet in the Bronze (Raw) zone.</div>
+      </div></div>
+    </div>
+
+    <!-- Cloud Run Service / Functions -->
+    <div class="svc" style="--sc:var(--g-green)">
+      <button class="svc-head" aria-expanded="false">
+        <span class="svc-ic"><svg viewBox="0 0 48 48"><path d="M14 8 Q4 24 14 40" fill="none" stroke="#4285F4" stroke-width="6" stroke-linecap="round"/><path d="M34 8 Q44 24 34 40" fill="none" stroke="#4285F4" stroke-width="6" stroke-linecap="round"/><circle cx="24" cy="24" r="5.5" fill="#669DF6"/><circle cx="24" cy="24" r="2" fill="#AECBFA"/></svg></span>
+        <span><h3>Cloud Run Service / Functions</h3><span class="one">Always-ready HTTP endpoints &amp; event handlers</span></span>
+        <span class="caret">▼</span>
+      </button>
+      <div class="svc-body"><div class="svc-inner">
+        <h5>What it is</h5>
+        <p>The <b>request-driven</b> side of Cloud Run: a container (Service) or a single function (Cloud Run functions) that wakes on an HTTP request or an event — like a file landing in GCS — handles it, and scales back to zero.</p>
+        <h5>Key features</h5>
+        <ul>
+          <li><b>Scale 0 → thousands</b> of instances automatically with traffic.</li>
+          <li><b>Event triggers</b> via Eventarc: GCS object created, Pub/Sub message, audit logs…</li>
+          <li>Pay per request + per 100ms of compute; free when idle.</li>
+          <li>Functions = just write a handler; Service = bring a full container/framework.</li>
+        </ul>
+        <div class="an">🛎️ <b>Analogy:</b> a hotel concierge desk — nobody's there until you ring the bell, then exactly enough staff appear to serve the queue, and they leave when it's quiet.</div>
+        <div class="role">📍 <b>In our pipeline:</b> serves Gold data as a <b>JSON API</b> to apps, and (optionally) reacts to "new file in <code>raw/</code>" events for event-driven flows.</div>
+      </div></div>
+    </div>
+
+    <!-- Dataproc -->
+    <div class="svc" style="--sc:var(--g-red)">
+      <button class="svc-head" aria-expanded="false">
+        <span class="svc-ic"><svg viewBox="0 0 48 48"><path d="M24 22 L10 36 M24 22 L38 36 M24 22 L24 6" stroke="#AECBFA" stroke-width="3.4"/><circle cx="24" cy="22" r="9" fill="#4285F4"/><circle cx="24" cy="6" r="5" fill="#669DF6"/><circle cx="10" cy="36" r="5" fill="#669DF6"/><circle cx="38" cy="36" r="5" fill="#669DF6"/></svg></span>
+        <span><h3>Dataproc</h3><span class="one">Managed Apache Spark — the heavy machinery</span></span>
+        <span class="caret">▼</span>
+      </button>
+      <div class="svc-body"><div class="svc-inner">
+        <h5>What it is</h5>
+        <p>Google-managed <b>Apache Spark</b> (plus Hadoop, Flink, Trino). Spin up a cluster in ~90 seconds — or use <b>Dataproc Serverless</b>, where you just submit a Spark job and Google handles all infrastructure.</p>
+        <h5>Key features</h5>
+        <ul>
+          <li><b>Serverless Spark batches</b> — no cluster sizing, autoscaling executors.</li>
+          <li><b>Ephemeral clusters</b> — create → run → delete; pay only for the run.</li>
+          <li>First-class <b>Iceberg &amp; BigLake</b> connectors; reads/writes GCS natively.</li>
+          <li>Distributed power: joins, dedupe and transforms across billions of rows.</li>
+        </ul>
+        <div class="an">🏗️ <b>Analogy:</b> a rentable construction crew with cranes. Wildly overkill for hanging a picture, unbeatable for moving a mountain of data — and you return the crew when done.</div>
+        <div class="role">📍 <b>In our pipeline:</b> runs the two PySpark transform jobs — <b>Raw → Conformance</b> (clean, dedupe, standardise) and <b>Conformance → Curated</b> (join, aggregate, build the star schema), writing Iceberg tables both times.</div>
+      </div></div>
+    </div>
+
+    <!-- BigQuery -->
+    <div class="svc" style="--sc:var(--g-blue)">
+      <button class="svc-head" aria-expanded="false">
+        <span class="svc-ic"><svg viewBox="0 0 48 48"><circle cx="21" cy="21" r="16" fill="#669DF6"/><circle cx="21" cy="21" r="11.5" fill="#AECBFA"/><path d="M32.5 32.5 L42 42" stroke="#4285F4" stroke-width="7" stroke-linecap="round"/><path d="M15.5 22.5v5M21 18v9.5M26.5 20.5v7" stroke="#4285F4" stroke-width="3.2" stroke-linecap="round"/></svg></span>
+        <span><h3>BigQuery</h3><span class="one">Serverless SQL warehouse — the brain</span></span>
+        <span class="caret">▼</span>
+      </button>
+      <div class="svc-body"><div class="svc-inner">
+        <h5>What it is</h5>
+        <p>A fully serverless <b>analytics warehouse</b>: load or reference data, write SQL, and Google fans the query out across thousands of workers. Storage and compute are separate, so you never provision a database server.</p>
+        <h5>Key features</h5>
+        <ul>
+          <li><b>Petabyte SQL</b> in seconds; pay per TB scanned or via reserved slots.</li>
+          <li><b>BigLake external tables</b> — query Iceberg/Parquet sitting in GCS as if native.</li>
+          <li><b>BigQuery ML</b> — train models in SQL; built-in BI Engine for dashboards.</li>
+          <li>Row-level security, column masking, materialized views, time travel.</li>
+        </ul>
+        <div class="an">🧠 <b>Analogy:</b> a genius librarian with a million assistants — ask any question about the library and thousands of helpers each scan one shelf, returning the combined answer in seconds.</div>
+        <div class="role">📍 <b>In our pipeline:</b> the main <b>query engine</b>. Through BigLake it reads Silver &amp; Gold Iceberg tables in place, powering Looker dashboards, ad-hoc SQL and ML — without copying data out of the lake.</div>
+      </div></div>
+    </div>
+
+    <!-- Composer -->
+    <div class="svc" style="--sc:#9F7AEA">
+      <button class="svc-head" aria-expanded="false">
+        <span class="svc-ic"><svg viewBox="0 0 48 48"><path d="M24 24 L24 7 M24 24 L41 24 M24 24 L24 41 M24 24 L7 24" stroke="#AECBFA" stroke-width="3.2"/><circle cx="24" cy="7" r="5.4" fill="#669DF6"/><circle cx="41" cy="24" r="5.4" fill="#669DF6"/><circle cx="24" cy="41" r="5.4" fill="#669DF6"/><circle cx="7" cy="24" r="5.4" fill="#669DF6"/><circle cx="24" cy="24" r="6.6" fill="#4285F4"/></svg></span>
+        <span><h3>Cloud Composer</h3><span class="one">Managed Apache Airflow — the conductor</span></span>
+        <span class="caret">▼</span>
+      </button>
+      <div class="svc-body"><div class="svc-inner">
+        <h5>What it is</h5>
+        <p>Google-hosted <b>Apache Airflow</b>. You write a <b>DAG</b> (a Python file describing tasks and their order); Composer runs the Airflow scheduler, web UI and workers for you — patched, scaled and monitored.</p>
+        <h5>Key features</h5>
+        <ul>
+          <li><b>DAGs as code</b> — pipelines are version-controlled Python, reviewable in Git.</li>
+          <li><b>Dependencies &amp; sensors</b> — "run B only after A succeeds; wait for file X".</li>
+          <li><b>Retries, SLAs, alerting</b>, backfills and a visual run-history UI.</li>
+          <li>Hundreds of operators: Dataproc, BigQuery, Cloud Run, GCS and beyond.</li>
+        </ul>
+        <div class="an">🎼 <b>Analogy:</b> an orchestra conductor — plays no instrument, but cues every musician at the right moment, notices anyone out of tune (failed task), and can replay a section (retry/backfill).</div>
+        <div class="role">📍 <b>In our pipeline:</b> after ingestion, its DAG orders everything: <code>sense raw files → Dataproc raw→silver → Dataproc silver→gold → refresh BigLake metadata → notify</code>. One pane of glass for the whole night.</div>
+      </div></div>
+    </div>
+
+  </div>
+
+  <footer>
+    <b>The whole story in one breath:</b> Scheduler rings → a Cloud Run job lands raw Parquet in GCS → Composer conducts → Dataproc/Spark refines it through Bronze → Silver → Gold as Iceberg tables → BigLake exposes those tables with fine-grained security → BigQuery, Spark, dashboards and APIs all query one copy of the truth. 🎉
+    <div class="recap">
+      <span>⏰ Scheduler</span><span class="arrow">→</span>
+      <span>📦 Run Job</span><span class="arrow">→</span>
+      <span>🥉 Raw</span><span class="arrow">→</span>
+      <span>🎼 Composer</span><span class="arrow">→</span>
+      <span>⚡ Dataproc</span><span class="arrow">→</span>
+      <span>🥈 Silver</span><span class="arrow">→</span>
+      <span>🥇 Gold</span><span class="arrow">→</span>
+      <span>🧊 BigLake</span><span class="arrow">→</span>
+      <span>🧠 BigQuery &amp; friends</span>
+    </div>
+  </footer>
+</section>
+</div><!-- /wrap -->
+
+<!-- ============ DETAIL DRAWER ============ -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+  <div class="drawer-head">
+    <span class="bar"></span>
+    <div style="flex:1">
+      <span class="kicker" id="dKicker">Detail</span>
+      <h3 id="dTitle">Title</h3>
+    </div>
+    <button class="drawer-close" id="dClose" aria-label="Close details">✕</button>
+  </div>
+  <div class="drawer-body" id="dBody"></div>
+</aside>
+
+<style>
+/* supplemental animations */
+@keyframes dropin{0%{opacity:0;transform:translateY(-26px)}18%{opacity:1;transform:translateY(0)}82%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(0)}}
+.dropin{animation:dropin 3.4s ease-in-out infinite;transform-box:fill-box}
+@keyframes spinz{to{transform:rotate(360deg)}}
+.spinslow path{animation:spinz 9s linear infinite;transform-box:fill-box;transform-origin:center}
+body.no-anim .dropin,body.no-anim .spinslow path,body.no-anim tr.rowin{animation:none}
+.btn.paused .dot{background:var(--g-yellow);box-shadow:0 0 8px var(--g-yellow)}
+.brandrow{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+.brandrow .gcl{width:46px;height:36px;filter:drop-shadow(0 2px 10px rgba(66,133,244,.35))}
+.brandrow .gclt{font-family:var(--font-d);font-size:1.05rem;letter-spacing:.02em;color:#C8D4EA}
+.brandrow .gclt b{color:#fff;font-weight:600}
+</style>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+
+/* ---------- TABS ---------- */
+function showPage(p){
+  $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.page===p));
+  $$('.page').forEach(s=>s.classList.toggle('active',s.id==='page-'+p));
+  endTour(); closeDrawer(); window.scrollTo({top:0,behavior:'smooth'});
+}
+$$('.tab').forEach(t=>t.addEventListener('click',()=>showPage(t.dataset.page)));
+
+/* ---------- DETAIL DRAWER ---------- */
+const drawer=$('#drawer'),scrim=$('#scrim'),dK=$('#dKicker'),dT=$('#dTitle'),dB=$('#dBody');
+function openInfo(key){
+  const i=INFO[key]; if(!i) return;
+  drawer.style.setProperty('--dc',i.c);
+  dK.textContent=i.k; dT.textContent=i.t; dB.innerHTML=i.b;
+  drawer.classList.add('open'); scrim.classList.add('show'); dB.scrollTop=0;
+}
+function closeDrawer(){drawer.classList.remove('open');scrim.classList.remove('show');}
+$('#dClose').addEventListener('click',closeDrawer);
+scrim.addEventListener('click',closeDrawer);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();endTour();}});
+$$('[data-info]').forEach(el=>{
+  el.addEventListener('click',()=>openInfo(el.dataset.info));
+  el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openInfo(el.dataset.info);}});
+});
+const an=t=>'<div class="an">'+t+'</div>';
+
+/* ---------- INFO DICTIONARY ---------- */
+const INFO={
+sources:{k:'Pipeline · Step 0',t:'Source systems',c:'#8FA3C4',b:`
+<p>Where data is born: the operational <b>Postgres/MySQL</b> databases behind your apps, <b>SaaS &amp; REST APIs</b> (CRM, payments, ads platforms), and <b>event/log streams</b>. They are optimised for running the business, not for analytics — heavy reporting queries here would slow real users down.</p>
+<h4>Why we copy data out</h4>
+<ul><li><b>Protect production</b> — analytics scans never touch the live DB.</li>
+<li><b>History</b> — sources overwrite rows; the lake keeps every version.</li>
+<li><b>One place to join</b> — orders + ads + support tickets together.</li></ul>
+`+an('🌊 <b>Analogy:</b> mountain springs. You don\u2019t build the city at the spring — you pipe the water down to a reservoir (the lake) where everyone can use it safely.')},
+
+scheduler:{k:'Pipeline · Step 1',t:'Cloud Scheduler — the alarm clock',c:'var(--violet)',b:`
+<p>A fully managed <b>cron service</b>. One rule here says: <code>0 2 * * *</code> → "at 02:00 every night, send an HTTP call that starts the ingestion job". No VM, no crontab to patch — Google guarantees it fires.</p>
+<h4>Beginner notes</h4>
+<ul><li>Schedules use plain <b>cron syntax</b> + a time zone.</li>
+<li>Built-in <b>retries</b> if the target errors or times out.</li>
+<li>Costs pennies; you only manage the schedule itself.</li></ul>
+`+an('⏰ <b>Analogy:</b> an alarm clock that never needs batteries and presses one button in the cloud when it rings.')},
+
+runjob:{k:'Pipeline · Step 2',t:'Cloud Run Job — ingestion worker',c:'var(--ice)',b:`
+<p>A container that <b>runs to completion</b>: it wakes when Scheduler calls, pulls yesterday's data from each source (API pages, DB extracts), writes it as <b>Parquet files into the Raw zone</b> in GCS, then exits. You pay only for the minutes it ran.</p>
+<h4>Why a Job (not a Service)?</h4>
+<ul><li>Batch work has a clear <b>start and end</b> — no HTTP server needed.</li>
+<li><b>Parallel tasks</b>: fan out one task per source table.</li>
+<li>Automatic <b>retries</b> on failure; up to 24h runtime.</li></ul>
+`+an('📦 <b>Analogy:</b> a courier you book nightly: collects parcels from every supplier, drops them in the warehouse intake bay, goes home. Invoice = minutes worked.')},
+
+bronze:{k:'Medallion · Layer 1',t:'Raw zone (Bronze) — Parquet',c:'var(--bronze)',b:`
+<p>The <b>landing zone</b>: data exactly as it arrived, stored as immutable <b>Parquet</b> files in GCS, organised by source and load date (e.g. <code>raw/orders/dt=2026-06-11/</code>). Nothing is cleaned, nothing is deleted.</p>
+<h4>House rules</h4>
+<ul><li><b>Append-only</b> — never edit or overwrite; re-loads land as new files.</li>
+<li>Keep <b>load metadata</b>: source name, extract time, batch id.</li>
+<li>It is your <b>replay button</b>: if downstream logic was wrong, rebuild Silver/Gold from here.</li></ul>
+`+an('🥉 <b>Analogy:</b> a museum archive vault — originals are preserved untouched; restorers always work on copies.')},
+
+composer:{k:'Pipeline · Orchestration',t:'Cloud Composer — the conductor',c:'#9F7AEA',b:`
+<p>Managed <b>Apache Airflow</b>. A Python <b>DAG</b> describes the night: wait for raw files → run Spark raw→silver → run Spark silver→gold → refresh BigLake metadata → notify. Composer runs the scheduler, workers and web UI for you.</p>
+<h4>Why teams love it</h4>
+<ul><li><b>Dependencies</b>: step B only after A succeeds.</li>
+<li><b>Retries, SLAs, alerts</b> and one-click <b>backfills</b>.</li>
+<li>Pipeline = <b>code in Git</b>, reviewable and versioned.</li></ul>
+`+an('🎼 <b>Analogy:</b> an orchestra conductor — plays no instrument, but cues every musician, hears wrong notes (failed tasks), and can replay a section (retry).')},
+
+dataproc:{k:'Pipeline · Transform engine',t:'Dataproc — managed Spark',c:'var(--g-red)',b:`
+<p>Google-managed <b>Apache Spark</b>. Our two PySpark jobs run here (often on <b>Dataproc Serverless</b>, zero clusters to size): job 1 turns Raw Parquet into clean Silver Iceberg tables; job 2 joins and aggregates Silver into the Gold star schema.</p>
+<h4>Why Spark for this</h4>
+<ul><li><b>Distributed</b>: dedupe/joins across billions of rows.</li>
+<li>Native <b>Iceberg writer</b> — atomic commits, snapshots.</li>
+<li><b>Ephemeral</b>: compute exists only while the job runs.</li></ul>
+`+an('🏗️ <b>Analogy:</b> a rentable construction crew with cranes — overkill for a picture frame, unbeatable for moving a mountain, returned when done.')},
+
+silver:{k:'Medallion · Layer 2',t:'Conformance zone (Silver) — Iceberg',c:'var(--silver)',b:`
+<p>The <b>clean, standardised</b> version of every entity, stored as <b>Iceberg tables</b>. Spark validates types, fixes formats (dates → UTC, currency → minor units), removes duplicates, applies merges — one conformed table per business entity.</p>
+<h4>What "conformance" means</h4>
+<ul><li><b>Same shape everywhere</b>: a customer looks identical no matter the source.</li>
+<li><b>Quality gates</b>: null checks, referential checks, quarantine for bad rows.</li>
+<li><b>MERGE upserts</b> keep current state while snapshots keep history.</li></ul>
+`+an('🥈 <b>Analogy:</b> ingredients washed, peeled and chopped into labelled containers — not yet a dish, but safe and ready for any recipe.')},
+
+gold:{k:'Medallion · Layer 3',t:'Curated zone (Gold) — Iceberg',c:'var(--gold)',b:`
+<p>Business-ready data: <b>star schemas</b> (fact + dimension tables), wide reporting tables and KPIs, again as Iceberg. Modelled around questions ("daily revenue by region"), not around source systems.</p>
+<h4>Design habits</h4>
+<ul><li><b>Facts</b> = events/measures (orders, payments); <b>dimensions</b> = context (customer, product, date).</li>
+<li>Pre-joined &amp; pre-aggregated → dashboards stay fast and cheap.</li>
+<li>Named in <b>business language</b>: <code>fct_orders</code>, <code>dim_customer</code>.</li></ul>
+`+an('🥇 <b>Analogy:</b> the plated dish served to guests — consistent, garnished, ready to consume. Nobody at the table sees the chopping board.')},
+
+biglake:{k:'Access layer',t:'BigLake — one table, every engine',c:'var(--g-blue)',b:`
+<p>BigLake makes files in GCS behave like <b>first-class, governed tables</b>. Engines don't get raw bucket access; they go through BigLake, which checks fine-grained permissions and serves table metadata fast.</p>
+<h4>What it adds on top of plain GCS</h4>
+<ul><li><b>Security at table/row/column level</b> — not just whole-bucket IAM.</li>
+<li><b>Metadata caching</b> for fast query planning over Iceberg/Parquet.</li>
+<li><b>Multi-engine</b>: BigQuery, Spark, Trino… all see the same table.</li><li><b>Omni</b>: the same model over data in AWS S3 / Azure.</li></ul>
+`+an('🛂 <b>Analogy:</b> passport control + concierge for the lake: checks exactly who may see which rows/columns, then hands engines a fast map of where the data lives.')},
+
+bigquery:{k:'Consumption',t:'BigQuery — serverless SQL brain',c:'var(--g-blue)',b:`
+<p>The serverless warehouse where analysts live. Via BigLake it queries Silver &amp; Gold <b>Iceberg tables in place</b> — no copies — fanning each SQL statement across thousands of workers.</p>
+<h4>Highlights</h4>
+<ul><li>Petabyte SQL in seconds; pay per TB scanned or via slots.</li>
+<li><b>BigQuery ML</b>: train models with SQL; BI Engine accelerates dashboards.</li>
+<li>Row security, masking, materialized views, time travel.</li></ul>
+`+an('🧠 <b>Analogy:</b> a genius librarian with a million assistants — each scans one shelf and the combined answer returns in seconds.')},
+
+runservice:{k:'Consumption',t:'Cloud Run Service — data API',c:'var(--g-green)',b:`
+<p>An always-ready (scale-to-zero) HTTPS endpoint. Apps call <code>GET /kpi/revenue?region=EU</code>; the service queries Gold via BigQuery/BigLake and returns JSON. Scales with traffic, costs nothing when idle.</p>
+`+an('🛎️ <b>Analogy:</b> a hotel concierge desk — staff appear when the bell rings, exactly enough for the queue, gone when it\u2019s quiet.')},
+
+bi:{k:'Consumption',t:'BI dashboards (Looker / Looker Studio)',c:'var(--g-yellow)',b:`
+<p>Dashboards point at <b>Gold</b> tables through BigQuery. Because Gold is pre-modelled and pre-aggregated, charts load fast and every team sees the same numbers — one definition of "revenue".</p>
+`+an('📊 <b>Analogy:</b> the restaurant menu with photos — everyone orders from the same curated dishes instead of wandering into the kitchen.')},
+
+ml:{k:'Consumption',t:'ML & notebooks (Vertex AI)',c:'var(--violet)',b:`
+<p>Data scientists read Silver/Gold Iceberg straight from the lake via BigLake — Spark or BigQuery — for features and training sets. Same governed tables, no private CSV copies floating around.</p>
+`+an('🧪 <b>Analogy:</b> chefs experimenting in a test kitchen, but pulling from the same certified pantry as everyone else.')},
+
+parquet:{k:'File format',t:'Why Parquet for raw files?',c:'var(--bronze)',b:`
+<p><b>Parquet</b> is a compressed, <b>columnar</b> file format. Analytics usually reads a few columns of many rows — columnar layout means engines read only those columns, so scans are 10–100× cheaper than CSV/JSON.</p>
+<ul><li>Typed schema embedded in the file (no guessing strings vs numbers).</li>
+<li>Heavy compression → smaller GCS bills.</li>
+<li>Universal: Spark, BigQuery, pandas, DuckDB all speak it.</li></ul>
+`+an('📚 <b>Analogy:</b> CSV is a novel you must read line-by-line; Parquet is the same book with an index per column — flip straight to "all the prices".')},
+
+whyiceberg:{k:'Table format',t:'Why Iceberg from Silver onward?',c:'var(--ice)',b:`
+<p>Raw files are write-once, so plain Parquet is fine there. Silver/Gold need <b>updates, merges, schema changes and history</b> — that's a <i>table format</i> job. Iceberg adds a metadata brain on top of Parquet files to provide ACID commits, time travel and safe concurrent writers.</p>
+`+an('🧊 <b>Analogy:</b> Parquet files are pages; Iceberg is the binder + table of contents + edit log that turns loose pages into a real, editable book.')},
+
+quality:{k:'Silver zone',t:'Data-quality gates',c:'var(--silver)',b:`
+<p>Between Raw and Silver, Spark enforces expectations: required columns present, types valid, IDs unique, values in range. Failing rows go to a <b>quarantine table</b> with a reason code — the pipeline alerts instead of silently shipping garbage.</p>
+`+an('🧯 <b>Analogy:</b> airport security for rows — most pass in seconds; suspicious ones are pulled aside with a tag saying why.')},
+
+star:{k:'Gold zone',t:'Star schema in 60 seconds',c:'var(--gold)',b:`
+<p>One central <b>fact</b> table (events + numbers, e.g. <code>fct_orders</code>) surrounded by <b>dimension</b> tables (who/what/when: <code>dim_customer</code>, <code>dim_product</code>, <code>dim_date</code>). Drawn out, it looks like a star ⭐.</p>
+<ul><li>Simple mental model → analysts write joins without thinking.</li>
+<li>Fewer, predictable joins → fast, cheap dashboards.</li></ul>
+`+an('⭐ <b>Analogy:</b> a receipt (fact) that references the customer card, product catalog and calendar (dimensions) instead of re-printing all their details on every line.')},
+
+conn:{k:'BigLake internals',t:'Connection & engine federation',c:'var(--g-blue)',b:`
+<p>BigLake tables are defined once (over GCS paths + Iceberg metadata) and exposed to many engines. A secured <b>connection</b> holds the service identity that may touch the bucket — users never need direct GCS access.</p>
+`+an('🔌 <b>Analogy:</b> one wall socket, many appliances — every engine plugs into the same governed outlet instead of wiring into the fuse box.')},
+
+security:{k:'BigLake internals',t:'Fine-grained security',c:'var(--g-red)',b:`
+<p>Because engines go through BigLake, policies are enforced <b>once, centrally</b>: table ACLs, <b>row-level security</b> (EU analysts see EU rows) and <b>column masking</b> (emails hashed for most roles) apply identically in BigQuery and Spark.</p>
+`+an('🎭 <b>Analogy:</b> the same play, different seats — everyone watches one stage, but your badge decides which scenes and props you\u2019re allowed to see.')},
+
+metacache:{k:'BigLake internals',t:'Metadata caching',c:'var(--g-yellow)',b:`
+<p>Planning a lake query means reading lots of small metadata/manifest files. BigLake <b>caches</b> file lists and statistics, so engines skip straight to pruning and scanning — snappier queries, fewer GCS list operations.</p>
+`+an('🗺️ <b>Analogy:</b> a pre-printed mall directory — you check the map once instead of opening every shop door to see what\u2019s inside.')},
+
+"engines-bq":{k:'Engines',t:'BigQuery as a lake engine',c:'var(--g-blue)',b:`
+<p>Through BigLake, BigQuery queries Iceberg tables in GCS with near-native performance — same SQL, same security — and can mix them with native datasets in one query.</p>`},
+"engines-spark":{k:'Engines',t:'Spark / Dataproc as an engine',c:'var(--g-red)',b:`
+<p>Spark both <b>writes</b> our Silver/Gold Iceberg tables and reads them for heavy jobs and ML feature pipelines — honouring the same BigLake permissions as BigQuery.</p>`},
+"engines-other":{k:'Engines',t:'Trino, Flink & friends',c:'var(--violet)',b:`
+<p>Because Iceberg is an open spec, other engines (Trino/Presto, Flink, DuckDB…) can read the very same tables — no exports, no lock-in.</p>`},
+
+gcsfiles:{k:'Storage',t:'What actually sits in GCS',c:'var(--g-yellow)',b:`
+<p>Just files: Parquet <b>data files</b>, plus Iceberg's small <b>metadata files</b> (JSON + Avro manifests). The "table" is an illusion the metadata creates — durable, cheap bytes underneath.</p>
+`+an('🧱 <b>Analogy:</b> LEGO bricks in labelled bins; the instruction booklet (metadata) is what makes them "a spaceship".')},
+
+"bl-rls":{k:'Governance',t:'Row-level security',c:'var(--g-red)',b:`
+<p>Filters applied automatically per user/group: <code>region = "EU"</code> for EU analysts. The engine adds the predicate — users can't forget or bypass it.</p>`},
+"bl-mask":{k:'Governance',t:'Column masking',c:'var(--g-red)',b:`
+<p>Sensitive columns (emails, card numbers) return hashed/partial values unless your role allows full access — same table, different visibility.</p>`},
+"bl-omni":{k:'Reach',t:'BigLake Omni (multi-cloud)',c:'var(--violet)',b:`
+<p>The same BigLake table model over data living in <b>AWS S3 or Azure</b> storage — query it from BigQuery without first copying it into Google Cloud.</p>`},
+"bl-dataplex":{k:'Governance',t:'Dataplex integration',c:'var(--g-green)',b:`
+<p>Dataplex auto-discovers BigLake tables into a <b>catalog</b> with lineage, profiling and quality checks — so people can find and trust the data.</p>`},
+"bl-vs":{k:'Concept check',t:'BigLake vs plain external tables',c:'var(--g-yellow)',b:`
+<p>Old-style external tables = read-through with bucket-level access and slow planning. <b>BigLake</b> = fine-grained security, metadata caching, Iceberg awareness and multi-engine consistency. Same files, far more table-like.</p>`},
+
+catalog:{k:'Iceberg anatomy · 1',t:'Catalog',c:'var(--violet)',b:`
+<p>The address book: maps a table name (<code>lake.customers</code>) to its <b>current metadata file</b>. Committing = atomically swapping that pointer — which is what makes writes ACID. On GCP this is typically the BigLake metastore.</p>
+`+an('📇 <b>Analogy:</b> a receptionist who always knows which office (metadata version) a table currently sits in.')},
+metafile:{k:'Iceberg anatomy · 2',t:'metadata.json',c:'var(--ice)',b:`
+<p>The table's brain: schema (with column <b>IDs</b>), partition spec, properties, and the full <b>list of snapshots</b>. Every commit writes a new one (v1, v2, v3…); old ones remain for time travel.</p>`},
+snapshots:{k:'Iceberg anatomy · 3',t:'Snapshots',c:'var(--gold)',b:`
+<p>One snapshot per commit = the complete table state at a moment, pointing to a manifest list. Time travel is simply "read via an older snapshot"; rollback is "make an old snapshot current".</p>`},
+manifestlist:{k:'Iceberg anatomy · 4',t:'Manifest list',c:'var(--g-green)',b:`
+<p>A snapshot's index of <b>manifest files</b>, with partition ranges per manifest — letting engines skip whole manifests during planning.</p>`},
+manifest:{k:'Iceberg anatomy · 5',t:'Manifest files',c:'var(--g-yellow)',b:`
+<p>Avro files listing actual <b>data files</b> plus per-file stats (row counts, column min/max). Those stats power file pruning: "max(order_date) &lt; 2026-06-01? skip the file."</p>`},
+datafiles:{k:'Iceberg anatomy · 6',t:'Parquet data files',c:'var(--bronze)',b:`
+<p>The bytes themselves — ordinary Parquet in GCS. Iceberg never rewrites them on metadata-only ops; deletes/updates add new files + delete markers until compaction tidies up.</p>`},
+
+"feat-acid":{k:'Iceberg feature',t:'ACID transactions',c:'var(--ice)',b:`
+<p>Commits are atomic pointer swaps in the catalog: readers see the table <b>before</b> or <b>after</b> a write — never half-done. Concurrent writers use optimistic concurrency; conflicting commits retry safely.</p>
+`+an('🔁 <b>Analogy:</b> editing a copy of a document, then swapping the label "current" onto it in one move — nobody ever reads a half-edited page.')},
+"feat-schema":{k:'Iceberg feature',t:'Schema evolution',c:'var(--g-green)',b:`
+<p>Columns are tracked by <b>ID</b>, not position or name — so add/rename/drop/reorder are instant metadata edits. Old files stay valid; old queries keep working.</p>`},
+"feat-hidden":{k:'Iceberg feature',t:'Hidden partitioning',c:'var(--g-yellow)',b:`
+<p>You declare <code>partition by days(order_ts)</code> once; afterwards plain <code>WHERE order_ts = …</code> automatically prunes partitions. No magic <code>dt</code> column users must remember — and no full scans when they forget.</p>`},
+"feat-time":{k:'Iceberg feature',t:'Time travel & rollback',c:'var(--violet)',b:`
+<p><code>FOR SYSTEM_TIME AS OF</code> queries any kept snapshot; one command rolls the table back after a bad job. (Try the slider on this page — that's exactly this feature.)</p>`},
+"feat-partev":{k:'Iceberg feature',t:'Partition evolution',c:'var(--g-blue)',b:`
+<p>Change the partition scheme (daily → hourly) for <b>future</b> data without rewriting history; planning understands both layouts in one table.</p>`},
+"feat-engine":{k:'Iceberg feature',t:'Open & engine-agnostic',c:'var(--g-red)',b:`
+<p>Iceberg is an Apache <b>spec</b>, not a vendor product. Spark, BigQuery, Trino, Flink and more read/write the same tables — your data stays portable Parquet in your own bucket.</p>`}
+};
+
+/* ---------- PLAY / PAUSE ---------- */
+let playing=true;
+const playBtn=$('#playBtn');
+function setPlaying(p){
+  playing=p;
+  document.body.classList.toggle('no-anim',!p);
+  playBtn.classList.toggle('paused',!p);
+  $('#playLabel').textContent='Animation: '+(p?'playing':'paused');
+  $$('.stage').forEach(s=>{ if(s.pauseAnimations){ p?s.unpauseAnimations():s.pauseAnimations(); }});
+}
+playBtn.addEventListener('click',()=>setPlaying(!playing));
+if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches) setPlaying(false);
+
+/* ---------- GUIDED TOUR ---------- */
+const TOUR=[
+ {id:'n-sched',  t:'02:00 — the alarm rings',          x:'Cloud Scheduler fires its nightly cron. One managed rule replaces a fragile crontab on a VM. It sends a single HTTP call to start ingestion.'},
+ {id:'n-runjob', t:'Ingestion job wakes up',           x:'A Cloud Run Job spins up a container, pulls fresh rows from databases, APIs and logs in parallel tasks, and exits when done — billed by the minute.'},
+ {id:'n-bronze', t:'Land it raw (Bronze)',             x:'Everything is written as immutable Parquet into the Raw zone in GCS, partitioned by load date. No cleaning yet — this is the replayable archive of truth as-it-arrived.'},
+ {id:'n-composer',t:'Composer takes the baton',        x:'A Cloud Composer (Airflow) DAG senses the new files and orchestrates the rest of the night: order, retries, alerts and backfills, all defined as Python in Git.'},
+ {id:'n-dataproc',t:'Spark refines the data',          x:'Composer launches Dataproc (managed Spark). Job 1: validate, standardise and dedupe Raw → Silver. Job 2: join and aggregate Silver → Gold. Both write Iceberg.'},
+ {id:'n-silver', t:'Conformance zone (Silver)',        x:'Now every entity is clean and consistent — typed columns, UTC timestamps, one conformed customer table — stored as Iceberg with quality gates and quarantine.'},
+ {id:'n-gold',   t:'Curated zone (Gold)',              x:'Business-ready star schemas and KPI tables, modelled around questions, not source systems. Dashboards read this layer fast and cheap.'},
+ {id:'n-biglake',t:'BigLake governs access',           x:'Silver and Gold Iceberg tables are exposed through BigLake: table/row/column security and cached metadata, identical for every engine. No direct bucket access needed.'},
+ {id:'n-bigquery',t:'BigQuery queries in place',       x:'Analysts write SQL in BigQuery, which reads the Iceberg files straight from GCS through BigLake — petabyte scans, zero copies, one source of truth.'},
+ {id:'n-consumers',t:'Everyone drinks from one lake',  x:'Looker dashboards, a Cloud Run JSON API and ML notebooks all consume the same governed tables. That\u2019s the lakehouse: warehouse comfort, lake openness. 🎉'}
+];
+let ti=-1;
+const stageP=$('#stage-pipeline'), tourcard=$('#tourcard');
+function renderStep(){
+  const s=TOUR[ti];
+  $$('#stage-pipeline .node.spot').forEach(n=>n.classList.remove('spot'));
+  const node=document.getElementById(s.id); if(node) node.classList.add('spot');
+  $('#tourStep').textContent='STEP '+(ti+1)+' / '+TOUR.length;
+  $('#tourTitle').textContent=s.t;
+  $('#tourText').textContent=s.x;
+  $('#tourPrev').disabled=ti===0;
+  $('#tourNext').textContent=ti===TOUR.length-1?'Finish ✓':'Next →';
+  if(node&&node.scrollIntoView) node.scrollIntoView({block:'nearest',inline:'nearest',behavior:'smooth'});
+}
+function startTour(){
+  showPage('pipeline');
+  ti=0; stageP.classList.add('dimmed'); tourcard.classList.add('show');
+  renderStep();
+  tourcard.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+function endTour(){
+  if(ti<0) return;
+  ti=-1; stageP.classList.remove('dimmed'); tourcard.classList.remove('show');
+  $$('#stage-pipeline .node.spot').forEach(n=>n.classList.remove('spot'));
+}
+$('#tourBtn').addEventListener('click',()=>{ ti<0?startTour():endTour(); });
+$('#tourPrev').addEventListener('click',()=>{ if(ti>0){ti--;renderStep();} });
+$('#tourNext').addEventListener('click',()=>{ ti<TOUR.length-1?(ti++,renderStep()):endTour(); });
+$('#tourEnd').addEventListener('click',endTour);
+
+/* ---------- ICEBERG TIME TRAVEL ---------- */
+const SNAPS=[
+ {mark:'m0',
+  desc:'📸 <b>Snapshot v1 — Monday 02:14.</b> First full load of customers. Three rows, three Parquet files registered in manifest-a. This is the table\u2019s birth certificate.',
+  q:"SELECT * FROM lake.customers\nFOR SYSTEM_TIME AS OF '2026-06-08 03:00:00';",
+  cols:['id','name','city'], newcol:-1,
+  rows:[[1,'Asha','Pune'],[2,'Bo','Austin'],[3,'Carla','Lagos']], hl:{}},
+ {mark:'m1',
+  desc:'📸 <b>Snapshot v2 — Tuesday 02:11.</b> The nightly MERGE ran: Bo moved (Austin → <b>Berlin</b>) and a brand-new customer <b>Dev</b> appeared. v1 still exists — nothing was destroyed.',
+  q:"SELECT * FROM lake.customers\nFOR SYSTEM_TIME AS OF '2026-06-09 03:00:00';",
+  cols:['id','name','city'], newcol:-1,
+  rows:[[1,'Asha','Pune'],[2,'Bo','Berlin'],[3,'Carla','Lagos'],[4,'Dev','Tokyo']],
+  hl:{chg:[[1,2]],nw:[[3,0],[3,1],[3,2]]}},
+ {mark:'m2',
+  desc:'📸 <b>Snapshot v3 — Wednesday 02:09 (current).</b> Schema evolution: a new <b>tier</b> column was added instantly — a metadata-only change, zero files rewritten. Old snapshots remain perfectly queryable.',
+  q:"SELECT * FROM lake.customers;  -- current = v3",
+  cols:['id','name','city','tier'], newcol:3,
+  rows:[[1,'Asha','Pune','Gold'],[2,'Bo','Berlin','–'],[3,'Carla','Lagos','Silver'],[4,'Dev','Tokyo','Gold']], hl:{}}
+];
+const ttTable=$('#ttTable'), ttDesc=$('#ttDesc'), ttQuery=$('#ttQuery'), ttSlider=$('#ttSlider');
+function renderSnap(i){
+  const s=SNAPS[i];
+  ['m0','m1','m2'].forEach((m,j)=>document.getElementById(m).classList.toggle('on',j===i));
+  ttDesc.innerHTML=s.desc;
+  ttQuery.textContent=s.q;
+  const cls=(r,c)=>{
+    if(s.newcol===c) return ' class="newcol"';
+    if((s.hl.chg||[]).some(p=>p[0]===r&&p[1]===c)) return ' class="chg"';
+    if((s.hl.nw ||[]).some(p=>p[0]===r&&p[1]===c)) return ' class="new"';
+    return '';
+  };
+  let h='<thead><tr>'+s.cols.map((c,j)=>'<th'+(s.newcol===j?' class="newcol"':'')+'>'+c+'</th>').join('')+'</tr></thead><tbody>';
+  s.rows.forEach((row,r)=>{ h+='<tr class="rowin" style="animation-delay:'+(r*60)+'ms">'+row.map((v,c)=>'<td'+cls(r,c)+'>'+v+'</td>').join('')+'</tr>'; });
+  ttTable.innerHTML=h+'</tbody>';
+}
+if(ttSlider){ ttSlider.addEventListener('input',()=>renderSnap(+ttSlider.value)); renderSnap(+ttSlider.value); }
+
+/* ---------- SERVICES ACCORDION ---------- */
+$$('.svc-head').forEach(h=>h.addEventListener('click',()=>{
+  const card=h.parentElement, wasOpen=card.classList.contains('open');
+  $$('.svc').forEach(s=>{ s.classList.remove('open'); s.querySelector('.svc-head').setAttribute('aria-expanded','false'); });
+  if(!wasOpen){ card.classList.add('open'); h.setAttribute('aria-expanded','true'); }
+}));
+const firstSvc=$('.svc'); if(firstSvc){ firstSvc.classList.add('open'); firstSvc.querySelector('.svc-head').setAttribute('aria-expanded','true'); }
+</script>
+
+<style>
+/* deep-dive pages */
+.codeblk{background:#0A1322;border:1px solid var(--line);border-radius:12px;padding:12px 4px;font-family:var(--font-m);font-size:.76rem;line-height:1.6;overflow-x:auto}
+.cl{display:block;white-space:pre;padding:1.5px 10px;border-left:3px solid transparent;color:#9DB3D8;transition:background .35s,color .35s}
+.cl .k{color:#79B8FF}.cl .s{color:#FFD479}.cl .f{color:#7EE3A0}
+.cl.on{background:rgba(234,67,53,.14);border-left-color:var(--g-red);color:#EAF2FF}
+.sbadges{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 8px}
+.sbadge{font-family:var(--font-m);font-size:.66rem;letter-spacing:.07em;border:1px solid var(--line2);border-radius:999px;padding:5px 11px;color:var(--faint);transition:all .35s}
+.sbadge.on{color:#fff;border-color:var(--g-red);background:rgba(234,67,53,.18);box-shadow:0 0 14px rgba(234,67,53,.3)}
+.nd-grey{--c:#8FA3C4}
+body.no-anim #stage-pyspark .pk,body.no-anim #stage-bq .pk{opacity:.5}
+</style>
+<script>
+/* ====== extra INFO entries: PySpark + BigQuery internals ====== */
+Object.assign(INFO,{
+"spark-app":{k:'PySpark · Step 0',t:'Your script is a recipe, not a runner',c:'#8FA3C4',b:`
+<p>The Python file you submit never loops over rows itself. Every DataFrame call just <b>adds a step to a plan</b> held on the driver. Python is the steering wheel; the engine doing the work is Spark's JVM machinery on the executors.</p>
+`+an('📜 <b>Analogy:</b> you write the recipe; an industrial kitchen cooks it. The recipe card never touches a frying pan.')},
+"spark-driver":{k:'PySpark · The brain',t:'Driver & SparkSession',c:'var(--g-red)',b:`
+<p>One JVM that owns the job: it parses your code into a <b>logical plan</b>, lets <b>Catalyst</b> optimize it, cuts the physical plan into <b>stages</b> at shuffle boundaries, and schedules one <b>task per partition</b> onto executors. It also tracks progress and re-runs failed tasks.</p>
+<h4>If the driver dies, the job dies</h4>
+<ul><li>Keep results small — <code>collect()</code> on a huge table floods driver memory.</li>
+<li>Watch it in the <b>Spark UI</b>: stages, tasks, shuffle sizes, skew.</li></ul>
+`+an('🎩 <b>Analogy:</b> a head chef who never cooks — reads the recipe, writes the prep list, assigns line cooks, and plates the final dish.')},
+"spark-cm":{k:'PySpark · Resources',t:'Cluster manager (Dataproc)',c:'#8FA3C4',b:`
+<p>Someone must hand Spark its machines. On GCP that's <b>Dataproc</b>: classic clusters you size yourself, or <b>Dataproc Serverless</b>, where you submit a batch and Google picks, scales and bills the executors per second — zero cluster babysitting for our nightly jobs.</p>`},
+"spark-executor":{k:'PySpark · The muscle',t:'Executors & tasks',c:'var(--ice)',b:`
+<p>Executors are worker JVMs, each with N cores and memory. Every core runs one <b>task</b> at a time, and a task = your transformations applied to <b>one partition</b>. They also cache data and serve shuffle files to each other.</p>
+<ul><li>3 executors × 4 cores = <b>12 tasks in parallel</b>.</li>
+<li>Executor OOM? Partitions too big or skewed — repartition or raise memory.</li></ul>
+`+an('👩‍🍳 <b>Analogy:</b> line cooks with 4 hands each. Every hand chops exactly one crate of vegetables (a partition) at a time.')},
+"spark-partition":{k:'PySpark · Unit of work',t:'Partitions = parallelism',c:'var(--bronze)',b:`
+<p>Spark splits input into chunks (~128 MB by default). Each becomes a task. <b>8 partitions can never use more than 8 cores</b>, no matter how big the cluster — and 50,000 tiny partitions drown the driver in scheduling.</p>
+<ul><li>Rule of thumb: 2–4 × total cores, ~100–200 MB each.</li>
+<li><code>repartition(n)</code> rebalances (shuffles); <code>coalesce(n)</code> shrinks cheaply.</li>
+<li>Avoid writing thousands of tiny output files — compact before commit.</li></ul>`},
+"spark-shuffle":{k:'PySpark · The expensive hop',t:'Shuffle — the stage boundary',c:'var(--g-yellow)',b:`
+<p>groupBy, join, dropDuplicates need <b>all rows with the same key on the same machine</b>. So every task writes its rows bucketed by key to local disk, and the next stage fetches its bucket from <i>every</i> previous task — an all-to-all network exchange.</p>
+<ul><li>Stage 1 ends, shuffle happens, Stage 2 begins — that's the seam in the diagram.</li>
+<li>Minimize: filter early, broadcast small join sides, avoid needless <code>distinct()</code>.</li></ul>
+`+an('📮 <b>Analogy:</b> a city-wide mail sort — every post office sends letters to every other office so each ends up holding exactly one alphabet range. Powerful, but you don\u2019t want to do it twice a night.')},
+"spark-lazy":{k:'PySpark · Mental model',t:'Lazy evaluation',c:'var(--g-red)',b:`
+<p>Transformations (<code>filter</code>, <code>withColumn</code>, <code>join</code>) build the plan; nothing executes until an <b>action</b> (<code>write</code>, <code>count</code>, <code>MERGE</code>). That lets Catalyst see the <i>whole</i> plan and optimize globally — e.g. push your filter down into the Parquet read so skipped rows are never decoded.</p>
+`+an('🗺️ <b>Analogy:</b> Google Maps doesn\u2019t start driving as you type each street — it waits for the full destination, then computes the best route once.')},
+"spark-catalyst":{k:'PySpark · Optimizer',t:'Catalyst & Tungsten',c:'var(--violet)',b:`
+<p><b>Catalyst</b> rewrites your logical plan: prunes unused columns, pushes filters down to the file scan, reorders joins, folds constants. <b>Tungsten</b> then runs it close to the metal — generated bytecode, off-heap memory, vectorized Parquet reads. DataFrames beat hand-written RDD loops because the optimizer can see your intent.</p>`},
+"spark-aqe":{k:'PySpark · Runtime smarts',t:'Adaptive Query Execution',c:'var(--violet)',b:`
+<p>Plans are guesses until real data arrives. AQE re-plans <b>between stages</b> using true sizes: coalesces hundreds of tiny shuffle partitions, flips a sort-merge join to a broadcast join when one side turns out small, and splits skewed partitions so one giant key can't stall the job. On by default in Spark 3 — one reason "it just got faster".</p>`},
+"spark-merge":{k:'PySpark · Writing Iceberg',t:'How MERGE INTO commits',c:'var(--ice)',b:`
+<p>Our silver upsert is one SQL statement. Spark joins staged rows to the target, writes <b>new Parquet files</b> for affected data, then asks Iceberg to <b>commit a snapshot</b> — an atomic catalog pointer swap. Readers see old or new, never half.</p>
+<h4>Two write strategies</h4>
+<ul><li><b>Copy-on-write</b>: rewrite touched files; slower writes, fastest reads — great for nightly batch (our choice).</li>
+<li><b>Merge-on-read</b>: write small delete/update files; fast writes, reads reconcile — better for frequent small updates, needs compaction.</li></ul>`},
+"spark-skew":{k:'PySpark · Pitfall',t:'Data skew',c:'var(--g-yellow)',b:`
+<p>If 40% of orders share <code>customer_id = NULL</code>, one shuffle partition becomes a monster and one task runs for an hour while 199 finish in seconds. Spot it in the Spark UI (max task ≫ median).</p>
+<ul><li>Fix nulls/defaults before joining; filter junk keys early.</li>
+<li>Let <b>AQE skew-join</b> split the hot key, or "salt" it manually.</li>
+<li>Broadcast the small table so no shuffle happens at all.</li></ul>`},
+"spark-tune":{k:'PySpark · Sizing',t:'Executor & partition rules of thumb',c:'var(--ice)',b:`
+<p>Defaults that rarely hurt: <b>4 cores</b> per executor, 4–8 GB per core, partitions of 100–200 MB, <code>spark.sql.shuffle.partitions</code> ≈ 2–3× total cores (or just trust AQE). On Dataproc Serverless set min/max executors and let autoscaling breathe with the data volume.</p>
+`+an('🎛️ <b>Analogy:</b> tune like a stereo — start at factory settings, adjust one knob at a time, and only after listening (the Spark UI), not before.')},
+"spark-when":{k:'PySpark · Judgement',t:'When NOT to use Spark',c:'#8FA3C4',b:`
+<p>Spark earns its overhead at multi-GB scale. Below that, simpler is faster <i>and</i> cheaper:</p>
+<ul><li>MB-sized files → <b>pandas/Polars/DuckDB</b> inside the Cloud Run job.</li>
+<li>Pure SQL aggregations on data already in the lake → let <b>BigQuery</b> do it.</li>
+<li>Per-event logic → Cloud Run functions.</li></ul>
+<p>In our design Spark owns exactly the heavy reshaping: Raw→Silver and Silver→Gold.</p>`},
+
+"bq-sql":{k:'BigQuery · Step 1',t:'Just SQL — no servers, no indexes',c:'#8FA3C4',b:`
+<p>You declare <i>what</i> you want; BigQuery decides <i>how</i>. There are no indexes to build, no clusters to size, no vacuum jobs. A free <b>dry run</b> tells you exactly how many bytes a query would scan before you spend a cent.</p>`},
+"bq-dremel":{k:'BigQuery · Compute',t:'The Dremel execution tree',c:'var(--g-blue)',b:`
+<p>Your query becomes a tree: the <b>root</b> plans and returns the final answer, <b>mixers</b> combine partial results, and thousands of <b>leaf workers</b> scan storage. SUMs happen hierarchically — leaves sum their shard, mixers sum the leaves, the root sums the mixers.</p>
+`+an('🗳️ <b>Analogy:</b> a national election: polling stations count locally, districts add up stations, headquarters adds districts. Nobody ships raw ballots across the country.')},
+"bq-slots":{k:'BigQuery · Compute',t:'Slots — the unit of horsepower',c:'var(--ice)',b:`
+<p>A <b>slot</b> ≈ one virtual CPU with memory. BigQuery chops your query into thousands of small work items and streams them through whatever slots you have; fewer slots = same answer, more seconds. On-demand gives bursts up to ~2,000 shared slots; Editions reservations buy guaranteed, autoscaling capacity.</p>
+`+an('🛒 <b>Analogy:</b> supermarket checkouts — 2,000 open lanes clear the same crowd 100× faster than 20. The shopping (your data) never changes.')},
+"bq-jupiter":{k:'BigQuery · Network',t:'Jupiter — the petabit fabric',c:'var(--violet)',b:`
+<p>Compute and storage live on <i>different machines</i>, so every scan crosses the network. That only works because Google's <b>Jupiter</b> datacenter fabric moves petabits per second — bandwidth so high the network stops being the bottleneck, making the storage/compute split practical.</p>`},
+"bq-colossus":{k:'BigQuery · Storage',t:'Colossus + Capacitor',c:'var(--g-blue)',b:`
+<p><b>Colossus</b> is Google's distributed file system: your tables are sharded, replicated and encrypted across many disks. Inside it, BigQuery stores rows in <b>Capacitor</b> — a compressed columnar format (Parquet's closely-related cousin). Storage is cheap (~Cloud Storage prices) and grows independently of compute.</p>`},
+"bq-columnar":{k:'BigQuery · Why it\u2019s fast',t:'Columnar scanning',c:'var(--g-blue)',b:`
+<p><code>SELECT region, SUM(amount)</code> touches 2 of 40 columns — so leaves read <b>only those two column files</b> and never decode the rest. This is the single biggest reason <b>SELECT * is expensive</b>: it forces every column off disk.</p>
+`+an('📖 <b>Analogy:</b> answering "how many pages per chapter?" from the table of contents instead of re-reading the whole book.')},
+"bq-pruning":{k:'BigQuery · Scan less',t:'Partition & clustering pruning',c:'var(--g-red)',b:`
+<p><b>Partition</b> big tables by date: <code>WHERE dt = '2026-06-11'</code> skips every other day entirely (the crossed-out blocks). <b>Cluster</b> by frequent filter keys (region, customer_id) to sort data inside each partition so blocks outside your filter are skipped too. Pruning happens before scanning — it cuts both latency <i>and</i> the bill.</p>`},
+"bq-cache":{k:'BigQuery · Free wins',t:'Results cache',c:'var(--g-green)',b:`
+<p>Identical query + unchanged tables within 24 h = answer served from cache for <b>$0</b> in milliseconds. Dashboards refreshing the same tiles benefit constantly. (Non-deterministic functions like <code>NOW()</code> opt a query out.)</p>`},
+"bq-external":{k:'BigQuery · Lakehouse tie-in',t:'Reading Iceberg via BigLake',c:'var(--ice)',b:`
+<p>The same slots can scan <b>your Silver/Gold Iceberg tables in GCS</b> through BigLake: cached metadata makes planning fast, row/column policies still apply, and the SQL is identical to native tables. One engine, two storage worlds — warehouse tables and the open lakehouse — joinable in a single query.</p>`},
+"bq-sep":{k:'BigQuery · Big idea',t:'Storage ⟂ compute',c:'var(--g-blue)',b:`
+<p>Because data lives in Colossus and queries run in slots, each scales alone: keep 200 TB while paying for compute only at query time; ten teams hit the same bytes with zero copies; idle nights cost storage pennies. Classic databases couple the two — you'd pay for a giant server 24/7.</p>
+`+an('🏛️ <b>Analogy:</b> a library vs everyone owning every book — one shared archive, readers (compute) come and go as needed.')},
+"bq-pricing":{k:'BigQuery · Money',t:'On-demand vs Editions',c:'var(--g-yellow)',b:`
+<p><b>On-demand</b>: pay per TB scanned (~$6.25/TB) — perfect while usage is spiky; pruning + column discipline directly cut cost. <b>Editions</b>: buy slot capacity (autoscaling, per-second billing) — predictable spend once teams query all day. Either way storage bills separately, and long-untouched tables auto-drop to cheaper rates.</p>`},
+"bq-best":{k:'BigQuery · Habits',t:'7 habits of cheap, fast queries',c:'var(--g-green)',b:`
+<ul><li>Never <code>SELECT *</code> — name columns.</li>
+<li>Always filter the <b>partition</b> column.</li>
+<li>Cluster by your top filter/join keys.</li>
+<li>Dry-run (or check the byte estimate) before big queries.</li>
+<li>Materialize hot aggregations instead of recomputing.</li>
+<li><code>LIMIT</code> doesn\u2019t reduce scan cost — pruning does.</li>
+<li>Let Gold tables do the heavy joins once, nightly.</li></ul>`},
+"bq-mat":{k:'BigQuery · Acceleration',t:'Materialized views & BI Engine',c:'var(--g-blue)',b:`
+<p><b>Materialized views</b> store a precomputed aggregate that BigQuery keeps fresh incrementally — and the optimizer silently rewrites matching queries to use it. <b>BI Engine</b> pins hot data in memory so Looker/Looker Studio tiles render sub-second. Together they make Gold dashboards feel like an app, not a query.</p>`},
+"bq-tt":{k:'BigQuery · Safety',t:'Time travel & snapshots',c:'var(--violet)',b:`
+<p>Native tables keep up to 7 days of history: <code>FOR SYSTEM_TIME AS OF</code> to query the past, restore a dropped table, or compare before/after a bad load. For longer retention, cheap <b>table snapshots</b> freeze a point in time. Familiar? It\u2019s the same superpower Iceberg gives the lake.</p>`},
+"bq-stream":{k:'BigQuery · Real-time',t:'Streaming via Storage Write API',c:'var(--g-green)',b:`
+<p>Beyond nightly batch, the <b>Storage Write API</b> streams rows with exactly-once delivery; they\u2019re queryable in seconds. A future evolution of our pipeline: Pub/Sub → Dataflow → BigQuery for live ops metrics, while the medallion lake keeps owning history and heavy modeling.</p>`}
+});
+
+/* ====== make Play/Pause + reduced-motion also freeze the new SMIL diagrams (and all stage SVGs) ====== */
+const syncSvgAnim=()=>{const run=!document.body.classList.contains('no-anim');
+  $$('.stage svg').forEach(s=>{try{run?s.unpauseAnimations():s.pauseAnimations()}catch(e){}});};
+$('#playBtn').addEventListener('click',syncSvgAnim);
+syncSvgAnim();
+
+/* ====== PySpark code stepper ====== */
+const SPK=[
+ {l:0,t:'Step 1 — read (lazy)',d:'Spark lists the Parquet files under the path and plans roughly one task per ~128 MB split. <b>No data moves yet</b> — this only adds a "scan" node to the plan.',b:[1,0,0,0]},
+ {l:1,t:'Step 2 — dropDuplicates',d:'Deduping needs all rows with the same <code>order_id</code> together, so Catalyst records a <b>future shuffle</b> here — this is where Stage 1 will end.',b:[1,1,0,0]},
+ {l:2,t:'Step 3 — narrow transforms',d:'<code>withColumn</code> and <code>filter</code> are <b>narrow</b>: each row is handled inside its own partition, pipelined with the read in Stage 1. Still nothing has executed.',b:[1,0,0,0]},
+ {l:5,t:'Step 4 — MERGE = action!',d:'An action triggers the whole plan: Catalyst optimizes (filter pushdown, column pruning), AQE will tune shuffle partition counts at runtime, and the DAG scheduler launches Stage 1 tasks.',b:[1,1,1,0]},
+ {l:7,t:'Step 5 — the shuffle runs',d:'Stage 1 tasks write key-bucketed shuffle files; Stage 2 tasks fetch their bucket from every executor over the network — the moment you saw as yellow particles in the diagram.',b:[0,1,1,0]},
+ {l:9,t:'Step 6 — Iceberg snapshot commit',d:'Stage 2 joins staged rows to the target, writes new Parquet files, then Iceberg commits <b>one atomic snapshot</b>. Readers flip from old → new instantly; last night\u2019s version stays queryable.',b:[0,0,1,1]}
+];
+const spkLines=$$('#spkCode .cl');
+let spkI=0;
+function spkRender(){
+  const s=SPK[spkI];
+  spkLines.forEach((el,i)=>el.classList.toggle('on',i===s.l));
+  $('#spkTitle').textContent=s.t;
+  $('#spkExplain').innerHTML=s.d;
+  s.b.forEach((on,i)=>document.getElementById('sb'+i).classList.toggle('on',!!on));
+}
+if(spkLines.length){
+  spkRender();
+  setInterval(()=>{ if(document.body.classList.contains('no-anim')) return;
+    spkI=(spkI+1)%SPK.length; spkRender(); },3600);
+}
+</script>
+</body>
+</html>
