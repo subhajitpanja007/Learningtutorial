@@ -403,6 +403,54 @@ svg.flow{display:block; width:100%; min-width:760px; height:auto;}
 .lx-row .sev.e{background:#FCE8E6; color:var(--g-red-d);}
 .lx-row .msg{color:var(--ink); word-break:break-word;}
 
+/* ===================== CODELAB WORKED EXAMPLE ===================== */
+.arch-wrap{background:var(--surface); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow-2); overflow:hidden;}
+.arch-bar{display:flex; align-items:center; gap:12px; padding:13px 18px; border-bottom:1px solid var(--line-2); background:var(--bg-2);}
+.arch-bar .t{font-family:var(--mono); font-size:13px; color:var(--ink-2);}
+.arch-bar .src{margin-left:auto; font-size:11px; color:var(--ink-3); font-family:var(--mono);}
+.arch-scroll{overflow-x:auto; padding:10px 12px 8px;}
+svg.arch{display:block; width:100%; min-width:840px; height:auto;}
+.aedge{fill:none; stroke:#9aa0a6; stroke-width:2.4; stroke-dasharray:7 7; animation:dash 1.1s linear infinite;}
+.aedge.alt{stroke:var(--g-blue);}
+.aedge.warn{stroke:var(--g-yellow-d);}
+.anode .nb{fill:#fff; stroke:var(--line); stroke-width:1.4; filter:url(#asoft);}
+.anode .nl{font-family:var(--body); font-weight:600; font-size:13.5px; fill:var(--ink);}
+.anode .ns{font-family:var(--mono); font-size:10px; fill:var(--ink-3);}
+.alabel{font-family:var(--mono); font-size:10.5px; fill:var(--ink-2);}
+.alabel.b{fill:var(--g-blue-d);} .alabel.y{fill:var(--g-yellow-d);}
+.arch-cap{font-size:12.5px; color:var(--ink-3); padding:6px 18px 16px; display:flex; gap:20px; flex-wrap:wrap;}
+.arch-cap .lg{display:flex; gap:7px; align-items:center; font-family:var(--mono);}
+
+/* codelab step rail */
+.rail{border-left:2px solid var(--line); margin:4px 0 0 10px;}
+.rail .r{position:relative; padding:0 0 24px 28px;}
+.rail .r:last-child{padding-bottom:2px;}
+.rail .r::before{content:""; position:absolute; left:-10px; top:1px; width:16px; height:16px; border-radius:50%; background:#fff; border:3px solid var(--g-blue-d);}
+.rail .r.done::before{background:var(--g-blue-d);}
+.rail .r .rn{font-family:var(--mono); font-size:11px; color:var(--g-blue-d); letter-spacing:.08em;}
+.rail .r h4{font-size:15.5px; margin:2px 0 5px;}
+.rail .r p{font-size:13.5px; color:var(--ink-2); margin:0 0 9px;}
+.rail .cmd{background:#1e1e1e; border-radius:8px; padding:11px 14px; font-family:var(--mono); font-size:11.5px; color:#d4d4d4; overflow-x:auto; line-height:1.7; white-space:pre;}
+.rail .cmd .c{color:#6a9955;} .rail .cmd .g{color:#8ab4f8;} .rail .cmd .s{color:#ce9178;}
+
+/* recreated image cards */
+.shot{position:relative;}
+.shot .tag-rec{position:absolute; top:11px; right:12px; z-index:4; font-family:var(--mono); font-size:9.5px; letter-spacing:.08em; background:rgba(32,33,36,.82); color:#fff; padding:3px 9px; border-radius:5px;}
+.shot-cap{font-size:12.5px; color:var(--ink-3); margin-top:9px; font-family:var(--mono); line-height:1.5;}
+.tabs-bar{display:flex; gap:0; border-bottom:1px solid var(--line); padding:0 14px; flex-wrap:wrap; background:#fff;}
+.tabs-bar span{font-family:var(--body); font-size:12px; font-weight:600; color:var(--ink-3); padding:11px 13px; border-bottom:2px solid transparent; letter-spacing:.03em;}
+.tabs-bar span.on{color:var(--g-blue-d); border-bottom-color:var(--g-blue-d);}
+.cfg-row{display:flex; gap:12px; padding:11px 0; border-bottom:1px solid var(--line-2); font-size:13px;}
+.cfg-row:last-child{border-bottom:none;}
+.cfg-row .k{font-family:var(--mono); font-size:11.5px; color:var(--ink-2); min-width:150px; flex:none;}
+.cfg-row .v{font-family:var(--mono); font-size:11.5px; color:var(--ink); word-break:break-all;}
+.menu-pop{position:absolute; right:20px; top:64px; background:#fff; border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow-3); width:190px; z-index:3; overflow:hidden;}
+.menu-pop a{display:flex; gap:9px; align-items:center; padding:9px 14px; font-size:12.5px; color:var(--ink); border-bottom:1px solid var(--line-2);}
+.menu-pop a:last-child{border-bottom:none;}
+.menu-pop a.hi{background:var(--g-blue-xl); color:var(--g-blue-d); font-weight:600;}
+.attrib{font-size:11.5px; color:var(--ink-3); margin-top:22px; padding-top:16px; border-top:1px solid var(--line); line-height:1.6;}
+.attrib a{color:var(--g-blue-d);}
+
 @media (max-width:900px){
   .wiz{grid-template-columns:1fr;}
   .stepper{display:flex; gap:18px; overflow-x:auto; border-right:none; border-bottom:1px solid var(--line-2); padding:14px;}
@@ -1103,6 +1151,289 @@ svg.flow{display:block; width:100%; min-width:760px; height:auto;}
         </div>
       </div>
       <div class="slider-dots" id="wDots"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= CODELAB WORKED EXAMPLE ========================= -->
+<section class="section" id="codelab">
+  <div class="wrap">
+    <div class="lead-block reveal">
+      <span class="eyebrow">A real codelab, recreated</span>
+      <h2 class="h-lead">Worked example — Cymbal&nbsp;Eats cleanup</h2>
+      <p class="sub">Google's “Triggering Cloud Run Jobs with Cloud Scheduler” codelab uses this exact shape: a <span class="mono">cleanup-service</span> Cloud Run Job that Cloud Scheduler calls every five minutes over the HTTP <span class="mono">:run</span> endpoint, to find menu items stuck in <i>Failed</i> status and delete them through the Menu Service API. Below is that architecture and its console screens, rebuilt as original icon art.</p>
+    </div>
+
+    <!-- ARCHITECTURE DIAGRAM (recreation of the codelab overview image) -->
+    <div class="arch-wrap reveal">
+      <div class="arch-bar">
+        <div class="dots" style="display:flex;gap:7px"><i class="dr" style="width:11px;height:11px;border-radius:50%;display:block"></i><i class="dy" style="width:11px;height:11px;border-radius:50%;display:block"></i><i class="dg" style="width:11px;height:11px;border-radius:50%;display:block"></i></div>
+        <span class="t">cymbal-eats · cleanup architecture</span>
+        <span class="src">recreated · not the original asset</span>
+      </div>
+      <div class="arch-scroll">
+        <svg class="arch" viewBox="0 0 1200 540" role="img" aria-label="Cymbal Eats cleanup architecture: Cloud Scheduler triggers a Cloud Run Job that calls the Menu Service backed by Cloud SQL; Vision API flags non-food images as Failed; Cloud Build pushes the image to Artifact Registry.">
+          <defs>
+            <filter id="asoft" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#3c4043" flood-opacity="0.15"/></filter>
+            <marker id="aarrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L9,5 L0,10 Z" fill="#5f6368"/></marker>
+            <marker id="aarrowb" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L9,5 L0,10 Z" fill="#1A73E8"/></marker>
+            <marker id="aarrowy" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L9,5 L0,10 Z" fill="#F29900"/></marker>
+          </defs>
+
+          <!-- connectors -->
+          <path class="aedge" marker-end="url(#aarrow)"  d="M192,253 L320,253"/>
+          <path class="aedge alt" marker-end="url(#aarrowb)" d="M482,253 L630,253"/>
+          <path class="aedge alt" marker-end="url(#aarrowb)" d="M792,253 L940,255"/>
+          <path class="aedge warn" marker-end="url(#aarrowy)" d="M715,140 L715,200"/>
+          <path class="aedge" marker-end="url(#aarrow)"  d="M425,408 C425,356 405,332 405,300"/>
+          <path class="aedge" marker-end="url(#aarrow)"  d="M212,449 L340,449"/>
+
+          <!-- edge labels -->
+          <text class="alabel b" x="257" y="242" text-anchor="middle">HTTP :run · */5 * * * *</text>
+          <text class="alabel b" x="556" y="239" text-anchor="middle">GET /menu/failed</text>
+          <text class="alabel b" x="556" y="272" text-anchor="middle">DELETE /menu/{id}</text>
+          <text class="alabel b" x="866" y="243" text-anchor="middle">JDBC · Postgres</text>
+          <text class="alabel y" x="725" y="176" text-anchor="start">not a food image → Failed</text>
+          <text class="alabel" x="452" y="360" text-anchor="start">image</text>
+          <text class="alabel" x="276" y="439" text-anchor="middle">push</text>
+
+          <!-- NODE: Cloud Scheduler -->
+          <g class="anode" transform="translate(40,210)">
+            <rect class="nb" width="150" height="86" rx="14"/>
+            <g transform="translate(14,23)">
+              <circle cx="20" cy="20" r="18" fill="#AECBFA"/><circle cx="20" cy="20" r="12" fill="#fff"/>
+              <circle cx="20" cy="20" r="12" fill="none" stroke="#4285F4" stroke-width="2.4"/>
+              <line x1="20" y1="20" x2="20" y2="12" stroke="#1A73E8" stroke-width="2.6" stroke-linecap="round"/>
+              <line x1="20" y1="20" x2="26" y2="22" stroke="#1A73E8" stroke-width="2.6" stroke-linecap="round"/><circle cx="20" cy="20" r="2" fill="#1A73E8"/>
+            </g>
+            <text class="nl" x="64" y="40">Cloud</text><text class="nl" x="64" y="58">Scheduler</text>
+            <text class="ns" x="14" y="78">cleanup-schedule</text>
+          </g>
+
+          <!-- NODE: Cloud Run Job -->
+          <g class="anode" transform="translate(330,210)">
+            <rect class="nb" width="152" height="86" rx="14"/>
+            <g transform="translate(14,24)">
+              <rect x="6" y="6" width="32" height="32" rx="8" fill="#A8DAB5" transform="rotate(45 22 22)"/>
+              <rect x="12" y="12" width="20" height="20" rx="5" fill="#fff" stroke="#188038" stroke-width="2.4" transform="rotate(45 22 22)"/>
+              <path d="M18 16 L28 22 L18 28 Z" fill="#188038"/>
+            </g>
+            <text class="nl" x="64" y="40">Cloud Run Job</text><text class="ns" x="14" y="62" style="font-size:11px;fill:#188038">cleanup-service</text>
+            <text class="ns" x="14" y="78">httpie · jq · runs &amp; exits</text>
+          </g>
+
+          <!-- NODE: Menu Service -->
+          <g class="anode" transform="translate(640,210)">
+            <rect class="nb" width="152" height="86" rx="14"/>
+            <g transform="translate(14,24)">
+              <rect x="6" y="6" width="32" height="32" rx="8" fill="#AECBFA" transform="rotate(45 22 22)"/>
+              <rect x="12" y="12" width="20" height="20" rx="5" fill="#fff" stroke="#1A73E8" stroke-width="2.4" transform="rotate(45 22 22)"/>
+              <path d="M18 16 L28 22 L18 28 Z" fill="#1A73E8"/>
+            </g>
+            <text class="nl" x="64" y="40">Menu Service</text><text class="ns" x="14" y="62">Cloud Run · Quarkus</text>
+            <text class="ns" x="14" y="78">/menu REST API</text>
+          </g>
+
+          <!-- NODE: Cloud SQL -->
+          <g class="anode" transform="translate(950,212)">
+            <rect class="nb" width="150" height="82" rx="14"/>
+            <g transform="translate(15,22)">
+              <ellipse cx="20" cy="8" rx="16" ry="6" fill="#AECBFA" stroke="#1A73E8" stroke-width="2"/>
+              <path d="M4 8 V30 a16 6 0 0 0 32 0 V8" fill="#E8F0FE" stroke="#1A73E8" stroke-width="2"/>
+              <ellipse cx="20" cy="8" rx="16" ry="6" fill="#fff" stroke="#1A73E8" stroke-width="2"/>
+              <path d="M4 19 a16 6 0 0 0 32 0" fill="none" stroke="#4285F4" stroke-width="1.6"/>
+            </g>
+            <text class="nl" x="62" y="40">Cloud SQL</text><text class="ns" x="15" y="62">PostgreSQL</text>
+            <text class="ns" x="15" y="76">menu items</text>
+          </g>
+
+          <!-- NODE: Vision API -->
+          <g class="anode" transform="translate(640,58)">
+            <rect class="nb" width="152" height="80" rx="14"/>
+            <g transform="translate(15,22)">
+              <rect x="2" y="3" width="36" height="30" rx="6" fill="#E8F0FE" stroke="#1A73E8" stroke-width="2"/>
+              <circle cx="20" cy="18" r="8" fill="#fff" stroke="#4285F4" stroke-width="2"/><circle cx="20" cy="18" r="3.4" fill="#1A73E8"/>
+              <path d="M33 2 l1.6 3.4 l3.4 1.6 l-3.4 1.6 l-1.6 3.4 l-1.6 -3.4 l-3.4 -1.6 l3.4 -1.6 Z" fill="#FBBC04"/>
+            </g>
+            <text class="nl" x="64" y="36">Vision API</text><text class="ns" x="15" y="56">is it food?</text>
+            <text class="ns" x="15" y="71">image check</text>
+          </g>
+
+          <!-- NODE: Cloud Build -->
+          <g class="anode" transform="translate(60,408)">
+            <rect class="nb" width="150" height="82" rx="14"/>
+            <g transform="translate(15,22)">
+              <rect x="3" y="4" width="34" height="28" rx="6" fill="#E8F0FE" stroke="#1A73E8" stroke-width="2"/>
+              <path d="M13 11 L8 18 L13 25" fill="none" stroke="#1A73E8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M27 11 L32 18 L27 25" fill="none" stroke="#4285F4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="22" y1="9" x2="18" y2="27" stroke="#1A73E8" stroke-width="2.4" stroke-linecap="round"/>
+            </g>
+            <text class="nl" x="62" y="40">Cloud Build</text><text class="ns" x="15" y="62">builds image</text>
+            <text class="ns" x="15" y="76">from Dockerfile</text>
+          </g>
+
+          <!-- NODE: Artifact Registry -->
+          <g class="anode" transform="translate(350,408)">
+            <rect class="nb" width="152" height="82" rx="14"/>
+            <g transform="translate(16,21)">
+              <path d="M20 2 L36 11 L36 29 L20 38 L4 29 L4 11 Z" fill="#E8F0FE" stroke="#1A73E8" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M20 2 L36 11 L20 20 L4 11 Z" fill="#AECBFA" stroke="#1A73E8" stroke-width="2" stroke-linejoin="round"/>
+              <line x1="20" y1="20" x2="20" y2="38" stroke="#1A73E8" stroke-width="2"/>
+            </g>
+            <text class="nl" x="62" y="40">Artifact</text><text class="nl" x="62" y="58">Registry</text>
+            <text class="ns" x="16" y="74">cleanup-service:latest</text>
+          </g>
+        </svg>
+      </div>
+      <div class="arch-cap">
+        <span class="lg"><svg width="20" height="3"><rect width="20" height="3" rx="1.5" fill="#9aa0a6"/></svg> trigger / build</span>
+        <span class="lg"><svg width="20" height="3"><rect width="20" height="3" rx="1.5" fill="#4285F4"/></svg> REST / data path</span>
+        <span class="lg"><svg width="20" height="3"><rect width="20" height="3" rx="1.5" fill="#F29900"/></svg> image screening</span>
+      </div>
+    </div>
+
+    <!-- STEP RAIL #0–#6 -->
+    <div style="margin-top:44px">
+      <h3 style="font-size:22px; margin-bottom:6px;">The seven steps, #0 → #6</h3>
+      <p class="sub" style="margin-bottom:22px">The codelab's own flow, with the commands that actually do the work.</p>
+      <div class="rail reveal">
+        <div class="r done"><div class="rn">STEP #0 · OVERVIEW</div><h4>What you're building</h4><p>A cleanup job sweeps menu items left in <i>Failed</i> or <i>Processing</i> status and deletes them via the Menu Service API. New item images are screened by Vision API — non-food images flip the item to <i>Failed</i>, which the job later removes.</p></div>
+        <div class="r done"><div class="rn">STEP #1 · SETUP</div><h4>Project, Cloud Shell &amp; the Menu Service</h4><p>Pick a project, enable billing, open Cloud Shell, clone the repo and deploy the backing service.</p>
+          <div class="cmd"><span class="g">git</span> clone https://github.com/GoogleCloudPlatform/cymbal-eats.git <span class="c"># then…</span>
+<span class="g">cd</span> cymbal-eats/menu-service && ./setup.sh</div></div>
+        <div class="r done"><div class="rn">STEP #2 · EXPLORE THE JOB CODE</div><h4>A Dockerfile + a shell script</h4><p>The image is <span class="mono">ubuntu</span> plus <span class="mono">httpie</span> and <span class="mono">jq</span>. The script GETs failed/processing items older than <span class="mono">FAILED_ITEM_AGE</span> minutes and DELETEs each through <span class="mono">MENU_SERVICE_URL</span>.</p>
+          <div class="cmd"><span class="c"># script.sh (essence)</span>
+http GET <span class="s">$MENU_SERVICE_URL/menu/failed</span> | jq … <span class="c"># pick old ids</span>
+http DELETE <span class="s">$MENU_SERVICE_URL/menu/$id</span></div></div>
+        <div class="r done"><div class="rn">STEP #3 · CREATE THE JOB</div><h4>Build → push → create → execute</h4><p>Enable APIs, make an Artifact Registry repo, build with Cloud Build, then create the Cloud Run Job with its two env vars and run it once to validate.</p>
+          <div class="cmd"><span class="g">gcloud</span> artifacts repositories create cymbal-eats --repository-format=docker --location=<span class="s">$REGION</span>
+<span class="g">gcloud</span> builds submit -t <span class="s">$REGION</span>-docker.pkg.dev/<span class="s">$PROJECT_NAME</span>/cymbal-eats/cleanup-service:latest
+<span class="g">gcloud</span> beta run jobs create cleanup-service \
+  --image=…/cleanup-service:latest \
+  --set-env-vars MENU_SERVICE_URL=<span class="s">$MENU_SERVICE_URL</span> \
+  --set-env-vars FAILED_ITEM_AGE=1 --region <span class="s">$REGION</span></div></div>
+        <div class="r done"><div class="rn">STEP #4 · SCHEDULE IT</div><h4>Dedicated SA + HTTP schedule</h4><p>Create a service account, grant it <span class="mono">roles/run.invoker</span>, then a Cloud Scheduler HTTP job that POSTs to the job's <span class="mono">:run</span> endpoint every 5 minutes with an OAuth token.</p>
+          <div class="cmd"><span class="g">gcloud</span> scheduler jobs create http cleanup-schedule --location <span class="s">$REGION</span> \
+  --schedule=<span class="s">"*/5 * * * *"</span> \
+  --uri=<span class="s">"https://$REGION-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/$PROJECT_ID/jobs/cleanup-service:run"</span> \
+  --http-method POST \
+  --oauth-service-account-email cleanup-scheduler-job-sa@<span class="s">$PROJECT_ID</span>.iam.gserviceaccount.com</div></div>
+        <div class="r done"><div class="rn">STEP #5 · TEST IT</div><h4>Fail an item, then watch it vanish</h4><p>Flip menu item #1 to <i>Failed</i>, wait a minute, then force a run — from Scheduler's “Force a job run”, the job's <b>Execute</b> button, or the CLI — and confirm the delete in the logs.</p>
+          <div class="cmd"><span class="g">gcloud</span> beta run jobs execute cleanup-service --region=<span class="s">$REGION</span></div></div>
+        <div class="r"><div class="rn">STEP #6 · DONE</div><h4>Created, executed, scheduled &amp; verified</h4><p>You built a Cloud Run Job, ran it on demand, put it on a 5-minute cron through Cloud Scheduler, and proved it works by reading the logs and the API.</p></div>
+      </div>
+    </div>
+
+    <!-- RECREATED CONSOLE IMAGES -->
+    <div style="margin-top:44px">
+      <h3 style="font-size:22px; margin-bottom:6px;">The console images, recreated</h3>
+      <p class="sub" style="margin-bottom:24px">Each card below rebuilds one of the codelab's screenshots in clean HTML — same content, original art.</p>
+
+      <div class="cards cards-2">
+        <!-- A · Artifact Registry -->
+        <div class="card reveal" style="padding:0; overflow:hidden;">
+          <div class="console shot" style="border:none; box-shadow:none; border-radius:0;">
+            <span class="tag-rec">RECREATED</span>
+            <div class="gc-top"><div class="gc-logo gcl"></div><div class="gc-proj">cymbal-eats <small>▾</small></div><div class="grow"></div><div class="gc-av">A</div></div>
+            <div class="gc-sub"><div class="gc-back">‹</div><div class="bc"><div class="crumb">Artifact Registry › Repositories</div><div class="title">cymbal-eats</div></div></div>
+            <div class="gc-main">
+              <div class="gc-bc" style="margin-bottom:10px">Format: Docker &nbsp;·&nbsp; Location: us-east1</div>
+              <table class="gc-table">
+                <thead><tr><th>Name</th><th>Tags</th><th>Pushed</th><th>Size</th></tr></thead>
+                <tbody><tr class="row-hi"><td class="name">cleanup-service</td><td class="mono">latest</td><td class="mono">Jun 16, 2026</td><td class="mono">76.4 MB</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="shot-cap" style="padding:0 18px 16px;">Step #3 — the image Cloud Build pushed to Artifact Registry.</div>
+        </div>
+
+        <!-- B · Cloud Run Job — HISTORY -->
+        <div class="card reveal" style="padding:0; overflow:hidden;">
+          <div class="console shot" style="border:none; box-shadow:none; border-radius:0;">
+            <span class="tag-rec">RECREATED</span>
+            <div class="gc-top"><div class="gc-logo gcl"></div><div class="gc-proj">cymbal-eats <small>▾</small></div><div class="grow"></div><div class="gc-av">A</div></div>
+            <div class="gc-sub"><div class="gc-back">‹</div><div class="bc"><div class="crumb">Cloud Run › Jobs · us-east1</div><div class="title">cleanup-service</div></div><div class="gc-actions"><span class="gbtn gbtn--primary">▶ Execute</span></div></div>
+            <div class="tabs-bar"><span class="on">HISTORY</span><span>LOGS</span><span>CONFIGURATION</span><span>YAML</span></div>
+            <div class="gc-main">
+              <table class="gc-table">
+                <thead><tr><th>Execution</th><th>Tasks</th><th>Status</th><th>Created</th></tr></thead>
+                <tbody>
+                  <tr class="row-hi"><td class="name">cleanup-service-rlxs4</td><td class="mono">1/1</td><td><span class="chip chip-ok"><span class="d"></span>Succeeded</span></td><td class="mono">02:00:06</td></tr>
+                  <tr><td class="name">cleanup-service-9d1m8</td><td class="mono">1/1</td><td><span class="chip chip-ok"><span class="d"></span>Succeeded</span></td><td class="mono">01:55:02</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="shot-cap" style="padding:0 18px 16px;">Step #3 — the created job; tabs HISTORY · LOGS · CONFIGURATION · YAML.</div>
+        </div>
+
+        <!-- C · Cloud Run Job — CONFIGURATION -->
+        <div class="card reveal" style="padding:0; overflow:hidden;">
+          <div class="console shot" style="border:none; box-shadow:none; border-radius:0;">
+            <span class="tag-rec">RECREATED</span>
+            <div class="gc-top"><div class="gc-logo gcl"></div><div class="gc-proj">cymbal-eats <small>▾</small></div><div class="grow"></div><div class="gc-av">A</div></div>
+            <div class="gc-sub"><div class="gc-back">‹</div><div class="bc"><div class="crumb">Cloud Run › Jobs</div><div class="title">cleanup-service</div></div></div>
+            <div class="tabs-bar"><span>HISTORY</span><span>LOGS</span><span class="on">CONFIGURATION</span><span>YAML</span></div>
+            <div class="gc-main">
+              <div class="cfg-row"><span class="k">Container image</span><span class="v">us-east1-docker.pkg.dev/cymbal-eats/cymbal-eats/cleanup-service:latest</span></div>
+              <div class="cfg-row"><span class="k">MENU_SERVICE_URL</span><span class="v">https://menu-service-ab12cd-ue.a.run.app</span></div>
+              <div class="cfg-row"><span class="k">FAILED_ITEM_AGE</span><span class="v">1</span></div>
+              <div class="cfg-row"><span class="k">Region</span><span class="v">us-east1</span></div>
+              <div class="cfg-row"><span class="k">Memory · Task timeout</span><span class="v">512 MiB · 600s</span></div>
+            </div>
+          </div>
+          <div class="shot-cap" style="padding:0 18px 16px;">Step #3 — env vars MENU_SERVICE_URL and FAILED_ITEM_AGE=1.</div>
+        </div>
+
+        <!-- D · Execution LOGS -->
+        <div class="card reveal" style="padding:0; overflow:hidden;">
+          <div class="console shot" style="border:none; box-shadow:none; border-radius:0;">
+            <span class="tag-rec">RECREATED</span>
+            <div class="gc-top"><div class="gc-logo gcl"></div><div class="gc-proj">cymbal-eats <small>▾</small></div><div class="grow"></div><div class="gc-av">A</div></div>
+            <div class="gc-sub"><div class="gc-back">‹</div><div class="bc"><div class="crumb">Cloud Run › Jobs › cleanup-service</div><div class="title">Logs</div></div></div>
+            <div class="tabs-bar"><span>HISTORY</span><span class="on">LOGS</span><span>CONFIGURATION</span><span>YAML</span></div>
+            <div class="gc-main">
+              <div class="log">
+<span class="t">02:00:07</span> <span class="info">INFO</span> FAILED_ITEM_AGE=1
+<span class="t">02:00:07</span> <span class="info">INFO</span> MENU_SERVICE_URL=<span class="path">https://menu-service-ab12cd-ue.a.run.app</span>
+<span class="t">02:00:08</span> <span class="warn">→</span> Deleting Menu Item : <span class="path">…/menu/1</span>
+<span class="t">02:00:08</span> <span class="ok">HTTP/1.1 200 OK</span>
+<span class="t">02:00:09</span> <span class="ok">HTTP/1.1 204 No Content</span>
+<span class="t">02:00:09</span> <span class="info">INFO</span> Container called exit(0).
+              </div>
+            </div>
+          </div>
+          <div class="shot-cap" style="padding:0 18px 16px;">Steps #3 &amp; #5 — logs filtered for “deleting”.</div>
+        </div>
+      </div>
+
+      <!-- E · Cloud Scheduler list + Actions menu (full width) -->
+      <div class="card reveal" style="padding:0; overflow:hidden; margin-top:20px;">
+        <div class="console shot" style="border:none; box-shadow:none; border-radius:0;">
+          <span class="tag-rec">RECREATED</span>
+          <div class="gc-top"><div class="gc-logo gcl"></div><div class="gc-proj">cymbal-eats <small>▾</small></div><div class="gc-search">⌕ Search (/) for resources, docs, products…</div><div class="grow"></div><div class="gc-av">A</div></div>
+          <div class="gc-sub"><div class="gc-back">‹</div><div class="bc"><div class="crumb">Cloud Scheduler › Jobs · us-east1</div><div class="title">Cloud Scheduler</div></div></div>
+          <div class="gc-main" style="position:relative;">
+            <table class="gc-table">
+              <thead><tr><th>Name</th><th>Region</th><th>Frequency</th><th>Target type</th><th>Last run</th><th>Result</th><th></th></tr></thead>
+              <tbody>
+                <tr class="row-hi"><td class="name">cleanup-schedule</td><td class="mono">us-east1</td><td class="mono">*/5 * * * *</td><td>HTTP</td><td class="mono">Jun 16, 02:00</td><td><span class="chip chip-ok"><span class="d"></span>Success</span></td><td style="font-size:18px;color:var(--ink-3)">⋮</td></tr>
+              </tbody>
+            </table>
+            <div class="menu-pop">
+              <a class="hi">▶ &nbsp;Force a job run</a>
+              <a>✎ &nbsp;Edit</a>
+              <a>❚❚ &nbsp;Pause</a>
+              <a>↻ &nbsp;Resume</a>
+              <a>🗑 &nbsp;Delete</a>
+              <a>≣ &nbsp;View logs</a>
+            </div>
+          </div>
+        </div>
+        <div class="shot-cap" style="padding:0 18px 16px;">Steps #4–#5 — the HTTP schedule (every 5 min) and “Force a job run” in the Actions menu.</div>
+      </div>
+
+      <p class="attrib reveal">Architecture and scenario based on Google's “Triggering Cloud Run Jobs with Cloud Scheduler” codelab (Cymbal Eats), used under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>; code samples under Apache 2.0. The diagram and console views here are original recreations built in HTML/SVG — not the codelab's images — and have been adapted and simplified. “Google Cloud”, product names and icons are trademarks of Google LLC.</p>
     </div>
   </div>
 </section>
