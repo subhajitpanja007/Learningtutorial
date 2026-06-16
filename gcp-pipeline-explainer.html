@@ -1,0 +1,1972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>How a Job Runs — GCP Scheduler · Pub/Sub · Cloud Run Job (SOR & Platform)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --g-blue:#4285F4; --g-blue-d:#1A73E8; --g-blue-l:#AECBFA; --g-blue-xl:#E8F0FE;
+  --g-red:#EA4335;  --g-red-d:#C5221F;  --g-red-l:#F6AEA9;
+  --g-yellow:#FBBC04; --g-yellow-d:#F29900; --g-yellow-l:#FDE293;
+  --g-green:#34A853; --g-green-d:#188038; --g-green-l:#A8DAB5; --g-green-xl:#E6F4EA;
+  --ink:#202124; --ink-2:#5f6368; --ink-3:#80868b;
+  --line:#dadce0; --line-2:#e8eaed;
+  --surface:#ffffff; --bg:#f1f3f4; --bg-2:#f8f9fa;
+  --console-dark:#202124; --console-nav:#28292c;
+  --radius:14px; --radius-sm:8px;
+  --shadow-1:0 1px 2px rgba(60,64,67,.12),0 1px 3px rgba(60,64,67,.08);
+  --shadow-2:0 2px 6px rgba(60,64,67,.14),0 1px 2px rgba(60,64,67,.10);
+  --shadow-3:0 8px 24px rgba(60,64,67,.18),0 2px 6px rgba(60,64,67,.10);
+  --display:"Space Grotesk", "Trebuchet MS", system-ui, sans-serif;
+  --body:"DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono:"Roboto Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--body); font-size:16px; line-height:1.6;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+h1,h2,h3,h4{font-family:var(--display); font-weight:600; line-height:1.12; margin:0; letter-spacing:-.01em;}
+p{margin:0 0 1em;}
+a{color:var(--g-blue-d); text-decoration:none;}
+code,.mono{font-family:var(--mono);}
+:focus-visible{outline:3px solid var(--g-blue); outline-offset:2px; border-radius:4px;}
+
+.wrap{max-width:1180px; margin:0 auto; padding:0 22px;}
+.section{padding:74px 0;}
+.section--tight{padding:48px 0;}
+.eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--ink-2); display:inline-flex; align-items:center; gap:8px; margin-bottom:14px;}
+.eyebrow::before{content:""; width:22px; height:2px; background:var(--g-blue); display:inline-block;}
+.h-lead{font-size:clamp(28px,4.4vw,46px); margin-bottom:10px;}
+.sub{color:var(--ink-2); font-size:clamp(16px,1.6vw,19px); max-width:62ch;}
+
+/* ---------- HERO ---------- */
+.hero{background:
+    radial-gradient(900px 500px at 85% -10%, rgba(66,133,244,.18), transparent 60%),
+    radial-gradient(700px 480px at 5% 120%, rgba(52,168,83,.16), transparent 60%),
+    linear-gradient(180deg,#1b1c1f 0%, #202124 55%, #25262a 100%);
+  color:#fff; position:relative; overflow:hidden; border-bottom:1px solid #000;}
+.hero-grid{position:absolute; inset:0;
+  background-image:radial-gradient(rgba(255,255,255,.06) 1px, transparent 1px);
+  background-size:26px 26px; mask-image:linear-gradient(180deg,#000,transparent 92%);}
+.hero .wrap{position:relative; padding-top:78px; padding-bottom:60px;}
+.hero-tag{display:inline-flex; gap:8px; align-items:center; font-family:var(--mono); font-size:12px;
+  letter-spacing:.14em; text-transform:uppercase; color:#cdd1d6;
+  border:1px solid rgba(255,255,255,.18); padding:6px 12px; border-radius:999px; background:rgba(255,255,255,.04);}
+.hero h1{font-size:clamp(34px,6vw,68px); font-weight:700; margin:22px 0 14px; letter-spacing:-.025em;}
+.hero h1 .accent{background:linear-gradient(90deg,var(--g-blue-l),#fff 40%, var(--g-green-l)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+.hero .lede{color:#c8ccd2; font-size:clamp(16px,1.9vw,21px); max-width:60ch; margin-bottom:30px;}
+.hero-chips{display:flex; flex-wrap:wrap; gap:10px; margin-bottom:38px;}
+.hero-chips span{font-family:var(--mono); font-size:12.5px; color:#e6e8eb; background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.12); padding:7px 12px; border-radius:8px;}
+
+/* hero mini pipeline */
+.minipipe{position:relative; display:flex; align-items:center; gap:0; flex-wrap:nowrap;
+  background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.1); border-radius:18px;
+  padding:24px 22px; overflow-x:auto;}
+.mp-node{display:flex; flex-direction:column; align-items:center; gap:9px; min-width:96px; text-align:center; z-index:2;}
+.mp-ic{width:60px; height:60px; border-radius:15px; display:grid; place-items:center; background:#fff; box-shadow:0 6px 16px rgba(0,0,0,.35);}
+.mp-node small{font-family:var(--mono); font-size:11px; color:#cfd3d8; letter-spacing:.02em; white-space:nowrap;}
+.mp-link{flex:1 1 auto; min-width:54px; height:46px; position:relative;}
+.mp-link::before{content:""; position:absolute; top:50%; left:0; right:0; height:2px; transform:translateY(-50%);
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.35) 0 7px, transparent 7px 14px);}
+.mp-dot{position:absolute; top:50%; left:0; width:11px; height:11px; border-radius:50%; transform:translate(-50%,-50%);
+  box-shadow:0 0 12px currentColor;}
+.mp-dot.b{color:var(--g-blue); background:var(--g-blue);}
+.mp-dot.y{color:var(--g-yellow); background:var(--g-yellow);}
+.mp-dot.g{color:var(--g-green); background:var(--g-green);}
+@keyframes flowdot{0%{left:2%; opacity:0;}10%{opacity:1;}90%{opacity:1;}100%{left:98%; opacity:0;}}
+.mp-link .mp-dot{animation:flowdot 2.6s linear infinite;}
+
+/* ---------- generic cards ---------- */
+.cards{display:grid; gap:20px;}
+.cards-3{grid-template-columns:repeat(3,1fr);}
+.cards-2{grid-template-columns:repeat(2,1fr);}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow-1); padding:24px; position:relative;}
+.card h3{font-size:20px; margin-bottom:4px;}
+.card .role{font-family:var(--mono); font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); margin-bottom:14px;}
+.card p{font-size:15px; color:var(--ink-2); margin:0;}
+.card .ic-tile{width:54px; height:54px; border-radius:13px; display:grid; place-items:center; margin-bottom:16px; box-shadow:var(--shadow-1);}
+.tile-blue{background:var(--g-blue-xl);} .tile-green{background:var(--g-green-xl);} .tile-red{background:#FCE8E6;}
+.kv{margin-top:16px; border-top:1px dashed var(--line); padding-top:14px; display:grid; gap:8px;}
+.kv div{display:flex; gap:8px; font-size:13.5px;}
+.kv b{font-family:var(--mono); font-weight:500; color:var(--ink); min-width:96px; font-size:12.5px;}
+.kv span{color:var(--ink-2);}
+
+/* ---------- the living pipeline (signature) ---------- */
+.stage{background:var(--surface); border:1px solid var(--line); border-radius:20px; box-shadow:var(--shadow-2); overflow:hidden;}
+.stage-bar{display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:14px 18px; border-bottom:1px solid var(--line-2); background:var(--bg-2);}
+.stage-bar .dots{display:flex; gap:7px;}
+.stage-bar .dots i{width:11px; height:11px; border-radius:50%; display:block;}
+.dr{background:#ff5f57;}.dy{background:#febc2e;}.dg{background:#28c840;}
+.stage-title{font-family:var(--mono); font-size:13px; color:var(--ink-2);}
+.controls{margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+.btn{font-family:var(--body); font-weight:600; font-size:13.5px; border:1px solid var(--line);
+  background:#fff; color:var(--ink); padding:8px 14px; border-radius:999px; cursor:pointer; display:inline-flex; gap:7px; align-items:center;
+  transition:background .15s, box-shadow .15s, border-color .15s;}
+.btn:hover{box-shadow:var(--shadow-1); border-color:var(--ink-3);}
+.btn--play{background:var(--g-blue-d); color:#fff; border-color:var(--g-blue-d);}
+.btn--play:hover{background:var(--g-blue);}
+.scn-tabs{display:flex; gap:6px; flex-wrap:wrap; padding:14px 18px 0;}
+.scn-tab{font-family:var(--mono); font-size:12.5px; letter-spacing:.02em; border:1px solid var(--line);
+  background:#fff; color:var(--ink-2); padding:7px 13px; border-radius:8px; cursor:pointer; transition:all .15s; white-space:nowrap;}
+.scn-tab:hover{border-color:var(--g-blue); color:var(--g-blue-d);}
+.scn-tab[aria-selected="true"]{background:var(--g-blue-d); border-color:var(--g-blue-d); color:#fff; box-shadow:var(--shadow-1);}
+.scn-explain{padding:14px 18px 4px; display:flex; gap:14px; align-items:flex-start;}
+.scn-explain .badge{flex:none; font-family:var(--mono); font-weight:600; font-size:13px; color:#fff; background:var(--g-blue-d);
+  width:30px; height:30px; border-radius:9px; display:grid; place-items:center; margin-top:2px;}
+.scn-explain h4{font-size:17px; margin-bottom:3px;}
+.scn-explain p{font-size:14px; color:var(--ink-2); margin:0;}
+.diagram-scroll{overflow-x:auto; padding:6px 10px 14px;}
+svg.flow{display:block; width:100%; min-width:760px; height:auto;}
+
+/* svg pieces */
+.node-box{fill:#fff; stroke:var(--line); stroke-width:1.4; filter:url(#soft);}
+.node-g{transition:opacity .35s ease;}
+.node-dim{opacity:.26;}
+.node-hide{display:none;}
+.node-label{font-family:var(--body); font-weight:600; font-size:14px; fill:var(--ink);}
+.node-sub{font-family:var(--mono); font-size:10.5px; fill:var(--ink-3);}
+.node-badge{font-family:var(--mono); font-size:10px; fill:var(--g-green-d);}
+.edge{fill:none; stroke:var(--line); stroke-width:2; stroke-dasharray:6 7; transition:opacity .35s, stroke .35s;}
+.edge--active{stroke:#9aa0a6; stroke-dasharray:6 7; animation:dash 1s linear infinite;}
+.edge--idle{opacity:.32;}
+.edge--hide{display:none;}
+.edge--pull{stroke-dasharray:2 6;}
+@keyframes dash{to{stroke-dashoffset:-26;}}
+.token{transition:none;}
+.tok-core{stroke:#fff; stroke-width:1.4;}
+.ps-pulse{transform-box:fill-box; transform-origin:center;}
+@keyframes pspulse{0%{opacity:.55; r:34;}70%{opacity:0; r:58;}100%{opacity:0; r:58;}}
+.pulsing{animation:pspulse 1s ease-out;}
+.flow-legend{display:flex; gap:18px; flex-wrap:wrap; padding:6px 20px 20px; border-top:1px solid var(--line-2);}
+.flow-legend .lg{display:flex; gap:8px; align-items:center; font-size:12.5px; color:var(--ink-2); font-family:var(--mono);}
+.flow-legend .sw{width:14px; height:14px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px var(--line);}
+
+/* ---------- console recreations ---------- */
+.console{border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:var(--shadow-2); background:#fff;}
+.gc-top{display:flex; align-items:center; gap:14px; background:var(--console-dark); color:#e8eaed; padding:10px 16px;}
+.gc-logo{display:flex; align-items:center; gap:9px; font-family:var(--body); font-weight:600; font-size:15px; letter-spacing:.2px; color:#fff;}
+.gc-proj{font-family:var(--body); font-size:13px; color:#bdc1c6; background:#3c4043; border:1px solid #5f6368; padding:5px 12px; border-radius:7px; display:flex; gap:8px; align-items:center;}
+.gc-proj small{color:#9aa0a6;}
+.gc-top .grow{flex:1;}
+.gc-search{flex:1; max-width:420px; background:#3c4043; border-radius:8px; padding:7px 12px; color:#9aa0a6; font-size:13px; display:flex; gap:9px; align-items:center;}
+.gc-av{width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,var(--g-blue),var(--g-green)); display:grid; place-items:center; color:#fff; font-weight:600; font-size:13px; font-family:var(--display);}
+.gc-body{display:flex; min-height:330px;}
+.gc-nav{width:208px; background:#fff; border-right:1px solid var(--line-2); padding:10px 0; flex:none;}
+.gc-nav .grp{font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); padding:12px 18px 6px;}
+.gc-nav a{display:flex; gap:11px; align-items:center; padding:9px 18px; font-size:13.5px; color:var(--ink-2); cursor:default;}
+.gc-nav a .ni{width:18px; height:18px; opacity:.7;}
+.gc-nav a.active{background:var(--g-blue-xl); color:var(--g-blue-d); font-weight:600; border-right:3px solid var(--g-blue-d);}
+.gc-nav a.active .ni{opacity:1;}
+.gc-main{flex:1; padding:20px 22px; min-width:0; overflow:hidden;}
+.gc-bc{font-size:12.5px; color:var(--ink-3); margin-bottom:6px; font-family:var(--mono);}
+.gc-h{display:flex; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap;}
+.gc-h h4{font-size:21px; font-weight:600;}
+.gc-h .pill-btn{font-family:var(--body); font-weight:600; font-size:13px; padding:7px 14px; border-radius:7px; border:1px solid var(--line); background:#fff; color:var(--g-blue-d); display:inline-flex; gap:7px; align-items:center;}
+.gc-h .pill-btn.solid{background:var(--g-blue-d); color:#fff; border-color:var(--g-blue-d);}
+.gc-h .spacer{flex:1;}
+.gc-table{width:100%; border-collapse:collapse; font-size:13px;}
+.gc-table th{text-align:left; font-weight:600; color:var(--ink-2); border-bottom:1px solid var(--line); padding:10px 12px; font-size:12px; white-space:nowrap;}
+.gc-table td{border-bottom:1px solid var(--line-2); padding:11px 12px; color:var(--ink); vertical-align:middle; white-space:nowrap;}
+.gc-table tr.row-hi{background:var(--g-blue-xl);}
+.gc-table .mono{font-size:12px; color:var(--ink-2);}
+.gc-table .name{font-weight:600; color:var(--g-blue-d);}
+.chip{display:inline-flex; gap:6px; align-items:center; font-size:12px; font-weight:600; padding:3px 10px; border-radius:999px;}
+.chip-ok{background:var(--g-green-xl); color:var(--g-green-d);}
+.chip-run{background:var(--g-blue-xl); color:var(--g-blue-d);}
+.chip-warn{background:#FEF7E0; color:var(--g-yellow-d);}
+.chip-ok .d,.chip-run .d{width:7px; height:7px; border-radius:50%; background:currentColor;}
+.chip-run .d{animation:blink 1.1s ease-in-out infinite;}
+@keyframes blink{50%{opacity:.25;}}
+.metric-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:18px;}
+.metric{border:1px solid var(--line-2); border-radius:10px; padding:14px 16px; background:var(--bg-2);}
+.metric .lbl{font-size:11.5px; color:var(--ink-3); font-family:var(--mono); letter-spacing:.04em; text-transform:uppercase;}
+.metric .val{font-family:var(--display); font-weight:600; font-size:26px; color:var(--ink); margin-top:4px;}
+.metric .val small{font-size:13px; color:var(--ink-3); font-weight:500;}
+.log{background:#1e1e1e; border-radius:10px; padding:14px 16px; font-family:var(--mono); font-size:12px; color:#d4d4d4; line-height:1.7; overflow-x:auto; margin-top:6px;}
+.log .t{color:#858585;} .log .ok{color:#4ec9b0;} .log .info{color:#569cd6;} .log .warn{color:#dcdcaa;} .log .path{color:#ce9178;}
+.note{font-size:13px; color:var(--ink-3); margin-top:12px; display:flex; gap:8px; align-items:flex-start;}
+.note svg{flex:none; margin-top:2px;}
+
+/* anatomy / message envelope */
+.split{display:grid; grid-template-columns:1.05fr .95fr; gap:26px; align-items:start;}
+.envelope{background:#fff; border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow-1); overflow:hidden;}
+.env-head{background:var(--g-blue-d); color:#fff; padding:12px 16px; font-family:var(--mono); font-size:13px; display:flex; justify-content:space-between; align-items:center;}
+.env-row{display:flex; gap:10px; padding:11px 16px; border-bottom:1px solid var(--line-2); font-size:13px;}
+.env-row:last-child{border-bottom:none;}
+.env-row .k{font-family:var(--mono); font-size:12px; color:var(--g-blue-d); min-width:120px; font-weight:500;}
+.env-row .v{font-family:var(--mono); font-size:12px; color:var(--ink); word-break:break-all;}
+.env-row .c{color:var(--ink-3);}
+
+/* cron anatomy */
+.cron{background:#1e1e1e; border-radius:14px; padding:26px 22px; text-align:center; box-shadow:var(--shadow-2);}
+.cron-expr{font-family:var(--mono); font-size:clamp(22px,4vw,34px); color:#fff; letter-spacing:.12em; display:inline-flex; gap:14px;}
+.cron-expr span{position:relative; padding-bottom:6px; cursor:default;}
+.cron-expr span::after{content:""; position:absolute; left:0; right:0; bottom:0; height:3px; border-radius:3px;}
+.cron-expr .c0::after{background:var(--g-blue);} .cron-expr .c1::after{background:var(--g-green);}
+.cron-expr .c2::after{background:var(--g-yellow);} .cron-expr .c3::after{background:var(--g-red);}
+.cron-expr .c4::after{background:#9c27b0;}
+.cron-legend{display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-top:22px;}
+.cron-legend div{font-family:var(--mono); font-size:11px; color:#bdc1c6; padding-top:10px; border-top:2px solid;}
+.cron-legend .l0{border-color:var(--g-blue);} .cron-legend .l1{border-color:var(--g-green);}
+.cron-legend .l2{border-color:var(--g-yellow);} .cron-legend .l3{border-color:var(--g-red);}
+.cron-legend .l4{border-color:#9c27b0;}
+.cron-legend b{display:block; color:#fff; font-size:13px; margin-bottom:2px;}
+
+/* code block */
+.codeblk{background:#1e1e1e; border-radius:14px; box-shadow:var(--shadow-2); overflow:hidden;}
+.codeblk .cb-bar{display:flex; align-items:center; gap:8px; padding:11px 16px; background:#181818; border-bottom:1px solid #2a2a2a;}
+.codeblk .cb-bar i{width:11px;height:11px;border-radius:50%;display:block;}
+.codeblk .cb-name{font-family:var(--mono); font-size:12px; color:#9aa0a6; margin-left:8px;}
+.codeblk pre{margin:0; padding:18px 20px; overflow-x:auto; font-family:var(--mono); font-size:12.5px; line-height:1.75; color:#d4d4d4;}
+.codeblk .kw{color:#c586c0;} .codeblk .fn{color:#dcdcaa;} .codeblk .str{color:#ce9178;} .codeblk .cm{color:#6a9955;} .codeblk .nm{color:#b5cea8;} .codeblk .va{color:#9cdcfe;} .codeblk .ty{color:#4ec9b0;}
+
+/* parquet layout tree */
+.tree{font-family:var(--mono); font-size:13px; background:#fff; border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow-1); padding:20px 22px; line-height:1.85; color:var(--ink-2); overflow-x:auto;}
+.tree .b{color:var(--g-blue-d);} .tree .y{color:var(--g-yellow-d);} .tree .g{color:var(--g-green-d); font-weight:600;} .tree .m{color:var(--ink-3);}
+
+/* comparison */
+.cmp{display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid var(--line); border-radius:16px; overflow:hidden; box-shadow:var(--shadow-1);}
+.cmp .col-h{padding:20px 22px; color:#fff; display:flex; gap:12px; align-items:center;}
+.cmp .col-h.sor{background:linear-gradient(135deg,#F29900,#FBBC04);}
+.cmp .col-h.plat{background:linear-gradient(135deg,#1A73E8,#4285F4);}
+.cmp .col-h h3{font-size:19px; color:#fff;}
+.cmp .col-h small{display:block; font-family:var(--mono); font-size:11px; opacity:.9;}
+.cmp .cell{padding:15px 22px; border-top:1px solid var(--line-2); font-size:14px;}
+.cmp .cell .lbl{font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin-bottom:3px;}
+.cmp .cell .txt{color:var(--ink); }
+.cmp .mid{grid-column:1 / -1; background:var(--bg-2); text-align:center; font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); padding:8px;}
+
+/* tiny-details grid */
+.detail-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:16px;}
+.detail{background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px 20px; box-shadow:var(--shadow-1);}
+.detail h4{font-size:15px; display:flex; gap:9px; align-items:center; margin-bottom:10px;}
+.detail h4 .tag{font-family:var(--mono); font-size:10px; color:#fff; background:var(--ink); padding:2px 7px; border-radius:5px; letter-spacing:.04em;}
+.detail h4 .tag.b{background:var(--g-blue-d);} .detail h4 .tag.r{background:var(--g-red-d);} .detail h4 .tag.g{background:var(--g-green-d);} .detail h4 .tag.y{background:var(--g-yellow-d);}
+.detail ul{margin:0; padding-left:18px; font-size:13.5px; color:var(--ink-2);}
+.detail ul li{margin-bottom:6px;}
+.detail code{background:var(--bg); padding:1px 6px; border-radius:5px; font-size:12px; color:var(--ink);}
+
+/* steps strip */
+.steps{counter-reset:s; display:grid; gap:14px;}
+.step{display:flex; gap:16px; align-items:flex-start; background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px 18px; box-shadow:var(--shadow-1);}
+.step .num{counter-increment:s; flex:none; width:34px; height:34px; border-radius:10px; background:var(--g-blue-d); color:#fff; font-family:var(--display); font-weight:600; display:grid; place-items:center;}
+.step .num::before{content:counter(s,decimal-leading-zero);}
+.step h4{font-size:15.5px; margin-bottom:2px;}
+.step p{font-size:14px; color:var(--ink-2); margin:0;}
+.step .mono{font-size:12px; color:var(--g-blue-d); background:var(--bg); padding:1px 6px; border-radius:5px;}
+
+/* footer */
+.foot{background:var(--console-dark); color:#bdc1c6; padding:48px 0 40px;}
+.foot h3{color:#fff; font-size:22px; margin-bottom:8px;}
+.foot .cols{display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:28px; margin-top:26px;}
+.foot .cols h5{font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:#80868b; margin:0 0 12px;}
+.foot .cols a, .foot .cols p{display:block; color:#cdd1d6; font-size:13.5px; margin-bottom:8px;}
+.foot .disclaimer{margin-top:30px; padding-top:20px; border-top:1px solid #3c4043; font-size:12px; color:#80868b; max-width:80ch;}
+
+.section-alt{background:var(--bg-2);}
+.lead-block{max-width:760px; margin-bottom:38px;}
+
+/* ===================== CONSOLE WALKTHROUGH SLIDER ===================== */
+.slider{position:relative; border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow-2); background:var(--surface); overflow:hidden;}
+.slider-top{display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:13px 18px; border-bottom:1px solid var(--line-2); background:var(--bg-2);}
+.slider-step-label{font-family:var(--mono); font-size:13px; color:var(--ink-2);}
+.slider-step-label b{color:var(--ink);}
+.slider-ctrls{margin-left:auto; display:flex; gap:8px; align-items:center;}
+.sld-btn{font-family:var(--body); font-weight:600; font-size:13px; border:1px solid var(--line); background:#fff; color:var(--ink); padding:7px 13px; border-radius:999px; cursor:pointer; display:inline-flex; gap:6px; align-items:center; transition:box-shadow .15s,border-color .15s;}
+.sld-btn:hover{box-shadow:var(--shadow-1); border-color:var(--ink-3);}
+.sld-btn--play{background:var(--g-blue-d); color:#fff; border-color:var(--g-blue-d);}
+.sld-btn--play:hover{background:var(--g-blue);}
+.slider-progress{height:3px; background:var(--line-2);}
+.slider-progress span{display:block; height:100%; background:var(--g-blue-d); width:0;}
+.slider-viewport{overflow:hidden;}
+.slider-track{display:flex; transition:transform .55s cubic-bezier(.4,0,.2,1);}
+.slide{flex:0 0 100%; min-width:100%; padding:18px;}
+.slider-dots{display:flex; gap:7px; flex-wrap:wrap; justify-content:center; padding:4px 14px 16px;}
+.dot{width:9px; height:9px; border-radius:50%; border:none; background:var(--line); cursor:pointer; padding:0; transition:transform .15s, background .15s;}
+.dot[aria-current="true"]{background:var(--g-blue-d); transform:scale(1.4);}
+.dot:hover{background:var(--ink-3);}
+.slide .console{box-shadow:var(--shadow-1);}
+.gc-nav .ni{display:inline-grid; place-items:center; overflow:hidden;}
+.gc-nav .ni svg{width:18px; height:18px;}
+
+/* console sub-header: back + breadcrumb + buttons */
+.gc-sub{display:flex; align-items:center; gap:12px; padding:14px 20px 8px; flex-wrap:wrap; border-bottom:1px solid var(--line-2);}
+.gc-back{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:var(--ink-2);font-size:20px;background:var(--bg-2);}
+.gc-sub .bc .crumb{font-size:12px; color:var(--ink-3); font-family:var(--mono);}
+.gc-sub .bc .title{font-size:20px; font-weight:600; font-family:var(--display); line-height:1.2;}
+.gc-actions{margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;}
+
+/* material-ish buttons */
+.gbtn{font-family:var(--body); font-weight:600; font-size:13px; border-radius:6px; padding:8px 16px; cursor:default; border:1px solid transparent; display:inline-flex; gap:7px; align-items:center; white-space:nowrap;}
+.gbtn--primary{background:var(--g-blue-d); color:#fff;}
+.gbtn--out{background:#fff; color:var(--g-blue-d); border-color:var(--line);}
+.gbtn--text{background:none; color:var(--g-blue-d);}
+
+/* wizard: stepper + form */
+.wiz{display:grid; grid-template-columns:236px 1fr; gap:0;}
+.stepper{border-right:1px solid var(--line-2); padding:22px 18px; background:#fff;}
+.st-item{display:flex; gap:12px; align-items:flex-start; padding:9px 0; position:relative;}
+.st-item .sc{width:26px;height:26px;border-radius:50%;flex:none;display:grid;place-items:center;font-family:var(--body);font-weight:600;font-size:13px;background:var(--line-2);color:var(--ink-2);}
+.st-item.done .sc{background:var(--g-blue-d); color:#fff;}
+.st-item.active .sc{background:var(--g-blue-d); color:#fff; box-shadow:0 0 0 4px var(--g-blue-xl);}
+.st-item .sl{font-size:13.5px; color:var(--ink-2); padding-top:4px;}
+.st-item.active .sl{color:var(--ink); font-weight:600;}
+.st-item:not(:last-child)::after{content:""; position:absolute; left:12.5px; top:35px; height:14px; width:1.5px; background:var(--line-2);}
+.st-item.done:not(:last-child)::after{background:var(--g-blue-l);}
+.wiz-form{padding:24px 26px; min-width:0;}
+
+/* form fields (material outlined) */
+.fgrid{display:grid; gap:19px; max-width:580px;}
+.fgrid.two{grid-template-columns:1fr 1fr;}
+.section-label{font-family:var(--display); font-size:15px; font-weight:600; color:var(--ink); margin:6px 0 -4px;}
+.field{position:relative;}
+.field > label{position:absolute; top:-8px; left:11px; background:#fff; padding:0 5px; font-size:11.5px; color:var(--ink-2); z-index:1;}
+.field.req > label::after{content:" *"; color:var(--g-red);}
+.field.foc > label{color:var(--g-blue-d);}
+.ipt, .sel{width:100%; border:1px solid var(--line); border-radius:5px; padding:13px; font-family:var(--body); font-size:14px; color:var(--ink); background:#fff; min-height:48px; display:flex; align-items:center; gap:8px;}
+.ipt.tall{min-height:74px; align-items:flex-start; font-family:var(--mono); font-size:12.5px;}
+.field.foc .ipt, .field.foc .sel{border:2px solid var(--g-blue-d); padding:12px;}
+.field.foc .ipt.tall{align-items:flex-start;}
+.sel{justify-content:space-between; cursor:default;}
+.sel .chev{color:var(--ink-3); font-size:12px;}
+.sel .sub{font-size:11px; color:var(--ink-3); font-weight:400;}
+.with-sel{display:flex; gap:10px; align-items:stretch;}
+.with-sel .ipt{flex:1; font-family:var(--mono); font-size:12px;}
+.help{font-size:12px; color:var(--ink-3); margin-top:6px; line-height:1.5;}
+.help a{color:var(--g-blue-d);}
+.ph{color:var(--ink-3);}
+.attr-chip{display:inline-flex; gap:6px; align-items:center; font-family:var(--mono); font-size:11.5px; background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:4px 9px; color:var(--ink-2); margin-top:8px;}
+
+/* open dropdown list (region) */
+.ddmenu{border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow-3); margin-top:6px; overflow:hidden; max-width:580px; background:#fff;}
+.dd-grp{font-size:12px; color:var(--ink-3); padding:9px 16px 4px; font-weight:600;}
+.dd-row{display:flex; align-items:center; gap:10px; padding:9px 16px; font-size:13.5px; color:var(--ink); cursor:default; border-left:3px solid transparent;}
+.dd-row:hover{background:var(--bg-2);}
+.dd-row.sel-row{background:var(--g-blue-xl); border-left-color:var(--g-blue-d);}
+.dd-row .rname b{font-weight:600; color:var(--g-blue-d);}
+.dd-row .rsub{font-size:11px; color:var(--ink-3);}
+.dd-row .co2{margin-left:auto; display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--g-green-d); white-space:nowrap;}
+
+/* radio + check */
+.opt{display:flex; gap:11px; align-items:flex-start; padding:7px 0; font-size:13.5px; color:var(--ink);}
+.opt .rd{width:18px;height:18px;border-radius:50%;border:2px solid var(--g-blue-d);flex:none;margin-top:1px;display:grid;place-items:center;}
+.opt .rd i{width:9px;height:9px;border-radius:50%;background:var(--g-blue-d);display:none;}
+.opt.on .rd i{display:block;}
+.opt.off .rd{border-color:var(--ink-3);}
+.opt .ck{width:18px;height:18px;border-radius:3px;border:2px solid var(--g-blue-d);background:var(--g-blue-d);flex:none;margin-top:1px;display:grid;place-items:center;color:#fff;font-size:12px;line-height:1;}
+.opt.off .ck{background:#fff;border-color:var(--ink-3);color:transparent;}
+.opt small{display:block; color:var(--ink-3); font-size:12px;}
+
+/* segmented tabs inside a settings card */
+.settings-card{border:1px solid var(--line); border-radius:10px; margin-top:4px; max-width:580px; overflow:hidden;}
+.settings-card .sc-head{font-size:13.5px; font-weight:600; color:var(--ink); padding:13px 16px; background:var(--bg-2); border-bottom:1px solid var(--line-2);}
+.seg{display:flex; gap:0; border-bottom:1px solid var(--line); flex-wrap:wrap; padding:0 8px; background:#fff;}
+.seg span{font-family:var(--body); font-size:12.5px; font-weight:600; color:var(--ink-3); padding:11px 13px; border-bottom:2px solid transparent;}
+.seg span.on{color:var(--g-blue-d); border-bottom-color:var(--g-blue-d);}
+.sc-body{padding:18px 16px;}
+
+/* inline code editor (light, console-style) */
+.editor{border:1px solid var(--line); border-radius:8px; overflow:hidden; max-width:580px;}
+.editor .etabs{display:flex; background:#f1f3f4; border-bottom:1px solid var(--line); font-family:var(--mono); font-size:12px;}
+.editor .etabs span{padding:8px 14px; color:var(--ink-2); border-right:1px solid var(--line);}
+.editor .etabs span.on{background:#fff; color:var(--ink);}
+.editor pre{margin:0; background:#fff; color:#202124; padding:16px 18px; font-family:var(--mono); font-size:12.5px; line-height:1.75; overflow-x:auto;}
+.editor .kw{color:#a020a0;} .editor .str{color:#188038;} .editor .cm{color:#80868b;} .editor .fn{color:#1a73e8;} .editor .va{color:#0b8043;}
+
+/* tasks overview bar */
+.tov{display:flex; gap:24px; align-items:center; flex-wrap:wrap; margin:6px 0 16px;}
+.tov .big{font-family:var(--display); font-weight:600; font-size:15px; color:var(--ink);}
+.tov .legend{display:flex; gap:16px; font-size:12.5px; color:var(--ink-2);}
+.tov .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:middle;}
+
+/* logs explorer */
+.lx-query{display:flex; gap:10px; align-items:center; background:var(--bg-2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin-bottom:14px; flex-wrap:wrap;}
+.lx-query .q{flex:1; min-width:220px; font-family:var(--mono); font-size:12px; color:var(--ink); background:#fff; border:1px solid var(--line-2); border-radius:6px; padding:9px 11px;}
+.lx-hist{display:flex; align-items:flex-end; gap:3px; height:46px; padding:6px 2px; border-bottom:1px solid var(--line-2); margin-bottom:10px;}
+.lx-hist i{flex:1; background:var(--g-blue-l); border-radius:2px 2px 0 0; min-width:3px;}
+.lx-row{display:flex; gap:12px; align-items:baseline; padding:8px 8px; border-bottom:1px solid var(--line-2); font-family:var(--mono); font-size:12px;}
+.lx-row .ts{color:var(--ink-3); white-space:nowrap;}
+.lx-row .sev{font-weight:600; padding:1px 7px; border-radius:4px; font-size:10.5px; letter-spacing:.03em; white-space:nowrap;}
+.lx-row .sev.i{background:var(--g-blue-xl); color:var(--g-blue-d);}
+.lx-row .sev.w{background:#FEF7E0; color:var(--g-yellow-d);}
+.lx-row .sev.e{background:#FCE8E6; color:var(--g-red-d);}
+.lx-row .msg{color:var(--ink); word-break:break-word;}
+
+@media (max-width:900px){
+  .wiz{grid-template-columns:1fr;}
+  .stepper{display:flex; gap:18px; overflow-x:auto; border-right:none; border-bottom:1px solid var(--line-2); padding:14px;}
+  .st-item:not(:last-child)::after{display:none;}
+  .st-item{flex:none;}
+  .st-item .sl{display:none;}
+  .st-item.active .sl{display:block;}
+  .fgrid.two{grid-template-columns:1fr;}
+}
+
+@media (max-width:900px){
+  .cards-3{grid-template-columns:1fr;}
+  .cards-2{grid-template-columns:1fr;}
+  .split{grid-template-columns:1fr; gap:20px;}
+  .cmp{grid-template-columns:1fr;}
+  .detail-grid{grid-template-columns:1fr;}
+  .gc-nav{display:none;}
+  .foot .cols{grid-template-columns:1fr;}
+  .metric-row{grid-template-columns:1fr;}
+  .cron-legend{grid-template-columns:1fr 1fr;}
+}
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important;}
+  html{scroll-behavior:auto;}
+}
+.reveal{opacity:0; transform:translateY(18px);}
+.reveal.in{opacity:1; transform:none; transition:opacity .6s ease, transform .6s ease;}
+</style>
+</head>
+<body>
+
+<!-- ========================= HERO ========================= -->
+<header class="hero">
+  <div class="hero-grid"></div>
+  <div class="wrap">
+    <span class="hero-tag">Google Cloud · Data Pipeline Walkthrough</span>
+    <h1>How a <span class="accent">Job runs</span><br>across Scheduler, Pub/Sub &amp; Cloud Run</h1>
+    <p class="lede">A clock fires. A message travels. A container wakes up, pulls raw <b>SOR</b> data from on-premises, lands it as <b>Parquet</b> with PySpark, and chains the next stage through a topic. Here is every moving part — animated, end to end, for both SOR and Platform data.</p>
+    <div class="hero-chips">
+      <span>Cloud Scheduler (cron)</span>
+      <span>Pub/Sub topic + subscription</span>
+      <span>Cloud Run Job</span>
+      <span>PySpark → Parquet</span>
+      <span>GCS · BigQuery</span>
+      <span>5 trigger patterns</span>
+    </div>
+
+    <div class="minipipe" aria-label="Mini pipeline: Scheduler to Pub/Sub to Cloud Run to Parquet">
+      <div class="mp-node">
+        <div class="mp-ic" id="hic-sch"></div><small>Scheduler</small>
+      </div>
+      <div class="mp-link"><span class="mp-dot b" style="animation-delay:0s"></span></div>
+      <div class="mp-node">
+        <div class="mp-ic" id="hic-ps"></div><small>Pub/Sub</small>
+      </div>
+      <div class="mp-link"><span class="mp-dot b" style="animation-delay:.6s"></span></div>
+      <div class="mp-node">
+        <div class="mp-ic" id="hic-run"></div><small>Cloud Run Job</small>
+      </div>
+      <div class="mp-link"><span class="mp-dot y" style="animation-delay:1.2s"></span></div>
+      <div class="mp-node">
+        <div class="mp-ic" id="hic-spark"></div><small>PySpark</small>
+      </div>
+      <div class="mp-link"><span class="mp-dot g" style="animation-delay:1.8s"></span></div>
+      <div class="mp-node">
+        <div class="mp-ic" id="hic-pq"></div><small>Parquet → GCS</small>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ========================= THE THREE PLAYERS ========================= -->
+<section class="section">
+  <div class="wrap">
+    <div class="lead-block reveal">
+      <span class="eyebrow">The cast</span>
+      <h2 class="h-lead">Three managed services, one job</h2>
+      <p class="sub">Each does exactly one thing. The art is wiring them together so a schedule reliably turns into processed data — with retries, identity, and decoupling baked in.</p>
+    </div>
+    <div class="cards cards-3">
+      <article class="card reveal">
+        <div class="ic-tile tile-blue" id="c-sch"></div>
+        <span class="role">When · the trigger</span>
+        <h3>Cloud Scheduler</h3>
+        <p>A fully-managed cron service. On a schedule you define, it fires one of three target types: publish to a Pub/Sub topic, call an HTTP endpoint, or hit App Engine. It only triggers — it never processes data itself.</p>
+        <div class="kv">
+          <div><b>Fires by</b><span>cron expression + IANA timezone</span></div>
+          <div><b>Targets</b><span>Pub/Sub · HTTP · App Engine</span></div>
+          <div><b>Reliability</b><span>configurable retry &amp; backoff</span></div>
+        </div>
+      </article>
+      <article class="card reveal">
+        <div class="ic-tile tile-red" id="c-ps"></div>
+        <span class="role">What · the messenger</span>
+        <h3>Pub/Sub topic</h3>
+        <p>An asynchronous message bus. A publisher drops a message on a <i>topic</i>; one or more <i>subscriptions</i> deliver it to consumers. It decouples the trigger from the worker, absorbs bursts, and guarantees at-least-once delivery.</p>
+        <div class="kv">
+          <div><b>Topic</b><span>where messages are published</span></div>
+          <div><b>Subscription</b><span>pull · push · BigQuery · GCS</span></div>
+          <div><b>Safety net</b><span>dead-letter + retry policy</span></div>
+        </div>
+      </article>
+      <article class="card reveal">
+        <div class="ic-tile tile-green" id="c-run"></div>
+        <span class="role">How · the worker</span>
+        <h3>Cloud Run Job</h3>
+        <p>A container that runs a task to <b>completion</b> and exits — not a server. Perfect for batch ingest. It runs your PySpark code, reads the on-prem source, and writes Parquet. Splits into parallel tasks when you need them.</p>
+        <div class="kv">
+          <div><b>Unit</b><span>execution → one or many tasks</span></div>
+          <div><b>Identity</b><span>runs as a service account</span></div>
+          <div><b>Reach</b><span>VPC egress to on-prem</span></div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= LIVING PIPELINE (signature) ========================= -->
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="lead-block reveal">
+      <span class="eyebrow">The whole picture, moving</span>
+      <h2 class="h-lead">The living pipeline</h2>
+      <p class="sub">Press play and watch the cron tick become a message, the message wake a job, the job pull raw SOR &amp; Platform data, and Parquet files land in storage before the load to BigQuery — then a “done” event loops back to the topic. Switch the tabs to re-route the flow through every trigger pattern.</p>
+    </div>
+
+    <div class="stage reveal">
+      <div class="stage-bar">
+        <div class="dots"><i class="dr"></i><i class="dy"></i><i class="dg"></i></div>
+        <span class="stage-title" id="stageTitle">scenario A · scheduler → pub/sub → cloud run job</span>
+        <div class="controls">
+          <button class="btn" id="resetBtn" type="button" aria-label="Restart animation">↺ Restart</button>
+          <button class="btn btn--play" id="playBtn" type="button" aria-pressed="true">❚❚ Pause</button>
+        </div>
+      </div>
+
+      <div class="scn-tabs" role="tablist" aria-label="Trigger scenarios">
+        <button class="scn-tab" role="tab" aria-selected="true"  data-scn="A">A · Push via Pub/Sub</button>
+        <button class="scn-tab" role="tab" aria-selected="false" data-scn="B">B · Direct HTTP :run</button>
+        <button class="scn-tab" role="tab" aria-selected="false" data-scn="C">C · Function glue</button>
+        <button class="scn-tab" role="tab" aria-selected="false" data-scn="D">D · Pull worker</button>
+        <button class="scn-tab" role="tab" aria-selected="false" data-scn="E">E · Event-driven</button>
+      </div>
+
+      <div class="scn-explain">
+        <div class="badge" id="scnBadge">A</div>
+        <div>
+          <h4 id="scnTitle">Scheduler → Pub/Sub → push → Cloud Run Job</h4>
+          <p id="scnDesc">The standard decoupled pattern. Scheduler publishes a tiny JSON message to the topic; a push subscription (Eventarc) delivers it straight to the Cloud Run Job, which executes, reads both sources, and writes Parquet. The topic absorbs bursts and isolates the trigger from the worker.</p>
+        </div>
+      </div>
+
+      <div class="diagram-scroll">
+        <svg class="flow" id="flowSvg" viewBox="0 0 1280 700" role="img" aria-label="Animated end-to-end GCP data pipeline diagram">
+          <defs>
+            <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#3c4043" flood-opacity="0.16"/>
+            </filter>
+          </defs>
+
+          <!-- ===== EDGES (drawn first, under nodes) ===== -->
+          <path id="p_sch_ps"       class="edge" d="M225,300 L350,300"/>
+          <path id="p_sch_job"      class="edge" d="M150,252 C 250,70 600,70 715,250"/>
+          <path id="p_ps_job"       class="edge" d="M510,300 L640,300"/>
+          <path id="p_ps_fn"        class="edge" d="M470,262 C 520,200 530,160 558,142"/>
+          <path id="p_fn_job"       class="edge" d="M626,176 C 660,212 678,232 698,256"/>
+          <path id="p_file_ps"      class="edge" d="M225,470 C 300,432 350,378 405,344"/>
+          <path id="p_src_sor_job"  class="edge" d="M470,512 C 510,448 610,402 700,346"/>
+          <path id="p_src_plat_job" class="edge" d="M690,512 C 702,460 712,408 722,348"/>
+          <path id="p_job_gcs"      class="edge" d="M792,278 C 858,250 902,224 926,210"/>
+          <path id="p_gcs_bq"       class="edge" d="M1000,256 L1000,366"/>
+          <path id="p_bq_ps"        class="edge" d="M1000,460 C 1000,660 560,668 432,352"/>
+
+          <!-- ===== NODES ===== -->
+          <!-- Scheduler -->
+          <g class="node-g" id="n_sch" transform="translate(75,256)">
+            <rect class="node-box" x="0" y="0" width="150" height="88" rx="14"/>
+            <g transform="translate(14,18)">
+              <!-- clock icon -->
+              <circle cx="20" cy="20" r="19" fill="#AECBFA"/>
+              <circle cx="20" cy="20" r="13" fill="#fff"/>
+              <circle cx="20" cy="20" r="13" fill="none" stroke="#4285F4" stroke-width="2.4"/>
+              <line x1="20" y1="20" x2="20" y2="12" stroke="#1A73E8" stroke-width="2.6" stroke-linecap="round"/>
+              <line x1="20" y1="20" x2="26" y2="22" stroke="#1A73E8" stroke-width="2.6" stroke-linecap="round"/>
+              <circle cx="20" cy="20" r="2" fill="#1A73E8"/>
+            </g>
+            <text class="node-label" x="64" y="36">Cloud</text>
+            <text class="node-label" x="64" y="54">Scheduler</text>
+            <text class="node-sub"   x="14" y="78">cron · 0 2 * * *</text>
+          </g>
+
+          <!-- File event (scenario E) -->
+          <g class="node-g node-hide" id="n_file" transform="translate(75,426)">
+            <rect class="node-box" x="0" y="0" width="150" height="84" rx="14"/>
+            <g transform="translate(15,20)">
+              <rect x="2" y="0" width="30" height="40" rx="4" fill="#E8F0FE"/>
+              <path d="M24 0 L32 8 L24 8 Z" fill="#AECBFA"/>
+              <rect x="2" y="0" width="30" height="40" rx="4" fill="none" stroke="#4285F4" stroke-width="2"/>
+              <line x1="8" y1="16" x2="26" y2="16" stroke="#4285F4" stroke-width="2"/>
+              <line x1="8" y1="23" x2="26" y2="23" stroke="#4285F4" stroke-width="2"/>
+              <line x1="8" y1="30" x2="20" y2="30" stroke="#4285F4" stroke-width="2"/>
+            </g>
+            <text class="node-label" x="60" y="38">File lands</text>
+            <text class="node-sub"   x="15" y="74">GCS object event</text>
+          </g>
+
+          <!-- Pub/Sub -->
+          <g class="node-g" id="n_ps" transform="translate(355,250)">
+            <circle id="psPulse" class="ps-pulse" cx="80" cy="50" r="34" fill="#EA4335" opacity="0"/>
+            <rect class="node-box" x="0" y="0" width="160" height="100" rx="50"/>
+            <g transform="translate(28,28)">
+              <!-- fan-out hub icon -->
+              <rect x="14" y="14" width="20" height="20" rx="5" fill="#4285F4" transform="rotate(45 24 24)"/>
+              <circle cx="2" cy="6" r="5" fill="#EA4335"/>
+              <circle cx="2" cy="42" r="5" fill="#FBBC04"/>
+              <circle cx="46" cy="24" r="5" fill="#34A853"/>
+              <line x1="14" y1="16" x2="5" y2="8"  stroke="#5f6368" stroke-width="1.8"/>
+              <line x1="14" y1="32" x2="5" y2="40" stroke="#5f6368" stroke-width="1.8"/>
+              <line x1="34" y1="24" x2="43" y2="24" stroke="#5f6368" stroke-width="1.8"/>
+            </g>
+            <text class="node-label" x="86" y="46">Pub/Sub</text>
+            <text class="node-sub"   x="86" y="64">topic: ingest-trigger</text>
+          </g>
+
+          <!-- Function (scenario C) -->
+          <g class="node-g node-hide" id="n_fn" transform="translate(551,96)">
+            <rect class="node-box" x="0" y="0" width="150" height="80" rx="14"/>
+            <g transform="translate(16,18)">
+              <path d="M22 2 L34 10 L34 26 L22 34 L10 26 L10 10 Z" fill="#FEF7E0" stroke="#F29900" stroke-width="2"/>
+              <path d="M22 12 L26 18 L22 18 L24 24 L18 18 L22 18 Z" fill="#F29900"/>
+            </g>
+            <text class="node-label" x="58" y="36">Cloud</text>
+            <text class="node-label" x="58" y="54">Function</text>
+            <text class="node-sub"   x="16" y="72">light glue / fan-out</text>
+          </g>
+
+          <!-- Compute: Cloud Run Job (label swaps) -->
+          <g class="node-g" id="n_job" transform="translate(645,250)">
+            <rect class="node-box" x="0" y="0" width="150" height="100" rx="14"/>
+            <g transform="translate(15,22)">
+              <!-- cloud run rotated-container + play -->
+              <rect x="6" y="6" width="34" height="34" rx="9" fill="#E6F4EA" transform="rotate(45 23 23)"/>
+              <rect x="13" y="13" width="20" height="20" rx="5" fill="#fff" stroke="#34A853" stroke-width="2.4" transform="rotate(45 23 23)"/>
+              <path d="M19 17 L29 23 L19 29 Z" fill="#188038"/>
+            </g>
+            <text class="node-label" id="jobL1" x="58" y="34">Cloud</text>
+            <text class="node-label" id="jobL2" x="58" y="52">Run Job</text>
+            <text class="node-badge" id="jobBadge" x="15" y="76">▶ PySpark task</text>
+            <text class="node-sub"   x="15" y="92" id="jobSub">runs to completion</text>
+          </g>
+
+          <!-- SOR source -->
+          <g class="node-g" id="n_sor" transform="translate(395,512)">
+            <rect class="node-box" x="0" y="0" width="150" height="90" rx="14"/>
+            <g transform="translate(16,20)">
+              <!-- on-prem server stack -->
+              <rect x="4" y="2"  width="34" height="13" rx="3" fill="#FDE293" stroke="#F29900" stroke-width="1.6"/>
+              <rect x="4" y="18" width="34" height="13" rx="3" fill="#FDE293" stroke="#F29900" stroke-width="1.6"/>
+              <rect x="4" y="34" width="34" height="13" rx="3" fill="#FDE293" stroke="#F29900" stroke-width="1.6"/>
+              <circle cx="10" cy="8.5" r="2" fill="#F29900"/><circle cx="10" cy="24.5" r="2" fill="#F29900"/><circle cx="10" cy="40.5" r="2" fill="#F29900"/>
+            </g>
+            <text class="node-label" x="60" y="34">On-prem</text>
+            <text class="node-label" x="60" y="52">SOR source</text>
+            <text class="node-sub"   x="16" y="80">raw · via VPN/Interconnect</text>
+          </g>
+
+          <!-- Platform source -->
+          <g class="node-g" id="n_plat" transform="translate(615,512)">
+            <rect class="node-box" x="0" y="0" width="150" height="90" rx="14"/>
+            <g transform="translate(16,22)">
+              <!-- api/cloud platform glyph -->
+              <path d="M28 10 a10 10 0 1 0 0 .1" fill="none"/>
+              <path d="M10 26 a11 9 0 0 1 22 -2 a7 7 0 0 1 -1 14 H14 a8 7 0 0 1 -4 -12 Z" fill="#E8F0FE" stroke="#1A73E8" stroke-width="2"/>
+              <circle cx="20" cy="22" r="3.4" fill="#4285F4"/>
+            </g>
+            <text class="node-label" x="60" y="36">Platform</text>
+            <text class="node-label" x="60" y="54">sources</text>
+            <text class="node-sub"   x="16" y="80">APIs · Cloud SQL · GCS</text>
+          </g>
+
+          <!-- GCS Parquet -->
+          <g class="node-g" id="n_gcs" transform="translate(925,168)">
+            <rect class="node-box" x="0" y="0" width="156" height="88" rx="14"/>
+            <g transform="translate(16,22)">
+              <!-- bucket -->
+              <path d="M4 4 H40 L36 40 H8 Z" fill="#E6F4EA" stroke="#188038" stroke-width="2"/>
+              <ellipse cx="22" cy="4" rx="18" ry="5" fill="#A8DAB5" stroke="#188038" stroke-width="2"/>
+            </g>
+            <text class="node-label" x="58" y="32">GCS</text>
+            <text class="node-label" x="58" y="50">raw zone</text>
+            <text class="node-sub"   x="16" y="78">Parquet · snappy</text>
+            <!-- parquet stack target -->
+            <g id="pqStack" transform="translate(112,18)"></g>
+          </g>
+
+          <!-- BigQuery -->
+          <g class="node-g" id="n_bq" transform="translate(925,366)">
+            <rect class="node-box" x="0" y="0" width="156" height="92" rx="14"/>
+            <g transform="translate(16,24)">
+              <circle cx="20" cy="20" r="16" fill="#E8F0FE" stroke="#1A73E8" stroke-width="2"/>
+              <circle cx="20" cy="20" r="8"  fill="#fff" stroke="#4285F4" stroke-width="2"/>
+              <line x1="31" y1="31" x2="40" y2="40" stroke="#1A73E8" stroke-width="3" stroke-linecap="round"/>
+            </g>
+            <text class="node-label" x="58" y="34">BigQuery</text>
+            <text class="node-label" x="58" y="52">dataset</text>
+            <text class="node-sub"   x="16" y="80">curated tables</text>
+          </g>
+
+          <!-- moving tokens injected here -->
+          <g id="tokenLayer"></g>
+        </svg>
+      </div>
+
+      <div class="flow-legend">
+        <div class="lg"><span class="sw" style="background:var(--g-blue)"></span> cron tick / message</div>
+        <div class="lg"><span class="sw" style="background:var(--g-yellow)"></span> raw SOR data (on-prem)</div>
+        <div class="lg"><span class="sw" style="background:#5f6368"></span> platform data</div>
+        <div class="lg"><span class="sw" style="background:var(--g-green)"></span> Parquet / load</div>
+        <div class="lg"><span class="sw" style="background:var(--g-red)"></span> done event (loop)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= STEP BY STEP ========================= -->
+<section class="section">
+  <div class="wrap">
+    <div class="lead-block reveal">
+      <span class="eyebrow">Frame by frame</span>
+      <h2 class="h-lead">One full run, step by step</h2>
+      <p class="sub">This is the default path (scenario A) for the SOR pipeline, broken into the exact sequence of events from clock tick to “done”.</p>
+    </div>
+    <div class="steps">
+      <div class="step reveal"><div class="num"></div><div><h4>The clock fires</h4><p>At <span class="mono">0 2 * * *</span> (02:00 Asia/Kolkata) Cloud Scheduler triggers. It publishes a small JSON message — <span class="mono">{"source":"sor","run_date":"2026-06-16"}</span> — to the topic <span class="mono">ingest-trigger</span>.</p></div></div>
+      <div class="step reveal"><div class="num"></div><div><h4>Pub/Sub accepts &amp; fans out</h4><p>The topic stores the message and immediately offers it to every attached subscription. The push subscription (Eventarc) targets the Cloud Run Job's run endpoint, carrying an OIDC token for authentication.</p></div></div>
+      <div class="step reveal"><div class="num"></div><div><h4>The job execution starts</h4><p>Cloud Run creates an <b>execution</b> with one or more <b>tasks</b>. Each task is your container, booting with env vars <span class="mono">CLOUD_RUN_TASK_INDEX</span> and <span class="mono">CLOUD_RUN_TASK_COUNT</span> so it knows its slice of work.</p></div></div>
+      <div class="step reveal"><div class="num"></div><div><h4>PySpark reaches on-prem</h4><p>Through Serverless VPC egress over Cloud VPN / Interconnect, PySpark connects to the on-prem SOR system (JDBC or file mount), reads the raw rows, and builds a DataFrame. Secrets come from Secret Manager — never hard-coded.</p></div></div>
+      <div class="step reveal"><div class="num"></div><div><h4>Parquet lands in the raw zone</h4><p>PySpark writes columnar Parquet, partitioned by date, to <span class="mono">gs://sor-raw-zone/...</span> with snappy compression. Schema travels inside the files, so downstream readers need no DDL.</p></div></div>
+      <div class="step reveal"><div class="num"></div><div><h4>Load &amp; announce</h4><p>A BigQuery load job (or external table) exposes the Parquet for SQL. The job then publishes <span class="mono">ingest.complete</span> back to a topic — the “done” event that lets the <i>next</i> stage start. The container exits 0; the task is marked succeeded.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= CONSOLE WALKTHROUGH SLIDER ========================= -->
+<section class="section section-alt" id="walkthrough">
+  <div class="wrap">
+    <div class="lead-block reveal">
+      <span class="eyebrow">Click by click</span>
+      <h2 class="h-lead">Build it in the console</h2>
+      <p class="sub">The exact screens you'd move through to stand this pipeline up, recreated faithfully for the 2026 Google Cloud console — Scheduler, Pub/Sub, the (2nd gen) Cloud Function, the Cloud Run Job, its execution, and the logs. It advances on its own; use the arrows or dots to drive it yourself, and hover to pause.</p>
+    </div>
+
+    <div class="slider reveal" id="walkSlider">
+      <div class="slider-top">
+        <span class="slider-step-label">Step <b id="wStepNum">1</b> / 11 &nbsp;·&nbsp; <span id="wStepName">Cloud Scheduler — Define the schedule</span></span>
+        <div class="slider-ctrls">
+          <button class="sld-btn" id="wPrev" type="button" aria-label="Previous step">‹ Back</button>
+          <button class="sld-btn sld-btn--play" id="wPlay" type="button" aria-pressed="true">❚❚ Pause</button>
+          <button class="sld-btn" id="wNext" type="button" aria-label="Next step">Next ›</button>
+        </div>
+      </div>
+      <div class="slider-progress"><span id="wProg"></span></div>
+
+      <div class="slider-viewport">
+        <div class="slider-track" id="wTrack">
+
+          <!-- SLIDE 1 · Scheduler create — Define the schedule -->
+          <div class="slide">
+            <div class="console">
+              <div class="gc-top"><div class="gc-logo gcl"></div><div class="gc-proj">data-platform-prod <small>▾</small></div><div class="grow"></div><div class="gc-av">A</div></div>
+              <div class="gc-sub"><div class="gc-back">‹</div><div class="bc"><div class="crumb">Cloud Scheduler › Jobs › Create a job</div><div class="title">Create a job</div></div></div>
+              <div class="wiz">
+                <div class="stepper">
+                  <div class="st-item active"><div class="sc">1</div><div class="sl">Define the schedule</div></div>
+                  <div class="st-item"><div class="sc">2</div><div class="sl">Configure the execution</div></div>
+                  <div class="st-item"><div class="sc">3</div><div class="sl">Configure optional settings</div></div>
+                </div>
+                <div class="wiz-form">
+                  <div class="fgrid">
+                    <div class="field req"><label>Name</label><div class="ipt">sor-daily-ingest</div><div class="help">Must be unique to the project. A name can be reused after the job is deleted.</div></div>
+                    <div class="field req foc"><label>Region</label><div class="sel">us-central1 (Iowa) <span class="chev">▲</span></div>
+                      <div class="ddmenu">
+                        <div class="dd-grp">Americas</div>
+                        <div class="dd-row"><span class="rname">northamerica-northeast1 <span class="rsub">(Montréal)</span></span><span class="co2">Low CO2 <svg class="leaf" width="14" height="14" viewBox="0 0 24 24"><path d="M5 19C5 10 12 5 20 5 20 13 14 19 5 19Z" fill="#34A853"/></svg></span></div>
+                        <div class="dd-row"><span class="rname">southamerica-east1 <span class="rsub">(São Paulo)</span></span><span class="co2">Low CO2 <svg class="leaf" width="14" height="14" viewBox="0 0 24 24"><path d="M5 19C5 10 12 5 20 5 20 13 14 19 5 19Z" fill="#34A853"/></svg></span></div>
+                        <div class="dd-row sel-row"><span class="rname"><b>us-central1 (Iowa)</b><div class="rsub">App Engine application region</div></span><span class="co2">Low CO2 <svg class="leaf" width="14" height="14" viewBox="0 0 24 24"><path d="M5 19C5 10 12 5 20 5 20 13 14 19 5 19Z" fill="#34A853"/></svg></span></div>
+                        <div class="dd-row"><span class="rname">us-east1 <span class="rsub">(South Carolina)</span></span></div>
+                        <div class="dd-row"><span class="rname">us-east4 <span class="rsub">(Northern Virginia)</span></span></div>
+                        <div class="dd-row"><span class="rname">us-west1 <span class="rsub">(Oregon)</span></span><span class="co2">Low CO2 <svg class="leaf" width="14" height="14" viewBox="0 0 24 24"><path d="M5 19C5 10 12 5 20 5 20 13 14 19 5 19Z" fill="#34A853"/></svg></span></div>
+                      </div>
+                    </div>
+                    <div class="field"><label>Description</label><div class="ipt"><span class="ph">Daily 02:00 ingest of SOR (ERP orders) → Parquet</span></div></div>
+                    <div class="field req"><label>Frequency</label><div class="ipt">0 2 * * *</div><div class="help">Specified in unix-cron format. E.g. every day at 02:00 is <b>0 2 * * *</b>; every 3 hours is <b>0 */3 * * *</b>. <a>Learn more</a></div></div>
+                    <div class="field req"><label>Timezone</label><div class="sel">India Standard Time (IST) <span class="chev">▾</span></div><div class="help">Jobs in timezones affected by Daylight Saving Time may run outside cadence during the change. Using a UTC timezone avoids the problem.</div></div>
+                  </div>
+                  <div style="margin-top:24px; display:flex; gap:10px;"><span class="gbtn gbtn--primary">Continue</span><span class="gbtn gbtn--text">Cancel</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SLIDE 2 · Scheduler create — Configure the execution -->
+          <div class="slide">
+            <div class="console">
+              <div class="gc-top"><div class="gc-logo gcl"></div><div class="gc-proj">data-platform-prod <small>▾</small></div><div class="grow"></div><div class="gc-av">A</div></div>
+              <div class="gc-sub"><div class="gc-back">‹</div><div class="bc"><div class="crumb">Cloud Scheduler › Jobs › Create a job</div><div class="title">Create a job</div></div></div>
+              <div class="wiz">
+                <div class="stepper">
+                  <div class="st-item done"><div class="sc">✓</div><div class="sl">Define the schedule</div></div>
+                  <div class="st-item active"><div class="sc">2</div><div class="sl">Configure the execution</div></div>
+                  <div class="st-item"><div class="sc">3</div><div class="sl">Configure optional settings</div></div>
+                </div>
+                <div class="wiz-form">
+                  <div class="fgrid">
+                    <div class="field req foc"><label>Target type</label><div class="sel">Pub/Sub <span class="chev">▾</span></div><div class="help">A message is published to the topic on each schedule. Other options: HTTP, App Engine HTTP.</div></div>
+                    <div class="field req"><label>Select a Cloud Pub/Sub topic</label><div class="sel">ingest-trigger <span class="chev">▾</span></div></div>
+                    <div class="field"><label>Message body</label><div class="ipt tall">{"source":"sor","run_date":"2026-06-16"}</div><div class="help">Delivered as the message <code>data</code> payload (base64-encoded on the wire).</div>
+                      <span class="attr-chip">attribute · source = sor</span> &nbsp; <span class="attr-chip">attribute · env = prod</span>
+                    </div>
+                  </div>
+                  <div style="margin-top:24px; display:flex; gap:10px;"><span class="gbtn gbtn--primary">Continue</span><span class="gbtn gbtn--out">Back</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SLIDE 3 · Scheduler create — Optional settings (retries) -->
+          <div class="slide">
+            <div class="console">
+              <div class="gc-top"><div class="gc-logo gcl"></div><div class="gc-proj">data-platform-prod <small>▾</small></div><div class="grow"></div><div class="gc-av">A</div></div>
+              <div class="gc-sub"><div class="gc-back">‹</div><div class="bc"><div class="crumb">Cloud Scheduler › Jobs › Create a job</div><div class="title">Create a job</div></div></div>
+              <div class="wiz">
+                <div class="stepper">
+                  <div class="st-item done"><div class="sc">✓</div><div class="sl">Define the schedule</div></div>
+                  <div class="st-item done"><div class="sc">✓</div><div class="sl">Configure the execution</div></div>
+                  <div class="st-item active"><div class="sc">3</div><div class="sl">Configure optional settings</div></div>
+                </div>
+                <div class="wiz-form">
+                  <div class="section-label">Retry configuration</div>
+                  <div class="fgrid two" style="margin-top:14px">
+                    <div class="field foc"><label>Max retry attempts</label><div class="ipt">5</div><div class="help">Values greater than 5 are not allowed.</div></div>
+                    <div class="field"><label>Max retry duration</label><div class="ipt">0s</div></div>
+                    <div class="field"><label>Min backoff duration</label><div class="ipt">5s</div></div>
+                    <div class="field"><label>Max backoff duration</label><div class="ipt">3600s</div></div>
+                    <div class="field"><label>Max doublings</label><div class="ipt">5</div></div>
+                    <div class="field"><label>Attempt deadline</label><div class="ipt">180s</div></div>
+                  </div>
+                  <div style="margin-top:24px; display:flex; gap:10px;"><span class="gbtn gbtn--primary">Create</span><span class="gbtn gbtn--out">Back</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SLIDE 4 · Scheduler jobs list -->
+          <div class="slide">
+            <div class="console">
+              <div class="gc-top"><div class="gc-logo gcl"></div><div class="gc-proj">data-platform-prod <small>▾</small></div><div class="gc-search">⌕ Search (/) for resources, docs, products…</div><div class="grow"></div><div class="gc-av">A</div></div>
+              <div class="gc-body">
+                <nav class="gc-nav">
+                  <div class="grp">Integration services</div>
+                  <a class="active"><span class="ni gcl-sch"></span> Cloud Scheduler</a>
+                  <a><span class="ni gcl-ps"></span> Pub/Sub</a>
+                  <div class="grp">Serverless</div>
+                  <a><span class="ni gcl-run"></span> Cloud Run</a>
+                  <a><span class="ni gcl-fn"></span> Cloud Functions</a>
+                </nav>
+                <div class="gc-main">
+                  <div class="gc-bc">Cloud Scheduler › Jobs</div>
+                  <div class="gc-h"><h4>Cloud Scheduler</h4><span class="pill-btn solid">＋ Create job</span><span class="pill-btn">↻ Refresh</span><div class="spacer"></div></div>
+                  <table class="gc-table">
+                    <thead><tr><th>Name</th><th>Region</th><th>Frequency</th><th>Target type</th><th>Last run</th><th>Next run</th><th>Result</th><th>Logs</th></tr></thead>
+                    <tbody>
+                      <tr class="row-hi"><td class="name">sor-daily-ingest</td><td class="mono">us-central1</td><td class="mono">0 2 * * *</td><td>Pub/Sub</td><td class="mono">Jun 16, 02:00</td><td class="mono">Jun 17, 02:00</td><td><span class="chip chip-ok"><span class="d"></span>Success</span></td><td><a>View</a></td></tr>
+                      <tr><td class="name">platform-hourly-sync</td><td class="mono">us-central1</td><td class="mono">0 * * * *</td><td>HTTP</td><td class="mono">Jun 16, 15:00</td><td class="mono">Jun 16, 16:00</td><td><span class="chip chip-ok"><span class="d"></span>Success</span></td><td><a>View</a></td></tr>
+                      <tr><td class="name">platform-15min-delta</td><td class="mono">us-central1</td><td class="mono">*/15 * * * *</td><td>Pub/Sub</td><td class="mono">Jun 16, 15:15</td><td class="mono">Jun 16, 15:30</td><td><span class="chip chip-run"><span class="d"></span>Running</span></td><td><a>View</a></td></tr>
+                    </tbody>
+                  </table>
+                  <p class="note"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#5f6368" stroke-width="2"/><path d="M12 8h.01M11 12h1v4h1" stroke="#5f6368" stroke-width="2" stroke-linecap="round"/></svg>The job is live. <b>Force run</b> in the row's ⋮ menu triggers it on demand without waiting for the schedule.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SLIDE 5 · Pub/Sub create topic -->
+          <div class="slide">
+            <div class="console">
+              <div class="gc-top"><div class="gc-logo gcl"></div><div class="gc-proj">data-platform-prod <small>▾</small></div><div class="grow"></div><div class="gc-av">A</div></div>
+              <div class="gc-sub"><div class="gc-back">‹</div><div class="bc"><div class="crumb">Pub/Sub › Topics › Create a topic</div><div class="title">Create a topic</div></div></div>
+              <div class="wiz-form" style="padding:24px 26px">
+                <div class="fgrid">
+                  <div class="field req foc"><label>Topic ID</label><div class="ipt">ingest-trigger</div><div class="help"><span class="mono">projects/data-platform-prod/topics/ingest-trigger</span></div></div>
+                  <div>
+                    <div class="opt on"><div class="ck">✓</div><div>Add a default subscription<small>Creates a pull subscription named <span class="mono">ingest-trigger-sub</span>.</small></div></div>
+                    <div class="opt off"><div class="ck">✓</div><div>Use a schema<small>Validate message structure with an Avro or Protocol Buffer schema.</small></div></div>
+                    <div class="opt off"><div class="ck">✓</div><div>Enable message retention<small>Retain and replay messages for up to 31 days (incurs storage cost).</small></div></div>
+                    <div class="opt off"><div class="ck">✓</div><div>Enable ingestion<small>Ingest streaming data from external sources (Kinesis, Cloud Storage, Kafka…).</small></div></div>
+                  </div>
+                  <div>
+                    <div class="section-label" style="margin-bottom:8px">Encryption</div>
+                    <div class="opt on"><div class="rd"><i></i></div><div>Google-managed encryption key<small>Pub/Sub encrypts messages with Google-owned and Google-managed keys by default.</small></div></div>
+                    <div class="opt off"><div class="rd"><i></i></div><div>Cloud KMS key (CMEK)<small>Use a customer-managed key from Cloud Key Management Service.</small></div></div>
+                  </div>
+                </div>
+                <div style="margin-top:24px; display:flex; gap:10px;"><span class="gbtn gbtn--primary">Create</span><span class="gbtn gbtn--text">Cancel</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SLIDE 6 · Pub/Sub topic detail -->
+          <div class="slide">
+            <div class="console">
+              <div class="gc-top"><div class="gc-logo gcl"></div><div class="gc-proj">data-platform-prod <small>▾</small></div><div class="gc-search">⌕ Search (/) for resources, docs, products…</div><div class="grow"></div><div class="gc-av">A</div></div>
+              <div class="gc-sub"><div class="gc-back">‹</div><div class="bc"><div class="crumb">Pub/Sub › Topics › ingest-trigger</div><div class="title">ingest-trigger</div></div>
+                <div class="gc-actions"><span class="gbtn gbtn--primary">Publish message</span><span class="gbtn gbtn--out">Create subscription</span><span class="gbtn gbtn--text">Delete</span></div>
+              </div>
+              <div class="gc-main" style="padding-top:14px">
+                <div class="seg" style="border-radius:0; padding-left:0"><span class="on">Subscriptions</span><span>Snapshots</span><span>Messages</span><span>Metrics</span></div>
+                <table class="gc-table" style="margin-top:14px">
+                  <thead><tr><th>Subscription ID</th><th>Delivery type</th><th>Ack deadline</th><th>Expiration</th><th>Retention</th><th>Dead lettering</th><th>State</th></tr></thead>
+                  <tbody>
+                    <tr class="row-hi"><td class="name">ingest-trigger-run-push</td><td>Push → Cloud Run</td><td class="mono">60 s</td><td class="mono">31 days</td><td class="mono">7 days</td><td class="mono">dlq-ingest</td><td><span class="chip chip-ok"><span class="d"></span>Active</span></td></tr>
+                    <tr><td class="name">ingest-trigger-sub</td><td>Pull</td><td class="mono">10 s</td><td class="mono">31 days</td><td class="mono">7 days</td><td class="mono">—</td><td><span class="chip chip-ok"><span class="d"></span>Active</span></td></tr>
+                    <tr><td class="name">ingest-audit-bq</td><td>BigQuery</td><td class="mono">—</td><td class="mono">Never</td><td class="mono">7 days</td><td class="mono">—</td><td><span class="chip chip-ok"><span class="d"></span>Active</span></td></tr>
+                  </tbody>
+                </table>
+                <p class="note"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#5f6368" stroke-width="2"/><path d="M12 8h.01M11 12h1v4h1" stroke="#5f6368" stroke-width="2" stroke-linecap="round"/></svg>One topic, many subscriptions — each consumer gets its own independent copy of every message.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- SLIDE 7 · Cloud Functions (2nd gen) — Configuration -->
+          <div class="slide">
+            <div class="console">
+              <div class="gc-top"><div class="gc-logo gcl"></div><div class="gc-proj">data-platform-prod <small>▾</small></div><div class="grow"></div><div class="gc-av">A</div></div>
+              <div class="gc-sub"><div class="gc-back">‹</div><div class="bc"><div class="crumb">Cloud Functions › Create function</div><div class="title">Create function</div></div></div>
+              <div class="wiz">
+                <div class="stepper">
+                  <div class="st-item active"><div class="sc">1</div><div class="sl">Configuration</div></div>
+                  <div class="st-item"><div class="sc">2</div><div class="sl">Code</div></div>
+                </div>
+                <div class="wiz-form">
+                  <div class="section-label">Basics</div>
+                  <div class="fgrid" style="margin-top:12px">
+                    <div class="field req foc"><label>Environment</label><div class="sel"><span>2nd gen <span class="sub">— Cloud Run selects a suitable execution environment for you</span></span> <span class="chev">▾</span></div></div>
+                    <div class="field req"><label>Function name</label><div class="ipt">sor-ingest-orchestrator</div><div class="help">Use letters, numbers and hyphens; start with a letter; up to 62 characters.</div></div>
+                    <div class="field req"><label>Region</label><div class="sel">us-central1 (Iowa) <svg class="leaf" width="14" height="14" viewBox="0 0 24 24" style="margin:0 6px"><path d="M5 19C5 10 12 5 20 5 20 13 14 19 5 19Z" fill="#34A853"/></svg><span class="chev" style="margin-left:auto">▾</span></div></div>
+                  </div>
+                  <div class="section-label" style="margin-top:22px">Trigger</div>
+                  <div class="fgrid" style="margin-top:12px">
+                    <div class="field req"><label>Trigger type</label><div class="sel">Cloud Pub/Sub <span class="chev">▾</span></div><div class="help">Other types: HTTPS, Cloud Storage, Eventarc trigger.</div></div>
+                    <div class="field req"><label>Cloud Pub/Sub topic</label><div class="sel">projects/data-platform-prod/topics/ingest-trigger <span class="chev">▾</span></div></div>
+                  </div>
+                  <div class="settings-card" style="margin-top:20px">
+                    <div class="sc-head">Runtime, build, connections and security settings</div>
+                    <div class="seg"><span class="on">Runtime</span><span>Build</span><span>Connections</span><span>Security</span></div>
+                    <div class="sc-body">
+                      <div class="fgrid two">
+                        <div class="field"><label>Memory allocated</label><div class="ipt">256 MiB</div></div>
+                        <div class="field"><label>Timeout</label><div class="ipt">60 seconds</div></div>
+                        <div class="field"><label>Runtime service account</label><div class="ipt" style="font-size:11px; font-family:var(--mono)">…@gserviceaccount.com</div></div>
+                        <div class="field"><label>Max instances</label><div class="ipt">100</div></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style="margin-top:22px; display:flex; gap:10px;"><span class="gbtn gbtn--primary">Next</span><span class="gbtn gbtn--text">Cancel</span></div>
+                  <p class="note" style="margin-top:14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#5f6368" stroke-width="2"/><path d="M12 8h.01M11 12h1v4h1" stroke="#5f6368" stroke-width="2" stroke-linecap="round"/></svg>2nd gen functions run on Cloud Run + Eventarc. Google now also surfaces this as “Cloud Run functions”.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SLIDE 8 · Cloud Functions (2nd gen) — Code -->
+          <div class="slide">
+            <div class="console">
+              <div class="gc-top"><div class="gc-logo gcl"></div><div class="gc-proj">data-platform-prod <small>▾</small></div><div class="grow"></div><div class="gc-av">A</div></div>
+              <div class="gc-sub"><div class="gc-back">‹</div><div class="bc"><div class="crumb">Cloud Functions › Create function</div><div class="title">Create function</div></div></div>
+              <div class="wiz">
+                <div class="stepper">
+                  <div class="st-item done"><div class="sc">✓</div><div class="sl">Configuration</div></div>
+                  <div class="st-item active"><div class="sc">2</div><div class="sl">Code</div></div>
+                </div>
+                <div class="wiz-form">
+                  <div class="fgrid" style="margin-bottom:16px">
+                    <div class="field foc"><label>Runtime</label><div class="sel">Python 3.12 <span class="chev">▾</span></div><div class="help">Available: Python 3.10 – 3.14, Node.js 20/22/24, Go, Java, Ruby, .NET, PHP.</div></div>
+                    <div class="field"><label>Entry point</label><div class="ipt">trigger_ingest</div><div class="help">Name of the function executed when the trigger fires.</div></div>
+                  </div>
+                  <div class="fieldset-label" style="font-size:13px; font-weight:600; margin-bottom:6px;">Source code</div>
+                  <div style="display:flex; gap:18px; flex-wrap:wrap; margin-bottom:14px;">
+                    <span class="opt on" style="padding:2px 0"><span class="rd"><i></i></span> Inline Editor</span>
+                    <span class="opt off" style="padding:2px 0"><span class="rd"><i></i></span> ZIP Upload</span>
+                    <span class="opt off" style="padding:2px 0"><span class="rd"><i></i></span> ZIP from Cloud Storage</span>
+                    <span class="opt off" style="padding:2px 0"><span class="rd"><i></i></span> Cloud Source repository</span>
+                  </div>
+                  <div class="editor">
+                    <div class="etabs"><span class="on">main.py</span><span>requirements.txt</span></div>
+<pre><span class="kw">import</span> functions_framework
+<span class="kw">from</span> google.cloud <span class="kw">import</span> run_v2
+
+<span class="va">client</span> = run_v2.<span class="fn">JobsClient</span>()
+<span class="va">JOB</span> = <span class="str">"projects/data-platform-prod/locations/us-central1/jobs/sor-ingest-job"</span>
+
+<span class="cm"># Pub/Sub message arrives → execute the Cloud Run Job</span>
+<span class="fn">@functions_framework.cloud_event</span>
+<span class="kw">def</span> <span class="fn">trigger_ingest</span>(cloud_event):
+    <span class="va">client</span>.<span class="fn">run_job</span>(name=<span class="va">JOB</span>)
+    <span class="fn">print</span>(<span class="str">"triggered"</span>, <span class="va">JOB</span>)</pre>
+                  </div>
+                  <div style="margin-top:20px; display:flex; gap:10px;"><span class="gbtn gbtn--primary">Deploy</span><span class="gbtn gbtn--out">Back</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SLIDE 9 · Cloud Run — Create job -->
+          <div class="slide">
+            <div class="console">
+              <div class="gc-top"><div class="gc-logo gcl"></div><div class="gc-proj">data-platform-prod <small>▾</small></div><div class="grow"></div><div class="gc-av">A</div></div>
+              <div class="gc-sub"><div class="gc-back">‹</div><div class="bc"><div class="crumb">Cloud Run › Jobs › Create job</div><div class="title">Create job</div></div></div>
+              <div class="wiz-form" style="padding:24px 26px">
+                <div class="fgrid">
+                  <div class="field req foc"><label>Container image URL</label>
+                    <div class="with-sel"><div class="ipt">us-central1-docker.pkg.dev/data-platform-prod/ingest/sor-ingest:latest</div><span class="gbtn gbtn--out">SELECT</span></div>
+                    <div class="help">From Artifact Registry. The image holds your PySpark ingest code.</div>
+                  </div>
+                  <div class="field req"><label>Job name</label><div class="ipt">sor-ingest-job</div></div>
+                  <div class="field req"><label>Region</label><div class="sel">us-central1 (Iowa) <svg class="leaf" width="14" height="14" viewBox="0 0 24 24" style="margin:0 6px"><path d="M5 19C5 10 12 5 20 5 20 13 14 19 5 19Z" fill="#34A853"/></svg><span class="chev" style="margin-left:auto">▾</span></div></div>
+                  <div class="field"><label>Number of tasks</label><div class="ipt">4</div><div class="help">All tasks must succeed for the job to succeed. Tasks run in parallel by default (up to 10,000).</div></div>
+                  <div class="opt off" style="padding:0"><div class="ck">✓</div><div>Execute job immediately</div></div>
+                </div>
+                <div class="settings-card" style="margin-top:20px">
+                  <div class="sc-head">Container(s), Variables &amp; Secrets, Connections, Security</div>
+                  <div class="seg"><span class="on">General</span><span>Container</span><span>Variables &amp; Secrets</span><span>Connections</span><span>Security</span></div>
+                  <div class="sc-body">
+                    <div class="fgrid two">
+                      <div class="field"><label>Task timeout</label><div class="ipt">600 seconds</div><div class="help">Default 10 minutes; max 7 days.</div></div>
+                      <div class="field"><label>Number of retries per failed task</label><div class="ipt">3</div></div>
+                    </div>
+                    <div style="margin-top:16px">
+                      <div class="section-label" style="font-size:13px; margin-bottom:6px">Parallelism</div>
+                      <div class="opt on"><div class="rd"><i></i></div><div>Run as many tasks concurrently as possible</div></div>
+                      <div class="opt off"><div class="rd"><i></i></div><div>Limit the number of concurrent tasks</div></div>
+                    </div>
+                  </div>
+                </div>
+                <div style="margin-top:22px; display:flex; gap:10px;"><span class="gbtn gbtn--primary">Create</span><span class="gbtn gbtn--text">Cancel</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SLIDE 10 · Cloud Run — Execution detail -->
+          <div class="slide">
+            <div class="console">
+              <div class="gc-top"><div class="gc-logo gcl"></div><div class="gc-proj">data-platform-prod <small>▾</small></div><div class="grow"></div><div class="gc-av">A</div></div>
+              <div class="gc-sub"><div class="gc-back">‹</div><div class="bc"><div class="crumb">Cloud Run › Jobs › sor-ingest-job › Executions</div><div class="title">sor-ingest-job-7f4k2</div></div>
+                <div class="gc-actions"><span class="gbtn gbtn--out">⤓ Logs</span><span class="gbtn gbtn--text">Cancel</span></div>
+              </div>
+              <div class="gc-main" style="padding-top:14px">
+                <div class="gc-bc" style="margin-bottom:12px">Executed by &nbsp;<span class="mono">cloud-scheduler@data-platform-prod.iam.gserviceaccount.com</span></div>
+                <div class="tov">
+                  <span class="big">Tasks overview</span>
+                  <span class="legend"><span><i style="background:#34A853"></i>4 Succeeded</span><span><i style="background:#EA4335"></i>0 Failed</span><span><i style="background:#4285F4"></i>0 Running</span></span>
+                </div>
+                <div style="height:8px;border-radius:4px;background:#34A853;max-width:340px;margin-bottom:16px"></div>
+                <div class="seg" style="padding-left:0"><span class="on">Tasks</span><span>Containers</span><span>Volumes</span><span>Networking</span><span>Security</span><span>YAML</span></div>
+                <table class="gc-table" style="margin-top:14px">
+                  <thead><tr><th>Task</th><th>Last exit code</th><th>Retries</th><th>Start time</th><th>End time</th><th>Logs</th></tr></thead>
+                  <tbody>
+                    <tr><td><span class="chip chip-ok"><span class="d"></span>0</span></td><td class="mono">0</td><td class="mono">0</td><td class="mono">02:00:07</td><td class="mono">02:01:48</td><td><a>View</a></td></tr>
+                    <tr><td><span class="chip chip-ok"><span class="d"></span>1</span></td><td class="mono">0</td><td class="mono">0</td><td class="mono">02:00:07</td><td class="mono">02:02:10</td><td><a>View</a></td></tr>
+                    <tr><td><span class="chip chip-ok"><span class="d"></span>2</span></td><td class="mono">0</td><td class="mono">1</td><td class="mono">02:00:07</td><td class="mono">02:03:40</td><td><a>View</a></td></tr>
+                    <tr><td><span class="chip chip-ok"><span class="d"></span>3</span></td><td class="mono">0</td><td class="mono">0</td><td class="mono">02:00:08</td><td class="mono">02:01:55</td><td><a>View</a></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- SLIDE 11 · Cloud Logging — Logs Explorer -->
+          <div class="slide">
+            <div class="console">
+              <div class="gc-top"><div class="gc-logo gcl"></div><div class="gc-proj">data-platform-prod <small>▾</small></div><div class="gc-search">⌕ Search (/) for resources, docs, products…</div><div class="grow"></div><div class="gc-av">A</div></div>
+              <div class="gc-sub"><div class="gc-back">‹</div><div class="bc"><div class="crumb">Logging › Logs Explorer</div><div class="title">Logs Explorer</div></div>
+                <div class="gc-actions"><span class="gbtn gbtn--out">Stream logs</span></div>
+              </div>
+              <div class="gc-main" style="padding-top:14px">
+                <div class="lx-query"><span class="q">resource.type="cloud_run_job" resource.labels.job_name="sor-ingest-job"</span><span class="gbtn gbtn--primary">Run query</span></div>
+                <div class="lx-hist"><i style="height:30%"></i><i style="height:55%"></i><i style="height:40%"></i><i style="height:80%"></i><i style="height:100%;background:#34A853"></i><i style="height:62%"></i><i style="height:45%"></i><i style="height:70%"></i><i style="height:35%"></i><i style="height:50%"></i><i style="height:28%"></i><i style="height:60%"></i></div>
+                <div class="lx-row"><span class="ts">02:00:07.214</span><span class="sev i">INFO</span><span class="msg">SparkSession started · task 2/4</span></div>
+                <div class="lx-row"><span class="ts">02:00:11.880</span><span class="sev i">INFO</span><span class="msg">JDBC connect → on-prem SOR over private VPC egress</span></div>
+                <div class="lx-row"><span class="ts">02:00:23.412</span><span class="sev i">INFO</span><span class="msg">read 1,284,402 rows · building DataFrame</span></div>
+                <div class="lx-row"><span class="ts">02:01:30.004</span><span class="sev w">WARNING</span><span class="msg">task 2 retry 1/3 · transient JDBC timeout, re-reading partition</span></div>
+                <div class="lx-row"><span class="ts">02:01:55.770</span><span class="sev i">INFO</span><span class="msg">write gs://sor-raw-zone/source=erp/table=orders/dt=2026-06-16/ · snappy</span></div>
+                <div class="lx-row"><span class="ts">02:03:40.119</span><span class="sev i">INFO</span><span class="msg">4 part files written · exit 0 · publish ingest.complete</span></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="slider-dots" id="wDots"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= DEEP DIVE 1: SCHEDULER ========================= -->
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="lead-block reveal">
+      <span class="eyebrow">Deep dive 01 — when</span>
+      <h2 class="h-lead">Inside Cloud Scheduler</h2>
+      <p class="sub">What the jobs list looks like in the real console, and how to read the cron expression that controls everything.</p>
+    </div>
+
+    <div class="console reveal" aria-label="Recreation of the Cloud Scheduler console">
+      <div class="gc-top">
+        <div class="gc-logo" id="gc-glogo"></div>
+        <div class="gc-proj">data-platform-prod <small>▾</small></div>
+        <div class="gc-search">⌕ Search (/) for resources, docs, products…</div>
+        <div class="grow"></div>
+        <div class="gc-av">A</div>
+      </div>
+      <div class="gc-body">
+        <nav class="gc-nav">
+          <div class="grp">Serverless</div>
+          <a class="active"><span class="ni" id="nv-sch"></span> Cloud Scheduler</a>
+          <a><span class="ni" id="nv-run"></span> Cloud Run</a>
+          <a><span class="ni" id="nv-fn"></span> Cloud Functions</a>
+          <div class="grp">Analytics</div>
+          <a><span class="ni" id="nv-ps"></span> Pub/Sub</a>
+          <a><span class="ni" id="nv-bq"></span> BigQuery</a>
+        </nav>
+        <div class="gc-main">
+          <div class="gc-bc">Cloud Scheduler &nbsp;›&nbsp; Jobs</div>
+          <div class="gc-h">
+            <h4>Cloud Scheduler</h4>
+            <span class="pill-btn solid">＋ Create job</span>
+            <span class="pill-btn">↻ Refresh</span>
+            <div class="spacer"></div>
+          </div>
+          <table class="gc-table">
+            <thead><tr><th>Name</th><th>Frequency</th><th>Target type</th><th>Last run</th><th>Result</th><th>Logs</th></tr></thead>
+            <tbody>
+              <tr class="row-hi">
+                <td class="name">sor-daily-ingest</td>
+                <td class="mono">0 2 * * *</td>
+                <td>Pub/Sub</td>
+                <td class="mono">Jun 16, 02:00:04</td>
+                <td><span class="chip chip-ok"><span class="d"></span>Success</span></td>
+                <td><a>View</a></td>
+              </tr>
+              <tr>
+                <td class="name">platform-hourly-sync</td>
+                <td class="mono">0 * * * *</td>
+                <td>HTTP</td>
+                <td class="mono">Jun 16, 15:00:02</td>
+                <td><span class="chip chip-ok"><span class="d"></span>Success</span></td>
+                <td><a>View</a></td>
+              </tr>
+              <tr>
+                <td class="name">platform-15min-delta</td>
+                <td class="mono">*/15 * * * *</td>
+                <td>Pub/Sub</td>
+                <td class="mono">Jun 16, 15:15:01</td>
+                <td><span class="chip chip-run"><span class="d"></span>Running</span></td>
+                <td><a>View</a></td>
+              </tr>
+              <tr>
+                <td class="name">sor-weekly-full</td>
+                <td class="mono">0 1 * * 0</td>
+                <td>HTTP</td>
+                <td class="mono">Jun 14, 01:00:03</td>
+                <td><span class="chip chip-warn">Retried · ok</span></td>
+                <td><a>View</a></td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="note">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#5f6368" stroke-width="2"/><path d="M12 8h.01M11 12h1v4h1" stroke="#5f6368" stroke-width="2" stroke-linecap="round"/></svg>
+            Faithful recreation of the console UI. In your project the same view lives at <b>Console → Cloud Scheduler</b>.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:30px"></div>
+
+    <div class="cron reveal">
+      <div class="cron-expr">
+        <span class="c0">0</span><span class="c1">2</span><span class="c2">*</span><span class="c3">*</span><span class="c4">*</span>
+      </div>
+      <div class="cron-legend">
+        <div class="l0"><b>Minute</b>0 · top of the hour</div>
+        <div class="l1"><b>Hour</b>2 · 02:00</div>
+        <div class="l2"><b>Day of month</b>* · every day</div>
+        <div class="l3"><b>Month</b>* · every month</div>
+        <div class="l4"><b>Day of week</b>* · any weekday</div>
+      </div>
+    </div>
+
+    <div class="cards cards-2" style="margin-top:30px">
+      <div class="detail reveal">
+        <h4><span class="tag b">target</span> Choosing what Scheduler fires</h4>
+        <ul>
+          <li><b>Pub/Sub target</b> — topic name + a message body + optional attributes. Best for decoupling (scenarios A, C, D, E).</li>
+          <li><b>HTTP target</b> — URL, method, headers, body, and an <b>OIDC token</b> (for Cloud Run / Functions) or <b>OAuth token</b> (for <code>*.googleapis.com</code>). This is how you call a Cloud Run Job's <code>:run</code> endpoint directly (scenario B).</li>
+          <li><b>App Engine</b> — legacy in-app handlers.</li>
+        </ul>
+      </div>
+      <div class="detail reveal">
+        <h4><span class="tag g">retry</span> When a fire fails</h4>
+        <ul>
+          <li><code>retryCount</code> — max attempts before giving up.</li>
+          <li><code>maxRetryDuration</code> — stop retrying after this window.</li>
+          <li><code>minBackoffDuration</code> / <code>maxBackoffDuration</code> — wait range between attempts.</li>
+          <li><code>maxDoublings</code> — how fast the backoff grows.</li>
+          <li><code>attemptDeadline</code> — how long one attempt may run.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= DEEP DIVE 2: PUB/SUB ========================= -->
+<section class="section">
+  <div class="wrap">
+    <div class="lead-block reveal">
+      <span class="eyebrow">Deep dive 02 — what</span>
+      <h2 class="h-lead">Inside the Pub/Sub topic</h2>
+      <p class="sub">A topic detail page, the anatomy of one message, and the difference between letting Pub/Sub push to you versus pulling yourself.</p>
+    </div>
+
+    <div class="console reveal" aria-label="Recreation of the Pub/Sub topic console">
+      <div class="gc-top">
+        <div class="gc-logo" id="gc-glogo2"></div>
+        <div class="gc-proj">data-platform-prod <small>▾</small></div>
+        <div class="gc-search">⌕ Search (/) for resources, docs, products…</div>
+        <div class="grow"></div>
+        <div class="gc-av">A</div>
+      </div>
+      <div class="gc-body">
+        <nav class="gc-nav">
+          <div class="grp">Analytics</div>
+          <a class="active"><span class="ni" id="nv-ps2"></span> Pub/Sub</a>
+          <a>Topics</a><a>Subscriptions</a><a>Schemas</a><a>Snapshots</a>
+        </nav>
+        <div class="gc-main">
+          <div class="gc-bc">Pub/Sub &nbsp;›&nbsp; Topics &nbsp;›&nbsp; ingest-trigger</div>
+          <div class="gc-h"><h4>ingest-trigger</h4><span class="pill-btn solid">＋ Publish message</span><span class="pill-btn">＋ Create subscription</span></div>
+          <div class="metric-row">
+            <div class="metric"><div class="lbl">Publish rate</div><div class="val" data-count="48">0<small> msg/s</small></div></div>
+            <div class="metric"><div class="lbl">Unacked messages</div><div class="val" data-count="3">0</div></div>
+            <div class="metric"><div class="lbl">Oldest unacked</div><div class="val" data-count="2">0<small> s</small></div></div>
+          </div>
+          <table class="gc-table">
+            <thead><tr><th>Subscription</th><th>Delivery type</th><th>Ack deadline</th><th>Dead-letter</th><th>State</th></tr></thead>
+            <tbody>
+              <tr><td class="name">ingest-trigger-run-push</td><td>Push → Cloud Run</td><td class="mono">60 s</td><td class="mono">dlq-ingest</td><td><span class="chip chip-ok"><span class="d"></span>Active</span></td></tr>
+              <tr><td class="name">ingest-trigger-pull</td><td>Pull</td><td class="mono">600 s</td><td class="mono">dlq-ingest</td><td><span class="chip chip-ok"><span class="d"></span>Active</span></td></tr>
+              <tr><td class="name">ingest-audit-bq</td><td>BigQuery</td><td class="mono">—</td><td class="mono">—</td><td><span class="chip chip-ok"><span class="d"></span>Active</span></td></tr>
+            </tbody>
+          </table>
+          <p class="note">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#5f6368" stroke-width="2"/><path d="M12 8h.01M11 12h1v4h1" stroke="#5f6368" stroke-width="2" stroke-linecap="round"/></svg>
+            One topic, many subscriptions — each consumer gets its own independent copy of every message.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:30px"></div>
+
+    <div class="split">
+      <div class="envelope reveal">
+        <div class="env-head"><span>PubsubMessage</span><span>JSON over the wire</span></div>
+        <div class="env-row"><span class="k">data</span><span class="v">eyJzb3VyY2UiOiJzb3IiLCJydW5fZGF0ZSI6IjIwMjYtMDYtMTYifQ== <span class="c">(base64)</span></span></div>
+        <div class="env-row"><span class="k">attributes</span><span class="v">{ "source":"sor", "env":"prod", "priority":"high" }</span></div>
+        <div class="env-row"><span class="k">messageId</span><span class="v">11857964075</span></div>
+        <div class="env-row"><span class="k">publishTime</span><span class="v">2026-06-16T02:00:04.118Z</span></div>
+        <div class="env-row"><span class="k">orderingKey</span><span class="v">sor-ingest <span class="c">(optional)</span></span></div>
+        <div class="env-row"><span class="k">deliveryAttempt</span><span class="v">1 <span class="c">(rises on redelivery)</span></span></div>
+      </div>
+      <div>
+        <div class="detail reveal" style="margin-bottom:16px">
+          <h4><span class="tag b">push</span> Pub/Sub delivers to you</h4>
+          <ul>
+            <li>Pub/Sub <code>POST</code>s the message to your HTTPS endpoint (Cloud Run / Function).</li>
+            <li>No infrastructure to run while idle — fully event-driven; this is what <b>Eventarc</b> uses.</li>
+            <li>You return <code>2xx</code> to acknowledge; anything else triggers redelivery with backoff.</li>
+          </ul>
+        </div>
+        <div class="detail reveal">
+          <h4><span class="tag g">pull</span> You fetch from Pub/Sub</h4>
+          <ul>
+            <li>A long-running worker (Cloud Run service / GKE) asks for messages and acks them.</li>
+            <li>Best for high throughput, custom flow-control, and ordered processing.</li>
+            <li>Ack deadline up to <code>600 s</code>; unacked messages are redelivered.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="cards cards-2" style="margin-top:24px">
+      <div class="detail reveal">
+        <h4><span class="tag r">safety</span> Nothing gets silently lost</h4>
+        <ul>
+          <li><b>Dead-letter topic</b> — after <code>maxDeliveryAttempts</code>, poison messages move to a DLQ for inspection.</li>
+          <li><b>Retry policy</b> — immediate or exponential backoff between redeliveries.</li>
+          <li><b>Exactly-once delivery</b> — opt-in to suppress duplicates within the ack window.</li>
+        </ul>
+      </div>
+      <div class="detail reveal">
+        <h4><span class="tag y">order &amp; filter</span> Control what arrives</h4>
+        <ul>
+          <li><b>Ordering key</b> — messages with the same key are delivered in publish order.</li>
+          <li><b>Filters</b> — a subscription can receive only messages matching an attribute, e.g. <code>attributes.source = "sor"</code>.</li>
+          <li><b>Retention</b> — replay messages for up to 7 days (configurable to 31).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= DEEP DIVE 3: CLOUD RUN JOB ========================= -->
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="lead-block reveal">
+      <span class="eyebrow">Deep dive 03 — how</span>
+      <h2 class="h-lead">Inside the Cloud Run Job</h2>
+      <p class="sub">The execution view, what runs inside the container, and the PySpark that turns raw SOR rows into partitioned Parquet.</p>
+    </div>
+
+    <div class="console reveal" aria-label="Recreation of the Cloud Run Jobs execution console">
+      <div class="gc-top">
+        <div class="gc-logo" id="gc-glogo3"></div>
+        <div class="gc-proj">data-platform-prod <small>▾</small></div>
+        <div class="gc-search">⌕ Search (/) for resources, docs, products…</div>
+        <div class="grow"></div>
+        <div class="gc-av">A</div>
+      </div>
+      <div class="gc-body">
+        <nav class="gc-nav">
+          <div class="grp">Serverless</div>
+          <a class="active"><span class="ni" id="nv-run3"></span> Cloud Run</a>
+          <a>Services</a><a class="active" style="border:none;background:none;color:var(--ink-2);font-weight:400;padding-left:30px">Jobs</a>
+        </nav>
+        <div class="gc-main">
+          <div class="gc-bc">Cloud Run &nbsp;›&nbsp; Jobs &nbsp;›&nbsp; sor-ingest-job</div>
+          <div class="gc-h"><h4>sor-ingest-job</h4><span class="pill-btn solid">▶ Execute</span><span class="pill-btn">✎ Edit</span><span class="pill-btn">⤓ Logs</span></div>
+          <div class="metric-row">
+            <div class="metric"><div class="lbl">Last execution</div><div class="val" style="font-size:18px">sor-ingest-job-7f4k2</div></div>
+            <div class="metric"><div class="lbl">Tasks succeeded</div><div class="val"><span data-count="4">0</span>/4</div></div>
+            <div class="metric"><div class="lbl">Duration</div><div class="val" data-count="3">0<small>m 41s</small></div></div>
+          </div>
+          <table class="gc-table">
+            <thead><tr><th>Execution</th><th>Tasks</th><th>Status</th><th>Started</th><th>Duration</th></tr></thead>
+            <tbody>
+              <tr class="row-hi"><td class="name">…-7f4k2</td><td class="mono">4 / 4</td><td><span class="chip chip-ok"><span class="d"></span>Succeeded</span></td><td class="mono">02:00:06</td><td class="mono">3m 41s</td></tr>
+              <tr><td class="name">…-9d1m8</td><td class="mono">4 / 4</td><td><span class="chip chip-ok"><span class="d"></span>Succeeded</span></td><td class="mono">Jun 15 02:00</td><td class="mono">3m 12s</td></tr>
+              <tr><td class="name">…-2a7x5</td><td class="mono">3 / 4 → 4 / 4</td><td><span class="chip chip-warn">Task retried</span></td><td class="mono">Jun 14 02:00</td><td class="mono">5m 02s</td></tr>
+            </tbody>
+          </table>
+          <div class="log" aria-label="Sample execution logs">
+<span class="t">02:00:07</span> <span class="info">INFO</span>  SparkSession started · task <span class="path">2/4</span>
+<span class="t">02:00:11</span> <span class="info">INFO</span>  JDBC connect → on-prem SOR (private IP via VPC egress)
+<span class="t">02:00:23</span> <span class="info">INFO</span>  read 1,284,402 rows · building DataFrame
+<span class="t">02:01:55</span> <span class="ok">WRITE</span> <span class="path">gs://sor-raw-zone/source=erp/table=orders/dt=2026-06-16/</span>
+<span class="t">02:03:40</span> <span class="ok">DONE</span>  4 part files · snappy · exit 0
+<span class="t">02:03:41</span> <span class="info">PUBLISH</span> topic <span class="path">ingest.complete</span> ← stage gate
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:30px"></div>
+
+    <div class="split">
+      <div class="codeblk reveal">
+        <div class="cb-bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="cb-name">ingest_sor.py · runs inside the Cloud Run Job</span></div>
+<pre><span class="kw">from</span> pyspark.sql <span class="kw">import</span> SparkSession
+<span class="kw">import</span> os, datetime
+
+spark = SparkSession.builder.appName(<span class="str">"sor-ingest"</span>).getOrCreate()
+run_date = datetime.date.today().isoformat()
+
+<span class="cm"># 1 · read raw SOR data from on-prem (JDBC over private VPC egress)</span>
+df = (spark.read.<span class="fn">format</span>(<span class="str">"jdbc"</span>)
+        .option(<span class="str">"url"</span>,    os.environ[<span class="str">"SOR_JDBC_URL"</span>])
+        .option(<span class="str">"dbtable"</span>, <span class="str">"erp.orders"</span>)
+        .option(<span class="str">"user"</span>,   os.environ[<span class="str">"SOR_USER"</span>])
+        .option(<span class="str">"password"</span>, os.environ[<span class="str">"SOR_PWD"</span>])  <span class="cm"># from Secret Manager</span>
+        .<span class="fn">load</span>())
+
+<span class="cm"># 2 · land RAW as Parquet, partitioned by date, snappy compressed</span>
+(df.write
+   .mode(<span class="str">"overwrite"</span>)
+   .partitionBy(<span class="str">"dt"</span>)
+   .option(<span class="str">"compression"</span>, <span class="str">"snappy"</span>)
+   .parquet(<span class="str">f"gs://sor-raw-zone/source=erp/table=orders/dt={run_date}"</span>))
+
+<span class="cm"># 3 · announce completion → next stage listens on this topic</span>
+publish(<span class="str">"ingest.complete"</span>, {<span class="str">"source"</span>: <span class="str">"sor"</span>, <span class="str">"dt"</span>: run_date})
+spark.stop()  <span class="cm"># container exits 0 → task succeeded</span></pre>
+      </div>
+
+      <div>
+        <p class="sub reveal" style="margin-bottom:14px"><b>Where Spark actually runs.</b> For modest volumes, PySpark runs <i>inside</i> the job's container (local Spark). For truly large distributed loads, the job instead <b>submits a Dataproc Serverless batch</b> and waits — same trigger, heavier engine. Either way the output contract is identical: Parquet in the raw zone.</p>
+        <div class="tree reveal">
+<span class="m"># the raw zone, organised for cheap reads</span>
+gs://sor-raw-zone/
+└── <span class="b">source=erp</span>/
+    └── <span class="b">table=orders</span>/
+        ├── <span class="y">dt=2026-06-15</span>/
+        │   ├── <span class="g">part-00000.snappy.parquet</span>
+        │   └── <span class="g">part-00001.snappy.parquet</span>
+        └── <span class="y">dt=2026-06-16</span>/   <span class="m">← today's run</span>
+            ├── <span class="g">part-00000.snappy.parquet</span>
+            ├── <span class="g">part-00001.snappy.parquet</span>
+            ├── <span class="g">part-00002.snappy.parquet</span>
+            └── <span class="g">part-00003.snappy.parquet</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cards cards-2" style="margin-top:26px">
+      <div class="detail reveal">
+        <h4><span class="tag g">tasks</span> Execution → tasks → parallelism</h4>
+        <ul>
+          <li>One <b>execution</b> launches <code>--tasks N</code> container instances.</li>
+          <li><code>--parallelism</code> caps how many run at once.</li>
+          <li>Each reads <code>CLOUD_RUN_TASK_INDEX</code> / <code>…_COUNT</code> to claim its data slice.</li>
+          <li>Per-task <code>--task-timeout</code> and <code>--max-retries</code> handle stragglers.</li>
+        </ul>
+      </div>
+      <div class="detail reveal">
+        <h4><span class="tag b">reach &amp; identity</span> Talking to on-prem safely</h4>
+        <ul>
+          <li>Image pulled from <b>Artifact Registry</b>; CPU/memory set per job.</li>
+          <li><b>Direct VPC egress</b> or a Serverless VPC connector routes to private IPs over Cloud VPN / Interconnect.</li>
+          <li>Runs as a dedicated <b>service account</b>; credentials from <b>Secret Manager</b>.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= SOR vs PLATFORM ========================= -->
+<section class="section">
+  <div class="wrap">
+    <div class="lead-block reveal">
+      <span class="eyebrow">Two pipelines, same skeleton</span>
+      <h2 class="h-lead">SOR data vs Platform data</h2>
+      <p class="sub">Both ride the identical Scheduler → Pub/Sub → Cloud Run Job rails. What differs is where the data comes from, how hard it is to reach, and how much shaping it needs.</p>
+    </div>
+
+    <div class="cmp reveal">
+      <div class="col-h sor"><div class="ic-tile" style="width:46px;height:46px;background:rgba(255,255,255,.25)" id="cmp-sor"></div><div><h3>SOR data</h3><small>system of record · on-premises</small></div></div>
+      <div class="col-h plat"><div class="ic-tile" style="width:46px;height:46px;background:rgba(255,255,255,.25)" id="cmp-plat"></div><div><h3>Platform data</h3><small>cloud-native · already in GCP</small></div></div>
+
+      <div class="mid">Source</div>
+      <div class="cell"><div class="lbl">Where it lives</div><div class="txt">On-prem databases &amp; files behind the firewall — the authoritative system of record.</div></div>
+      <div class="cell"><div class="lbl">Where it lives</div><div class="txt">GCP-native: Cloud SQL, GCS, BigQuery, SaaS APIs, event streams.</div></div>
+
+      <div class="mid">Connectivity</div>
+      <div class="cell"><div class="lbl">How the job reaches it</div><div class="txt">VPC egress over Cloud VPN / Interconnect; JDBC to private IPs; secrets from Secret Manager.</div></div>
+      <div class="cell"><div class="lbl">How the job reaches it</div><div class="txt">Native client libraries &amp; IAM — no tunnel needed; service-account auth.</div></div>
+
+      <div class="mid">Shape &amp; processing</div>
+      <div class="cell"><div class="lbl">What the job does</div><div class="txt">Heavy PySpark read &amp; serialise of raw, messy rows → <b>Parquet</b> in the raw zone, partitioned by date.</div></div>
+      <div class="cell"><div class="lbl">What the job does</div><div class="txt">Usually already structured — lighter transform &amp; enrich, land curated tables.</div></div>
+
+      <div class="mid">Cadence</div>
+      <div class="cell"><div class="lbl">Typical schedule</div><div class="txt">Daily / weekly bulk windows (<span class="mono">0 2 * * *</span>) to limit on-prem load.</div></div>
+      <div class="cell"><div class="lbl">Typical schedule</div><div class="txt">Hourly or 15-min deltas (<span class="mono">*/15 * * * *</span>) — cheap and frequent.</div></div>
+
+      <div class="mid">Destination</div>
+      <div class="cell"><div class="lbl">Lands in</div><div class="txt">GCS raw → BigQuery (external or load), feeding curation downstream.</div></div>
+      <div class="cell"><div class="lbl">Lands in</div><div class="txt">Curated BigQuery datasets, ready for analytics &amp; joins with SOR.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= TINY DETAILS ========================= -->
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="lead-block reveal">
+      <span class="eyebrow">The fine print that makes it production-grade</span>
+      <h2 class="h-lead">Tiny details worth knowing</h2>
+      <p class="sub">The small configuration choices that separate a demo from a pipeline you can sleep through the night with.</p>
+    </div>
+    <div class="detail-grid">
+      <div class="detail reveal">
+        <h4><span class="tag b">IAM</span> Who is allowed to do what</h4>
+        <ul>
+          <li>Scheduler's service account needs <code>roles/pubsub.publisher</code> (Pub/Sub target) or <code>roles/run.invoker</code> (direct HTTP).</li>
+          <li>The Cloud Run Job's service account needs read on the source, <code>roles/storage.objectAdmin</code> on the bucket, and <code>roles/bigquery.dataEditor</code>.</li>
+          <li>Push subscriptions use an OIDC token tied to a dedicated invoker account.</li>
+        </ul>
+      </div>
+      <div class="detail reveal">
+        <h4><span class="tag r">idempotency</span> Surviving redelivery</h4>
+        <ul>
+          <li>Pub/Sub is <b>at-least-once</b> — the same message can arrive twice.</li>
+          <li>Write to a dated partition with <code>mode("overwrite")</code> so a re-run is safe.</li>
+          <li>Carry a <code>run_date</code> / run-id so duplicate executions are detectable.</li>
+        </ul>
+      </div>
+      <div class="detail reveal">
+        <h4><span class="tag g">env vars</span> What the container knows</h4>
+        <ul>
+          <li><code>CLOUD_RUN_TASK_INDEX</code> — this task's number (0-based).</li>
+          <li><code>CLOUD_RUN_TASK_COUNT</code> — total tasks in the execution.</li>
+          <li><code>CLOUD_RUN_EXECUTION</code> · <code>CLOUD_RUN_TASK_ATTEMPT</code> — for logging &amp; retries.</li>
+        </ul>
+      </div>
+      <div class="detail reveal">
+        <h4><span class="tag y">observability</span> Knowing it actually ran</h4>
+        <ul>
+          <li>Cloud Logging captures every task's stdout/stderr; filter by execution id.</li>
+          <li>Cloud Monitoring alerts on failed executions or unacked-message age.</li>
+          <li>The <code>ingest.complete</code> event doubles as an audit trail and a stage gate.</li>
+        </ul>
+      </div>
+      <div class="detail reveal">
+        <h4><span class="tag b">orchestration</span> Chaining many stages</h4>
+        <ul>
+          <li><b>Choreography</b> — each job publishes a “done” event the next subscribes to (loose, scalable).</li>
+          <li><b>Cloud Workflows</b> — central control for ordered, conditional, multi-step DAGs.</li>
+          <li>Mix both: Scheduler kicks off, events fan work out, Workflows guards the critical path.</li>
+        </ul>
+      </div>
+      <div class="detail reveal">
+        <h4><span class="tag r">cost &amp; scale</span> Paying only for the run</h4>
+        <ul>
+          <li>Cloud Run Jobs bill per task vCPU-second — zero cost while idle.</li>
+          <li>Pub/Sub bills per message volume; Scheduler is a few cents per job/month.</li>
+          <li>Parquet + partition pruning keeps BigQuery scan costs down.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= FOOTER ========================= -->
+<footer class="foot">
+  <div class="wrap">
+    <span class="eyebrow" style="color:#80868b">Recap</span>
+    <h3>Clock → message → container → Parquet → next stage</h3>
+    <p style="max-width:64ch">Cloud Scheduler decides <b>when</b>. Pub/Sub carries the <b>what</b> and decouples everyone. The Cloud Run Job is the <b>how</b> — it wakes up, pulls SOR &amp; Platform data, lands Parquet with PySpark, and rings the bell for whatever comes next. Five wiring patterns, one dependable shape.</p>
+    <div class="cols">
+      <div>
+        <h5>The five patterns</h5>
+        <p>A · Push via Pub/Sub → Cloud Run</p>
+        <p>B · Scheduler → direct HTTP :run</p>
+        <p>C · Pub/Sub → Function glue → Job</p>
+        <p>D · Pull worker drains the topic</p>
+        <p>E · Event-driven (file / done-event)</p>
+      </div>
+      <div>
+        <h5>Core services</h5>
+        <p>Cloud Scheduler</p><p>Pub/Sub</p><p>Cloud Run Jobs</p><p>Cloud Storage · BigQuery</p><p>Secret Manager · Workflows</p>
+      </div>
+      <div>
+        <h5>The SOR contract</h5>
+        <p>On-prem → VPC egress</p><p>PySpark read</p><p>Parquet · snappy · partitioned</p><p>Raw zone in GCS</p><p>Load → BigQuery</p>
+      </div>
+    </div>
+    <p class="disclaimer">The console screens above are faithful, hand-built recreations of the Google Cloud Console for explanatory purposes, and the service marks are simplified renditions in the Google Cloud icon style — not screenshots or official assets. Product names, icons, and the Google Cloud Console are trademarks of Google LLC. Configuration values (cron, retries, IAM roles, env vars) reflect documented behaviour but always verify against current Google Cloud documentation for your project.</p>
+  </div>
+</footer>
+
+<script>
+/* ============================================================
+   1 · paint the small product icons (shared SVG strings)
+   ============================================================ */
+const ICONS = {
+  scheduler: `<svg width="34" height="34" viewBox="0 0 40 40"><circle cx="20" cy="20" r="19" fill="#AECBFA"/><circle cx="20" cy="20" r="12.5" fill="#fff"/><circle cx="20" cy="20" r="12.5" fill="none" stroke="#4285F4" stroke-width="2.6"/><line x1="20" y1="20" x2="20" y2="11.5" stroke="#1A73E8" stroke-width="2.8" stroke-linecap="round"/><line x1="20" y1="20" x2="26.5" y2="22" stroke="#1A73E8" stroke-width="2.8" stroke-linecap="round"/><circle cx="20" cy="20" r="2.1" fill="#1A73E8"/></svg>`,
+  pubsub: `<svg width="34" height="34" viewBox="0 0 48 48"><rect x="18" y="18" width="22" height="22" rx="6" fill="#4285F4" transform="rotate(45 29 29)"/><circle cx="6" cy="10" r="5.5" fill="#EA4335"/><circle cx="6" cy="44" r="5.5" fill="#FBBC04"/><circle cx="44" cy="27" r="5.5" fill="#34A853"/><line x1="20" y1="22" x2="9" y2="13" stroke="#5f6368" stroke-width="2"/><line x1="20" y1="38" x2="9" y2="41" stroke="#5f6368" stroke-width="2"/><line x1="38" y1="29" x2="40" y2="28" stroke="#5f6368" stroke-width="2"/></svg>`,
+  run: `<svg width="34" height="34" viewBox="0 0 48 48"><rect x="9" y="9" width="34" height="34" rx="9" fill="#A8DAB5" transform="rotate(45 26 26)"/><rect x="17" y="17" width="22" height="22" rx="6" fill="#fff" stroke="#188038" stroke-width="2.6" transform="rotate(45 28 28)"/><path d="M22 21 L34 28 L22 35 Z" fill="#188038"/></svg>`,
+  spark: `<svg width="32" height="32" viewBox="0 0 40 40"><path d="M22 3 L13 21 L20 21 L17 37 L29 16 L21 16 Z" fill="#E25A1C" stroke="#B3471A" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
+  parquet: `<svg width="32" height="32" viewBox="0 0 40 40"><rect x="6" y="8" width="6" height="24" rx="2" fill="#34A853"/><rect x="15" y="4" width="6" height="28" rx="2" fill="#4285F4"/><rect x="24" y="12" width="6" height="20" rx="2" fill="#FBBC04"/><rect x="4" y="33" width="32" height="3" rx="1.5" fill="#5f6368"/></svg>`,
+  bucket: `<svg width="20" height="20" viewBox="0 0 40 40"><path d="M7 8 H33 L29 34 H11 Z" fill="#E6F4EA" stroke="#188038" stroke-width="2"/><ellipse cx="20" cy="8" rx="13" ry="4" fill="#A8DAB5" stroke="#188038" stroke-width="2"/></svg>`,
+  bq: `<svg width="18" height="18" viewBox="0 0 40 40"><circle cx="17" cy="17" r="13" fill="#E8F0FE" stroke="#1A73E8" stroke-width="2.4"/><circle cx="17" cy="17" r="6.5" fill="#fff" stroke="#4285F4" stroke-width="2.4"/><line x1="26" y1="26" x2="34" y2="34" stroke="#1A73E8" stroke-width="3.2" stroke-linecap="round"/></svg>`,
+  fn: `<svg width="18" height="18" viewBox="0 0 40 40"><path d="M20 3 L33 11 L33 29 L20 37 L7 29 L7 11 Z" fill="#FEF7E0" stroke="#F29900" stroke-width="2.4"/><path d="M20 13 L25 20 L20 20 L23 27 L15 19 L20 19 Z" fill="#F29900"/></svg>`,
+  glogo: `<svg width="22" height="22" viewBox="0 0 24 24"><path fill="#4285F4" d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" opacity=".15"/><path fill="#EA4335" d="M12 7l-1.6 2.8h3.2z"/><path fill="#FBBC04" d="M16 12l-1.6 2.8L12 12z"/><path fill="#34A853" d="M8 12l1.6-2.8L12 12z"/><path fill="#4285F4" d="M12 17l1.6-2.8h-3.2z"/></svg><span>Google&nbsp;Cloud</span>`
+};
+const set = (id, svg) => { const el = document.getElementById(id); if (el) el.innerHTML = svg; };
+set('hic-sch', ICONS.scheduler); set('hic-ps', ICONS.pubsub); set('hic-run', ICONS.run);
+set('hic-spark', ICONS.spark); set('hic-pq', ICONS.parquet);
+set('c-sch', ICONS.scheduler); set('c-ps', ICONS.pubsub); set('c-run', ICONS.run);
+set('cmp-sor', ICONS.spark); set('cmp-plat', ICONS.bq);
+['gc-glogo','gc-glogo2','gc-glogo3'].forEach(id=>set(id, ICONS.glogo));
+set('nv-sch', ICONS.scheduler); set('nv-run', ICONS.run); set('nv-fn', ICONS.fn);
+set('nv-ps', ICONS.pubsub); set('nv-bq', ICONS.bq);
+set('nv-ps2', ICONS.pubsub); set('nv-run3', ICONS.run);
+
+/* ============================================================
+   2 · scroll reveal
+   ============================================================ */
+const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const revObserver = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); revObserver.unobserve(e.target);} });
+},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>{ if(prefersReduced){el.classList.add('in');} else {revObserver.observe(el);} });
+
+/* count-up metrics */
+function countUp(el){
+  const target = parseFloat(el.dataset.count); const suffix = el.querySelector('small');
+  if(prefersReduced){ el.childNodes[0].nodeValue = target; return; }
+  let v=0; const step=Math.max(1, target/28);
+  const t=setInterval(()=>{ v+=step; if(v>=target){v=target; clearInterval(t);} el.childNodes[0].nodeValue = (target%1===0)?Math.round(v):v.toFixed(0); },28);
+}
+const countObs = new IntersectionObserver((ents)=>{ents.forEach(e=>{ if(e.isIntersecting){countUp(e.target); countObs.unobserve(e.target);}});},{threshold:.5});
+document.querySelectorAll('[data-count]').forEach(el=>countObs.observe(el));
+
+/* ============================================================
+   3 · the living pipeline engine
+   ============================================================ */
+const svg = document.getElementById('flowSvg');
+const tokenLayer = document.getElementById('tokenLayer');
+const psPulse = document.getElementById('psPulse');
+const pqStack = document.getElementById('pqStack');
+const NS = 'http://www.w3.org/2000/svg';
+
+const COLORS = { tick:'#4285F4', msg:'#4285F4', raw:'#FBBC04', plat:'#5f6368', pq:'#34A853', event:'#EA4335' };
+
+/* scenario config: which nodes active/dim/hide, which edges, and token routes */
+const ALLNODES = ['n_sch','n_file','n_ps','n_fn','n_job','n_sor','n_plat','n_gcs','n_bq'];
+const ALLEDGES = ['p_sch_ps','p_sch_job','p_ps_job','p_ps_fn','p_fn_job','p_file_ps','p_src_sor_job','p_src_plat_job','p_job_gcs','p_gcs_bq','p_bq_ps'];
+
+const SCN = {
+  A:{ title:'Scheduler → Pub/Sub → push → Cloud Run Job',
+      desc:'The standard decoupled pattern. Scheduler publishes a tiny JSON message to the topic; a push subscription (Eventarc) delivers it straight to the Cloud Run Job, which executes, reads both sources, and writes Parquet. The topic absorbs bursts and isolates the trigger from the worker.',
+      stage:'scenario A · scheduler → pub/sub → cloud run job',
+      job:['Cloud','Run Job','▶ PySpark task','runs to completion'],
+      show:['n_sch','n_ps','n_job','n_sor','n_plat','n_gcs','n_bq'], dim:[],
+      edges:['p_sch_ps','p_ps_job','p_src_sor_job','p_src_plat_job','p_job_gcs','p_gcs_bq','p_bq_ps'],
+      routes:[
+        {paths:['p_sch_ps','p_ps_job'], type:'msg', n:2},
+        {paths:['p_src_sor_job'], type:'raw', n:1},
+        {paths:['p_src_plat_job'], type:'plat', n:1},
+        {paths:['p_job_gcs','p_gcs_bq'], type:'pq', n:2},
+        {paths:['p_bq_ps'], type:'event', n:1}
+      ]},
+  B:{ title:'Scheduler → direct HTTP :run → Cloud Run Job',
+      desc:'The leanest pattern for pure batch. Scheduler calls the Cloud Run Jobs Admin API endpoint (…/jobs/JOB:run) over HTTP with an OAuth token — no topic in between. Fewer moving parts, but no buffering or fan-out.',
+      stage:'scenario B · scheduler → http :run → cloud run job',
+      job:['Cloud','Run Job','▶ PySpark task','invoked via :run'],
+      show:['n_sch','n_job','n_sor','n_plat','n_gcs','n_bq'], dim:['n_ps'],
+      edges:['p_sch_job','p_src_sor_job','p_src_plat_job','p_job_gcs','p_gcs_bq'],
+      routes:[
+        {paths:['p_sch_job'], type:'tick', n:2},
+        {paths:['p_src_sor_job'], type:'raw', n:1},
+        {paths:['p_src_plat_job'], type:'plat', n:1},
+        {paths:['p_job_gcs','p_gcs_bq'], type:'pq', n:2}
+      ]},
+  C:{ title:'Scheduler → Pub/Sub → Cloud Function → Job',
+      desc:'A light glue layer. Scheduler publishes to the topic; a Cloud Function consumes the message, does small prep or fan-out logic, then executes the Cloud Run Job. Useful when you need branching or per-source routing before the heavy lifting.',
+      stage:'scenario C · pub/sub → cloud function → cloud run job',
+      job:['Cloud','Run Job','▶ PySpark task','executed by function'],
+      show:['n_sch','n_ps','n_fn','n_job','n_sor','n_plat','n_gcs','n_bq'], dim:[],
+      edges:['p_sch_ps','p_ps_fn','p_fn_job','p_src_sor_job','p_src_plat_job','p_job_gcs','p_gcs_bq'],
+      routes:[
+        {paths:['p_sch_ps','p_ps_fn','p_fn_job'], type:'msg', n:2},
+        {paths:['p_src_sor_job'], type:'raw', n:1},
+        {paths:['p_src_plat_job'], type:'plat', n:1},
+        {paths:['p_job_gcs','p_gcs_bq'], type:'pq', n:2}
+      ]},
+  D:{ title:'Pull worker drains the topic',
+      desc:'A long-running worker (Cloud Run service or GKE) pulls messages from the subscription itself, controlling its own flow and ordering. Best for steady high throughput rather than spiky scheduled batches.',
+      stage:'scenario D · scheduler → pub/sub → pull worker',
+      job:['Pull','worker','◳ drains topic','flow-controlled'],
+      show:['n_sch','n_ps','n_job','n_sor','n_plat','n_gcs','n_bq'], dim:[],
+      edges:['p_sch_ps','p_ps_job','p_src_sor_job','p_src_plat_job','p_job_gcs','p_gcs_bq'],
+      pull:true,
+      routes:[
+        {paths:['p_sch_ps'], type:'msg', n:2},
+        {paths:['p_ps_job'], type:'msg', n:2},
+        {paths:['p_src_sor_job'], type:'raw', n:1},
+        {paths:['p_src_plat_job'], type:'plat', n:1},
+        {paths:['p_job_gcs','p_gcs_bq'], type:'pq', n:2}
+      ]},
+  E:{ title:'Event-driven — a file or “done” event triggers it',
+      desc:'No clock at all. A GCS object-finalize event (or an upstream job\'s “done” message) lands on the topic and triggers the run. Combined with the completion-event loop, this is how multi-stage pipelines self-orchestrate by choreography.',
+      stage:'scenario E · object/done event → pub/sub → cloud run job',
+      job:['Cloud','Run Job','▶ PySpark task','reactive'],
+      show:['n_file','n_ps','n_job','n_sor','n_plat','n_gcs','n_bq'], dim:['n_sch'],
+      edges:['p_file_ps','p_ps_job','p_src_sor_job','p_src_plat_job','p_job_gcs','p_gcs_bq','p_bq_ps'],
+      routes:[
+        {paths:['p_file_ps','p_ps_job'], type:'event', n:2},
+        {paths:['p_src_sor_job'], type:'raw', n:1},
+        {paths:['p_src_plat_job'], type:'plat', n:1},
+        {paths:['p_job_gcs','p_gcs_bq'], type:'pq', n:2},
+        {paths:['p_bq_ps'], type:'event', n:1}
+      ]}
+};
+
+/* cache path lengths */
+const pathInfo = {};
+ALLEDGES.forEach(id=>{ const el=document.getElementById(id); pathInfo[id]={el, len: el.getTotalLength()}; });
+
+let current = 'A';
+let playing = !prefersReduced;
+let tokens = [];
+let rafId = null;
+let lastT = 0;
+let pulseTimer = 0;
+let pqTimer = 0;
+let pqCount = 0;
+
+function makeToken(route){
+  const g = document.createElementNS(NS,'g'); g.setAttribute('class','token');
+  const c = document.createElementNS(NS,'circle');
+  c.setAttribute('r','7'); c.setAttribute('class','tok-core'); c.setAttribute('fill', COLORS[route.type]);
+  g.appendChild(c);
+  // small inner glyph hint
+  if(route.type==='pq'){ const r=document.createElementNS(NS,'rect'); r.setAttribute('x','-2.5');r.setAttribute('y','-2.5');r.setAttribute('width','5');r.setAttribute('height','5');r.setAttribute('rx','1');r.setAttribute('fill','#fff'); g.appendChild(r); }
+  if(route.type==='msg'||route.type==='tick'){ const l=document.createElementNS(NS,'rect'); l.setAttribute('x','-3');l.setAttribute('y','-2');l.setAttribute('width','6');l.setAttribute('height','4');l.setAttribute('rx','.6');l.setAttribute('fill','#fff'); g.appendChild(l); }
+  if(route.type==='event'){ const s=document.createElementNS(NS,'circle'); s.setAttribute('r','2.4');s.setAttribute('fill','#fff'); g.appendChild(s); }
+  tokenLayer.appendChild(g);
+  return g;
+}
+
+function buildTokens(){
+  tokenLayer.innerHTML=''; tokens=[];
+  const scn = SCN[current];
+  const totalLenOf = (paths)=> paths.reduce((s,p)=>s+pathInfo[p].len,0);
+  scn.routes.forEach(route=>{
+    const total = totalLenOf(route.paths);
+    const speed = 150; // px per second, constant feel
+    for(let i=0;i<route.n;i++){
+      tokens.push({
+        route, paths:route.paths, total, speed,
+        dist: (total/route.n)*i,            // stagger
+        el: makeToken(route)
+      });
+    }
+  });
+}
+
+function posAt(paths, dist){
+  let d = dist % paths.reduce((s,p)=>s+pathInfo[p].len,0);
+  for(const p of paths){
+    const L = pathInfo[p].len;
+    if(d <= L){ const pt = pathInfo[p].el.getPointAtLength(d); return {x:pt.x, y:pt.y, path:p, atEnd:false}; }
+    d -= L;
+  }
+  const last = paths[paths.length-1]; const pt = pathInfo[last].el.getPointAtLength(pathInfo[last].len);
+  return {x:pt.x, y:pt.y, path:last, atEnd:true};
+}
+
+function placeStatic(){
+  tokens.forEach(t=>{ const pos=posAt(t.paths, t.total*0.5); t.el.setAttribute('transform',`translate(${pos.x},${pos.y})`); });
+}
+
+function frame(ts){
+  if(!lastT) lastT=ts;
+  const dt = Math.min(0.05,(ts-lastT)/1000); lastT=ts;
+  tokens.forEach(t=>{
+    t.dist += t.speed*dt;
+    const pos = posAt(t.paths, t.dist);
+    t.el.setAttribute('transform',`translate(${pos.x},${pos.y})`);
+  });
+  // pulse pub/sub when active
+  const scn = SCN[current];
+  const psActive = scn.show.includes('n_ps');
+  pulseTimer += dt;
+  if(psActive && pulseTimer>1.15){ pulseTimer=0; psPulse.classList.remove('pulsing'); void psPulse.getBBox(); psPulse.classList.add('pulsing'); }
+  // accumulate parquet files
+  pqTimer += dt;
+  if(pqTimer>0.9){ pqTimer=0; addParquet(); }
+  rafId = requestAnimationFrame(frame);
+}
+
+function addParquet(){
+  if(pqCount>=5){ pqStack.innerHTML=''; pqCount=0; return; }
+  const r = document.createElementNS(NS,'rect');
+  r.setAttribute('x', 0); r.setAttribute('y', pqCount*8); r.setAttribute('width','22'); r.setAttribute('height','6'); r.setAttribute('rx','1.5');
+  r.setAttribute('fill', pqCount%2? '#34A853':'#4285F4'); r.setAttribute('opacity','0');
+  pqStack.appendChild(r);
+  if(prefersReduced){ r.setAttribute('opacity','.9'); }
+  else { requestAnimationFrame(()=>{ r.style.transition='opacity .4s'; r.setAttribute('opacity','.9'); }); }
+  pqCount++;
+}
+
+function applyScenario(key){
+  current = key; const scn = SCN[key];
+  // nodes
+  ALLNODES.forEach(id=>{ const el=document.getElementById(id); el.classList.remove('node-dim','node-hide');
+    if(scn.show.includes(id)){ /* visible */ }
+    else if(scn.dim.includes(id)){ el.classList.add('node-dim'); }
+    else { el.classList.add('node-hide'); }
+  });
+  // edges
+  ALLEDGES.forEach(id=>{ const el=document.getElementById(id); el.classList.remove('edge--active','edge--idle','edge--hide','edge--pull');
+    if(scn.edges.includes(id)){ el.classList.add('edge--active'); if(scn.pull && id==='p_ps_job') el.classList.add('edge--pull'); }
+    else if(scn.dim.length && (id==='p_sch_ps'||id==='p_ps_job') && scn.dim.includes('n_ps')){ el.classList.add('edge--hide'); }
+    else { el.classList.add('edge--hide'); }
+  });
+  // job label swap
+  document.getElementById('jobL1').textContent = scn.job[0];
+  document.getElementById('jobL2').textContent = scn.job[1];
+  document.getElementById('jobBadge').textContent = scn.job[2];
+  document.getElementById('jobSub').textContent = scn.job[3];
+  // text
+  document.getElementById('scnBadge').textContent = key;
+  document.getElementById('scnTitle').textContent = scn.title;
+  document.getElementById('scnDesc').textContent = scn.desc;
+  document.getElementById('stageTitle').textContent = scn.stage;
+  // tokens
+  pqStack.innerHTML=''; pqCount=0;
+  buildTokens();
+  if(playing && !prefersReduced){ /* running */ } else { placeStatic(); }
+}
+
+/* controls */
+function setPlaying(on){
+  playing = on;
+  const btn = document.getElementById('playBtn');
+  btn.setAttribute('aria-pressed', on);
+  btn.innerHTML = on ? '❚❚ Pause' : '▶ Play';
+  if(on && !prefersReduced){ lastT=0; if(!rafId) rafId=requestAnimationFrame(frame); }
+  else { if(rafId){ cancelAnimationFrame(rafId); rafId=null; } placeStatic(); }
+}
+document.getElementById('playBtn').addEventListener('click', ()=> setPlaying(!playing));
+document.getElementById('resetBtn').addEventListener('click', ()=>{ applyScenario(current); if(playing && !prefersReduced){ lastT=0; if(!rafId) rafId=requestAnimationFrame(frame);} });
+
+document.querySelectorAll('.scn-tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.scn-tab').forEach(t=>t.setAttribute('aria-selected','false'));
+    tab.setAttribute('aria-selected','true');
+    applyScenario(tab.dataset.scn);
+    if(playing && !prefersReduced){ lastT=0; if(!rafId) rafId=requestAnimationFrame(frame); }
+  });
+});
+
+/* init: build scenario A, autoplay once the stage scrolls in */
+applyScenario('A');
+if(prefersReduced){ setPlaying(false); }
+else {
+  const stageEl = document.getElementById('flowSvg');
+  const startObs = new IntersectionObserver((ents)=>{
+    ents.forEach(e=>{ if(e.isIntersecting){ setPlaying(true); startObs.unobserve(e.target); } });
+  },{threshold:.25});
+  startObs.observe(stageEl);
+  // pause when far offscreen to save cycles
+  const pauseObs = new IntersectionObserver((ents)=>{
+    ents.forEach(e=>{ if(!e.isIntersecting && rafId){ cancelAnimationFrame(rafId); rafId=null; }
+      else if(e.isIntersecting && playing && !rafId){ lastT=0; rafId=requestAnimationFrame(frame); } });
+  },{threshold:0});
+  pauseObs.observe(stageEl);
+}
+
+/* ============================================================
+   4 · console walkthrough slider
+   ============================================================ */
+(function(){
+  const slider = document.getElementById('walkSlider');
+  if(!slider) return;
+  const track = document.getElementById('wTrack');
+  const slides = Array.from(track.children);
+  const N = slides.length;
+  const dotsWrap = document.getElementById('wDots');
+  const stepNum = document.getElementById('wStepNum');
+  const stepName = document.getElementById('wStepName');
+  const prog = document.getElementById('wProg');
+  const playBtn = document.getElementById('wPlay');
+  const prevBtn = document.getElementById('wPrev');
+  const nextBtn = document.getElementById('wNext');
+
+  const NAMES = [
+    'Cloud Scheduler — Define the schedule',
+    'Cloud Scheduler — Configure the execution',
+    'Cloud Scheduler — Optional settings (retries)',
+    'Cloud Scheduler — Jobs list',
+    'Pub/Sub — Create a topic',
+    'Pub/Sub — Topic detail',
+    'Cloud Functions (2nd gen) — Configuration',
+    'Cloud Functions (2nd gen) — Code',
+    'Cloud Run — Create job',
+    'Cloud Run — Execution detail',
+    'Cloud Logging — Logs Explorer'
+  ];
+  const DUR = 7000;
+  let idx = 0, playing = !prefersReduced, raf = null, startTs = 0, paused = false;
+
+  /* paint Google Cloud logos + left-nav product icons */
+  document.querySelectorAll('.gcl').forEach(e=> e.innerHTML = ICONS.glogo);
+  document.querySelectorAll('.gcl-sch').forEach(e=> e.innerHTML = ICONS.scheduler);
+  document.querySelectorAll('.gcl-ps').forEach(e=> e.innerHTML = ICONS.pubsub);
+  document.querySelectorAll('.gcl-run').forEach(e=> e.innerHTML = ICONS.run);
+  document.querySelectorAll('.gcl-fn').forEach(e=> e.innerHTML = ICONS.fn);
+
+  /* dots */
+  slides.forEach((_,k)=>{
+    const b = document.createElement('button');
+    b.className = 'dot'; b.type = 'button';
+    b.setAttribute('aria-label','Go to step '+(k+1)+': '+NAMES[k]);
+    b.addEventListener('click', ()=>{ go(k); resetTimer(); });
+    dotsWrap.appendChild(b);
+  });
+  const dots = Array.from(dotsWrap.children);
+
+  function render(){
+    track.style.transform = 'translateX(-'+(idx*100)+'%)';
+    stepNum.textContent = idx+1;
+    stepName.textContent = NAMES[idx];
+    dots.forEach((d,k)=> d.setAttribute('aria-current', k===idx ? 'true':'false'));
+  }
+  function go(n){ idx = (n+N)%N; render(); }
+  function next(){ go(idx+1); }
+  function prev(){ go(idx-1); }
+
+  /* progress-driven auto-advance */
+  function tick(ts){
+    if(!startTs) startTs = ts;
+    const pct = Math.min(1, (ts-startTs)/DUR);
+    prog.style.width = (pct*100)+'%';
+    if(pct>=1){ startTs = ts; prog.style.width='0%'; next(); }
+    raf = requestAnimationFrame(tick);
+  }
+  function startTimer(){ if(prefersReduced) return; stopTimer(); startTs=0; raf=requestAnimationFrame(tick); }
+  function stopTimer(){ if(raf){ cancelAnimationFrame(raf); raf=null; } }
+  function resetTimer(){ if(playing && !paused) startTimer(); }
+
+  function setPlaying(on){
+    playing = on;
+    playBtn.setAttribute('aria-pressed', on);
+    playBtn.innerHTML = on ? '❚❚ Pause' : '▶ Play';
+    if(on && !paused){ startTimer(); } else { stopTimer(); prog.style.width='0%'; }
+  }
+
+  playBtn.addEventListener('click', ()=> setPlaying(!playing));
+  nextBtn.addEventListener('click', ()=>{ next(); resetTimer(); });
+  prevBtn.addEventListener('click', ()=>{ prev(); resetTimer(); });
+
+  /* pause on hover / focus */
+  function pause(){ paused=true; stopTimer(); prog.style.width='0%'; }
+  function resume(){ paused=false; if(playing) startTimer(); }
+  slider.addEventListener('mouseenter', pause);
+  slider.addEventListener('mouseleave', resume);
+  slider.addEventListener('focusin', pause);
+  slider.addEventListener('focusout', resume);
+
+  /* keyboard arrows */
+  slider.setAttribute('tabindex','0');
+  slider.addEventListener('keydown',(e)=>{
+    if(e.key==='ArrowRight'){ next(); resetTimer(); e.preventDefault(); }
+    else if(e.key==='ArrowLeft'){ prev(); resetTimer(); e.preventDefault(); }
+  });
+
+  render();
+
+  if(prefersReduced){ setPlaying(false); }
+  else {
+    setPlaying(true);
+    const obs = new IntersectionObserver((ents)=>{
+      ents.forEach(e=>{
+        if(e.isIntersecting){ if(playing && !paused) startTimer(); }
+        else { stopTimer(); }
+      });
+    },{threshold:.2});
+    obs.observe(slider);
+  }
+})();
+</script>
+</body>
+</html>
