@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline // Control — GCP Data Stack Onboarding Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#0A0E14; --void-2:#0C111A; --panel:#121821; --panel-2:#19212E; --panel-3:#1F2937;
+    --line:#232D3B; --line-2:#2C3849; --ink:#E6EDF3; --ink-dim:#92A2B5; --ink-faint:#5E6E80;
+    --blue:#4285F4; --blue-t:#7DA9FF; --red:#EA4335; --red-t:#FF8178;
+    --yellow:#FBBC04; --yellow-t:#FFD24A; --green:#34A853; --green-t:#5FD787;
+    --r:14px; --maxw:1180px;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    --disp:"Space Grotesk",var(--sans);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--void);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  body.locked{overflow:hidden}
+  body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:linear-gradient(rgba(66,133,244,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(66,133,244,.035) 1px,transparent 1px);
+    background-size:46px 46px;mask-image:radial-gradient(circle at 50% 0%,#000 0%,transparent 75%)}
+  body::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;
+    background:radial-gradient(900px 500px at 80% -8%,rgba(66,133,244,.12),transparent 60%),radial-gradient(700px 480px at 0% 12%,rgba(52,168,83,.07),transparent 55%)}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:rgba(66,133,244,.32);color:#fff}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px;position:relative;z-index:1}
+
+  .ico{width:46px;height:46px;border-radius:11px;flex:none;display:grid;place-items:center;background:#fff;box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 6px 16px -8px #000;overflow:hidden;padding:7px}
+  .ico img,.ico svg{width:100%;height:100%;object-fit:contain;display:block}
+  .ico svg{color:#3c4043}
+  .ico.sm{width:22px;height:22px;border-radius:6px;padding:3px}
+  .ico.lg{width:54px;height:54px;border-radius:13px;padding:9px}
+
+  .topbar{position:sticky;top:0;z-index:40;backdrop-filter:blur(10px);background:linear-gradient(180deg,rgba(10,14,20,.92),rgba(10,14,20,.74));border-bottom:1px solid var(--line)}
+  .topbar__in{display:flex;align-items:center;gap:16px;height:58px;max-width:var(--maxw);margin:0 auto;padding:0 22px}
+  .brand{display:flex;align-items:center;gap:12px;font-family:var(--disp);font-weight:600;letter-spacing:.02em}
+  .brand svg{width:30px;height:30px;color:var(--blue-t);flex:none}
+  .brand b{font-weight:700}.brand .slash{color:var(--ink-faint);font-weight:400}
+  .topbar__spacer{flex:1}
+  .status-readout{display:flex;align-items:center;gap:18px;font-family:var(--mono);font-size:11.5px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.08em}
+  .status-readout .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2.6s infinite}
+  .status-readout .grp{display:flex;align-items:center;gap:7px}.status-readout b{color:var(--green-t);font-weight:600}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,168,83,.5)}70%{box-shadow:0 0 0 7px rgba(52,168,83,0)}100%{box-shadow:0 0 0 0 rgba(52,168,83,0)}}
+
+  .shell{display:grid;grid-template-columns:228px 1fr;gap:40px;max-width:var(--maxw);margin:0 auto;padding:0 22px;position:relative;z-index:1}
+  .rail{position:sticky;top:80px;align-self:start;height:max-content;padding:6px 0 40px}
+  .rail h6{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);margin:18px 10px 9px}
+  .rail a{display:flex;align-items:center;gap:11px;padding:8px 11px;border-radius:9px;font-size:13.5px;color:var(--ink-dim);border:1px solid transparent;transition:.18s}
+  .rail a .ix{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);width:18px}
+  .rail a:hover{color:var(--ink);background:var(--panel)}
+  .rail a.on{color:var(--ink);background:var(--panel-2);border-color:var(--line-2)}
+  .rail a.on .ix{color:var(--blue-t)}
+  .rail .leg{margin:8px 10px 0;border-top:1px solid var(--line);padding-top:14px}
+  .rail .leg div{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);margin-bottom:7px;letter-spacing:.04em}
+  .rail .leg .sw{width:9px;height:9px;border-radius:2px;flex:none}
+
+  main{min-width:0;padding-bottom:90px}
+  .block{padding:64px 0 12px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--line-2)}
+  .block>h2{font-family:var(--disp);font-weight:600;font-size:clamp(22px,3vw,30px);letter-spacing:-.01em;margin-bottom:10px}
+  .block>.lead{color:var(--ink-dim);max-width:64ch;font-size:15px}
+  .block>.lead b{color:var(--ink)}
+
+  .hero{padding:56px 0 6px;position:relative}
+  .hero .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--blue-t);margin-bottom:20px;opacity:0;animation:fadeUp .7s .15s forwards}
+  .hero h1{font-family:var(--disp);font-weight:700;line-height:1.04;letter-spacing:-.02em;font-size:clamp(34px,6.4vw,68px);max-width:16ch;opacity:0;animation:fadeUp .8s .28s forwards}
+  .hero h1 .g1{color:var(--blue-t)}.hero h1 .g4{color:var(--red-t)}
+  .hero p.sub{margin-top:22px;max-width:60ch;color:var(--ink-dim);font-size:16.5px;opacity:0;animation:fadeUp .8s .42s forwards}
+  .hero .meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px;opacity:0;animation:fadeUp .8s .56s forwards}
+  .chip{font-family:var(--mono);font-size:11.5px;border:1px solid var(--line-2);background:var(--panel);padding:6px 11px;border-radius:999px;color:var(--ink-dim);letter-spacing:.03em}
+  .chip b{color:var(--ink)}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+  .pipe{margin:46px 0 8px;border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(180deg,var(--panel),var(--void-2));padding:30px 26px 24px;position:relative;overflow:hidden;opacity:0;animation:fadeUp .9s .7s forwards}
+  .pipe__hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;flex-wrap:wrap;gap:10px}
+  .pipe__hd .t{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint)}
+  .pipe__hd .t b{color:var(--ink-dim)}
+  .pipe__hd .live{font-family:var(--mono);font-size:11px;color:var(--green-t);display:flex;align-items:center;gap:7px}
+  .pipe__hd .live i{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2.6s infinite}
+  .flow{position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
+  .flow .track{position:absolute;left:5%;right:5%;top:32px;height:2px;background:var(--line-2);border-radius:2px}
+  .flow .packet{position:absolute;top:26px;left:5%;width:14px;height:14px;border-radius:50%;background:var(--blue);box-shadow:0 0 16px 3px var(--blue);animation:run 7s cubic-bezier(.65,0,.35,1) infinite,hue 7s linear infinite;z-index:3}
+  @keyframes run{0%{left:5%}14%{left:5%}100%{left:95%}}
+  @keyframes hue{0%,36%{background:var(--blue);box-shadow:0 0 16px 3px var(--blue)}54%{background:var(--green);box-shadow:0 0 16px 3px var(--green)}72%{background:var(--yellow);box-shadow:0 0 16px 3px var(--yellow)}90%,100%{background:var(--red);box-shadow:0 0 16px 3px var(--red)}}
+  .node{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:11px;width:16%;text-align:center}
+  .node .orb{width:58px;height:58px;border-radius:15px;display:grid;place-items:center;background:var(--panel-2);border:1px solid var(--line-2);transition:.3s;animation:glow 7s linear infinite}
+  .node .lab{font-family:var(--mono);font-size:11px;color:var(--ink-dim);line-height:1.35}
+  .node .lab span{display:block;color:var(--ink-faint);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;margin-top:3px}
+  .node[data-h="blue"]{--c:var(--blue)}.node[data-h="green"]{--c:var(--green)}.node[data-h="yellow"]{--c:var(--yellow)}.node[data-h="red"]{--c:var(--red)}
+  .node:nth-child(3) .orb{animation-delay:0s}.node:nth-child(4) .orb{animation-delay:1s}.node:nth-child(5) .orb{animation-delay:2.1s}.node:nth-child(6) .orb{animation-delay:3.2s}.node:nth-child(7) .orb{animation-delay:4.3s}.node:nth-child(8) .orb{animation-delay:5.3s}
+  @keyframes glow{0%,82%{border-color:var(--line-2);box-shadow:none}86%{border-color:var(--c);box-shadow:0 0 22px -4px var(--c)}92%{border-color:var(--c);box-shadow:0 0 22px -4px var(--c)}100%{border-color:var(--line-2);box-shadow:none}}
+
+  .stages{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:30px}
+  .stage{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:18px 16px;position:relative;overflow:hidden}
+  .stage::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c,var(--blue))}
+  .stage[data-h="blue"]{--c:var(--blue)}.stage[data-h="green"]{--c:var(--green)}.stage[data-h="yellow"]{--c:var(--yellow)}.stage[data-h="red"]{--c:var(--red)}
+  .stage .n{font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:.1em}
+  .stage h4{font-family:var(--disp);font-size:16px;font-weight:600;margin:9px 0 7px;color:var(--c)}
+  .stage p{font-size:13px;color:var(--ink-dim)}.stage p b{color:var(--ink)}
+
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:26px}
+  .svc{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);padding:22px;position:relative;overflow:hidden;transition:.25s;cursor:pointer;opacity:0;transform:translateY(22px);text-align:left;font:inherit;color:inherit;width:100%;display:block}
+  .svc.in{opacity:1;transform:none}
+  .svc::after{content:"";position:absolute;inset:0;border-radius:var(--r);pointer-events:none;box-shadow:inset 0 0 0 1px transparent;transition:.25s}
+  .svc:hover{transform:translateY(-3px);border-color:var(--line-2)}
+  .svc:hover::after{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 55%,transparent),0 18px 40px -22px var(--c)}
+  .svc[data-h="blue"]{--c:var(--blue);--ct:var(--blue-t)}.svc[data-h="green"]{--c:var(--green);--ct:var(--green-t)}.svc[data-h="yellow"]{--c:var(--yellow);--ct:var(--yellow-t)}.svc[data-h="red"]{--c:var(--red);--ct:var(--red-t)}
+  .svc__top{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px}
+  .svc__id{flex:1;min-width:0}
+  .svc__cat{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ct)}
+  .svc__name{font-family:var(--disp);font-weight:600;font-size:19px;letter-spacing:-.01em;line-height:1.2;margin-top:4px}
+  .svc__pill{font-family:var(--mono);font-size:10.5px;flex:none;align-self:flex-start;padding:5px 9px;border-radius:7px;letter-spacing:.05em;background:color-mix(in srgb,var(--c) 13%,transparent);color:var(--ct);border:1px solid color-mix(in srgb,var(--c) 30%,transparent)}
+  .lineage{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:13px 0;margin:4px 0 14px}
+  .lineage .row{display:flex;align-items:baseline;gap:9px;font-family:var(--mono);font-size:11.5px;color:var(--ink-dim);padding:3px 0;flex-wrap:wrap}
+  .lineage .row .yr{color:var(--ink-faint);min-width:64px;flex:none}
+  .lineage .row .arr{color:var(--c)}.lineage .row .cur{color:var(--ink);font-weight:500}.lineage .row .now{color:var(--ct);font-weight:600}
+  .lineage .old{text-decoration:line-through;color:var(--ink-faint)}
+  .svc dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13px;margin-bottom:16px}
+  .svc dt{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);padding-top:3px}
+  .svc dd{color:var(--ink-dim)}.svc dd b{color:var(--ink);font-weight:500}
+  .svc dd.an{color:var(--ink)}
+  .svc dd.an::before{content:"\201C";color:var(--c);font-family:var(--disp);font-size:16px;margin-right:1px}
+  .svc dd.an::after{content:"\201D";color:var(--c);font-family:var(--disp);font-size:16px;margin-left:1px}
+  .svc__cta{display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:11.5px;color:var(--ct);letter-spacing:.04em;border-top:1px dashed var(--line-2);padding-top:13px}
+  .svc__cta .arrow{transition:transform .2s;display:inline-block}
+  .svc:hover .svc__cta .arrow{transform:translateX(4px)}
+  .svc__cta .tabs-hint{color:var(--ink-faint)}
+
+  .scrim{position:fixed;inset:0;z-index:60;background:rgba(5,8,12,.66);backdrop-filter:blur(3px);opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
+  .scrim.open{opacity:1;visibility:visible}
+  .drawer{position:fixed;top:0;right:0;height:100%;width:min(580px,94vw);z-index:70;background:linear-gradient(180deg,#0e141d,#0a0e15);border-left:1px solid var(--line-2);box-shadow:-30px 0 80px -40px #000;display:flex;flex-direction:column;transform:translateX(102%);transition:transform .36s cubic-bezier(.4,0,.2,1)}
+  .drawer.open{transform:none}
+  .drawer__head{display:flex;align-items:center;gap:14px;padding:20px 22px;border-bottom:1px solid var(--line);flex:none}
+  .drawer__head .svc__id{flex:1}
+  .drawer__cat{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase}
+  .drawer__head h3{font-family:var(--disp);font-weight:600;font-size:21px;letter-spacing:-.01em;line-height:1.2;margin-top:3px}
+  .drawer__close{flex:none;width:38px;height:38px;border-radius:10px;border:1px solid var(--line-2);background:var(--panel);color:var(--ink-dim);font-size:16px;cursor:pointer;transition:.18s;display:grid;place-items:center}
+  .drawer__close:hover{color:var(--ink);background:var(--panel-2);border-color:var(--ink-faint)}
+  .drawer__body{overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+  .drawer__body::-webkit-scrollbar{width:9px}.drawer__body::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:9px}
+
+  .dtabs{display:flex;gap:2px;padding:0 14px;position:sticky;top:0;z-index:2;background:rgba(12,17,24,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);overflow-x:auto}
+  .dtab{background:none;border:none;border-bottom:2px solid transparent;color:var(--ink-faint);font-family:var(--mono);font-size:12px;padding:14px 13px;cursor:pointer;white-space:nowrap;letter-spacing:.02em;transition:.18s}
+  .dtab.on{color:var(--ink)}
+  .dtab:hover{color:var(--ink-dim)}
+  .deep[data-h="blue"] .dtab.on{border-color:var(--blue)}.deep[data-h="green"] .dtab.on{border-color:var(--green)}.deep[data-h="yellow"] .dtab.on{border-color:var(--yellow)}.deep[data-h="red"] .dtab.on{border-color:var(--red)}
+  .dpanels{padding:22px}
+  .dpanel{display:none;animation:fadeIn .3s}
+  .dpanel.on{display:block}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .deep{--c:var(--blue);--ct:var(--blue-t)}
+  .deep[data-h="blue"]{--c:var(--blue);--ct:var(--blue-t)}.deep[data-h="green"]{--c:var(--green);--ct:var(--green-t)}.deep[data-h="yellow"]{--c:var(--yellow);--ct:var(--yellow-t)}.deep[data-h="red"]{--c:var(--red);--ct:var(--red-t)}
+
+  .dpanel p{font-size:14px;color:var(--ink-dim);margin-bottom:14px}
+  .dpanel p b{color:var(--ink);font-weight:500}
+  .dpanel .lead-line{font-size:15px;color:var(--ink);border-left:2px solid var(--c);padding-left:14px;margin-bottom:18px}
+  .d-h{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ct);margin:22px 0 11px;display:flex;align-items:center;gap:9px}
+  .d-h::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--c)}
+  .dpanel ul{list-style:none;margin:0 0 16px;padding:0}
+  .dpanel ul li{position:relative;padding-left:20px;font-size:13.5px;color:var(--ink-dim);margin-bottom:9px}
+  .dpanel ul li::before{content:"";position:absolute;left:2px;top:8px;width:6px;height:6px;border-radius:1px;background:var(--c);opacity:.8}
+  .dpanel ul li b{color:var(--ink);font-weight:500}
+  code{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--ct)}
+  .vtable{width:100%;border-collapse:collapse;margin:6px 0 18px;font-size:13px}
+  .vtable th,.vtable td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+  .vtable th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);font-weight:500}
+  .vtable td{color:var(--ink-dim)}.vtable td b{color:var(--ink);font-weight:500}
+  .vtable tr.now td{background:color-mix(in srgb,var(--c) 9%,transparent)}
+  .vtable tr.now td:first-child{box-shadow:inset 3px 0 0 var(--c)}
+  .callout{border:1px solid color-mix(in srgb,var(--c) 28%,var(--line));background:color-mix(in srgb,var(--c) 7%,var(--panel));border-radius:11px;padding:14px 16px;margin:6px 0 18px;font-size:13.5px;color:var(--ink-dim)}
+  .callout b{color:var(--ct);font-weight:600}
+  .callout.warn{--c:var(--red);--ct:var(--red-t)}
+  .tl{position:relative;border-left:2px solid var(--line-2);margin:6px 0 14px}
+  .tl .it{position:relative;padding:0 0 16px 22px}
+  .tl .it::before{content:"";position:absolute;left:-7px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--void);border:2px solid var(--c)}
+  .tl .it .dt{font-family:var(--mono);font-size:11px;color:var(--ct);letter-spacing:.04em;margin-bottom:3px}
+  .tl .it .tx{font-size:13.5px;color:var(--ink-dim)}.tl .it .tx b{color:var(--ink)}
+  .pair{display:grid;grid-template-columns:auto 1fr;gap:7px 13px;font-size:13.5px;margin:4px 0 16px}
+  .pair dt{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);padding-top:3px}
+  .pair dd{color:var(--ink-dim)}.pair dd b{color:var(--ink);font-weight:500}
+  .recall-box{display:flex;gap:14px;align-items:flex-start;border:1px solid color-mix(in srgb,var(--c) 25%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--c) 6%,var(--panel));padding:16px;margin:4px 0 6px}
+  .recall-box .em{font-size:30px;line-height:1;flex:none}
+  .recall-box h5{font-family:var(--disp);font-size:15px;font-weight:600;color:var(--ct);margin-bottom:5px}
+  .recall-box p{font-size:13.5px;color:var(--ink-dim);margin:0}
+
+  .console{border:1px solid var(--line-2);border-radius:16px;margin-top:26px;overflow:hidden;background:linear-gradient(180deg,#0e141d,#0a0e15);box-shadow:0 40px 80px -50px #000,inset 0 1px 0 rgba(255,255,255,.03)}
+  .console__bar{display:flex;align-items:center;gap:9px;padding:11px 15px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .console__bar .dots{display:flex;gap:6px}.console__bar .dots i{width:11px;height:11px;border-radius:50%;display:block}
+  .console__bar .dots i:nth-child(1){background:#ff5f57}.console__bar .dots i:nth-child(2){background:#febc2e}.console__bar .dots i:nth-child(3){background:#28c840}
+  .console__url{flex:1;font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);background:var(--void);border:1px solid var(--line);border-radius:8px;padding:5px 11px;margin:0 6px;display:flex;align-items:center;gap:8px}
+  .console__url b{color:var(--ink-dim);font-weight:500}
+  .console__tag{font-family:var(--mono);font-size:10px;color:var(--green-t);border:1px solid color-mix(in srgb,var(--green) 35%,transparent);padding:3px 8px;border-radius:6px}
+  .console__tabs{display:flex;gap:2px;padding:0 14px;border-bottom:1px solid var(--line);background:var(--void-2);overflow-x:auto}
+  .console__tabs button{background:none;border:none;border-bottom:2px solid transparent;color:var(--ink-faint);font-family:var(--mono);font-size:12px;padding:12px 14px;cursor:pointer;white-space:nowrap;letter-spacing:.02em;transition:.18s}
+  .console__tabs button.on{color:var(--ink);border-color:var(--blue)}
+  .console__tabs button:hover{color:var(--ink-dim)}
+  .console__body{padding:18px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;position:relative;overflow:hidden}
+  .tile .th{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .tile .th .nm{font-size:12px;color:var(--ink-dim);display:flex;align-items:center;gap:8px}
+  .tile .v{font-family:var(--disp);font-size:24px;font-weight:600;letter-spacing:-.01em}
+  .tile .sub{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin-top:2px}
+  .tile .spark{margin-top:9px;height:34px;width:100%;display:block}
+  .tile .up{color:var(--green-t)}.g-blue{color:var(--blue-t)}.g-green{color:var(--green-t)}.g-yellow{color:var(--yellow-t)}.g-red{color:var(--red-t)}
+  .b-blue{background:var(--blue)}.b-green{background:var(--green)}.b-yellow{background:var(--yellow)}.b-red{background:var(--red)}
+  .panel-wide{grid-column:span 2;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px}
+  .panel-wide h5{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:13px;display:flex;align-items:center;justify-content:space-between}
+  .panel-wide h5 .rid{color:var(--ink-faint)}
+  .dag-run{display:flex;flex-direction:column;gap:9px}
+  .dag-row{display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:center}
+  .dag-row .tk{font-family:var(--mono);font-size:11px;color:var(--ink-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dag-row .bar{height:18px;border-radius:5px;background:var(--panel-3);position:relative;overflow:hidden}
+  .dag-row .bar .fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;width:0;transition:width .5s linear}
+  .dag-row .bar .st{position:absolute;right:7px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase}
+  .s-success .fill{background:linear-gradient(90deg,color-mix(in srgb,var(--green) 70%,transparent),var(--green));width:100%!important}.s-success .st{color:#03130a}
+  .s-running .fill{background:linear-gradient(90deg,color-mix(in srgb,var(--blue) 60%,transparent),var(--blue))}.s-running .st{color:var(--blue-t)}
+  .s-queued .fill{background:var(--panel-3);width:8%!important}.s-queued .st{color:var(--ink-faint)}
+  .logs{font-family:var(--mono);font-size:11.5px;line-height:1.85;height:208px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
+  .logs .ln{display:flex;gap:9px;white-space:nowrap;opacity:0;animation:logIn .35s forwards}
+  .logs .ln .ts{color:var(--ink-faint);flex:none}.logs .ln .lv{flex:none;width:42px}.logs .ln .msg{color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis}
+  .lv-info{color:var(--blue-t)}.lv-ok{color:var(--green-t)}.lv-warn{color:var(--yellow-t)}.lv-err{color:var(--red-t)}
+  @keyframes logIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+  .console__note{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);padding:10px 18px 16px;border-top:1px solid var(--line)}
+
+  .ledger{margin-top:26px;border-left:2px solid var(--line-2)}
+  .lrow{display:grid;grid-template-columns:118px 1fr;gap:20px;padding:0 0 26px 24px;position:relative}
+  .lrow::before{content:"";position:absolute;left:-7px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--void);border:2px solid var(--c,var(--blue))}
+  .lrow[data-h="blue"]{--c:var(--blue)}.lrow[data-h="green"]{--c:var(--green)}.lrow[data-h="yellow"]{--c:var(--yellow)}.lrow[data-h="red"]{--c:var(--red)}
+  .lrow .date{font-family:var(--mono);font-size:12px;color:var(--ink-faint);padding-top:2px}
+  .lrow .date b{display:block;color:var(--ink);font-size:13px;letter-spacing:.03em}
+  .lrow .ev b{color:var(--ink);font-weight:600}
+  .lrow .ev .old{color:var(--ink-faint);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--c) 60%,transparent)}
+  .lrow .ev .new{color:var(--c)}.lrow .ev p{font-size:13px;color:var(--ink-dim);margin-top:4px}
+
+  .deps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}
+  .dep{border:1px solid color-mix(in srgb,var(--red) 26%,var(--line));border-radius:12px;background:linear-gradient(180deg,color-mix(in srgb,var(--red) 7%,var(--panel)),var(--panel));padding:18px;position:relative}
+  .dep .hd{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--red-t);margin-bottom:12px}
+  .dep .hd .w{width:16px;height:16px;color:var(--red-t)}
+  .dep h4{font-family:var(--disp);font-size:16px;font-weight:600;margin-bottom:6px}
+  .dep p{font-size:13px;color:var(--ink-dim);margin-bottom:12px}
+  .dep .when{font-family:var(--mono);font-size:12px;color:var(--ink);border-top:1px dashed var(--line-2);padding-top:10px}.dep .when b{color:var(--red-t)}
+
+  .recall-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:24px}
+  .card{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:18px;display:flex;gap:15px;align-items:flex-start;transition:.22s}
+  .card:hover{border-color:var(--line-2);background:var(--panel-2)}
+  .card[data-h="blue"]{--c:var(--blue);--ct:var(--blue-t)}.card[data-h="green"]{--c:var(--green);--ct:var(--green-t)}.card[data-h="yellow"]{--c:var(--yellow);--ct:var(--yellow-t)}.card[data-h="red"]{--c:var(--red);--ct:var(--red-t)}
+  .card .em{font-size:26px;line-height:1;flex:none;width:46px;height:46px;border-radius:11px;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 12%,var(--panel-2));border:1px solid color-mix(in srgb,var(--c) 28%,transparent)}
+  .card .bd h4{font-family:var(--disp);font-size:14.5px;font-weight:600;color:var(--ct);margin-bottom:5px}
+  .card .bd p{font-size:13px;color:var(--ink-dim)}.card .bd p b{color:var(--ink)}
+
+  footer{border-top:1px solid var(--line);margin-top:70px;padding:30px 0 60px}
+  footer .ft{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start}
+  footer .note{font-family:var(--mono);font-size:11px;color:var(--ink-faint);max-width:64ch;line-height:1.8}footer .note b{color:var(--ink-dim)}
+  footer .sig{font-family:var(--disp);font-size:13px;color:var(--ink-dim);display:flex;align-items:center;gap:9px}footer .sig svg{width:20px;height:20px;color:var(--blue-t)}
+
+  @media(max-width:1000px){
+    .shell{grid-template-columns:1fr;gap:0}.rail{display:none}
+    .grid,.recall-grid{grid-template-columns:1fr}.stages,.deps{grid-template-columns:1fr 1fr}
+    .console__body{grid-template-columns:1fr 1fr}.panel-wide{grid-column:span 2}
+  }
+  @media(max-width:760px){
+    .status-readout .hide-sm{display:none}
+    .flow{overflow-x:auto;padding-bottom:8px}.node{width:96px;flex:none}.flow .track,.flow .packet{display:none}
+    .node .orb{border-color:var(--c);animation:none}
+    .stages,.deps,.console__body{grid-template-columns:1fr}.panel-wide{grid-column:span 1}
+    .lrow{grid-template-columns:1fr;gap:6px}.dag-row{grid-template-columns:92px 1fr}.hero h1{font-size:34px}
+    .drawer{width:100vw}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+    .hero .kicker,.hero h1,.hero p.sub,.hero .meta,.pipe,.svc{opacity:1!important;transform:none!important}
+    .flow .packet{display:none}.node .orb{border-color:var(--c)}.logs .ln{opacity:1!important}
+    .drawer{transition:none!important}
+  }
+  :focus-visible{outline:2px solid var(--blue-t);outline-offset:2px;border-radius:4px}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="g-pubsub" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="12" r="2.4" fill="currentColor" stroke="none"/><path d="M11 12h9M11 7c5 0 8 2.2 8 5M11 17c5 0 8-2.2 8-5"/></g></symbol>
+  <symbol id="g-eventarc" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 9V4M12 20v-5M9.2 10.4 4.8 7.5M19.2 16.5l-4.4-2.9M9.2 13.6l-4.4 2.9M19.2 7.5l-4.4 2.9"/></g></symbol>
+  <symbol id="g-run" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="14" rx="3"/><path d="M10 9.5l4 2.5-4 2.5z" fill="currentColor" stroke="none"/></g></symbol>
+  <symbol id="g-functions" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M7 5h7l5 5v9H7z"/><path d="M13 5v5h5"/><path d="M11.5 13.2 9.7 17M12.5 13.2 14.3 17" stroke-linecap="round"/></g></symbol>
+  <symbol id="g-airflow" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 4c2.5 0 3.5 3 2 5.5C16.7 8 19.5 9 20 11.7c-2 .3-3.4-1.3-3.7-3M12 20c-2.5 0-3.5-3-2-5.5C7.3 16 4.5 15 4 12.3c2-.3 3.4 1.3 3.7 3"/><circle cx="12" cy="12" r="2"/></g></symbol>
+  <symbol id="g-composer" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="6" width="17" height="12" rx="3"/><path d="M9 12c1-2 2-2 3 0s2 2 3 0"/></g></symbol>
+  <symbol id="g-dataplex" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 6h14v12H5z" stroke-width="1.8"/><path d="M5 10h14M9 6v12"/><circle cx="6.9" cy="8" r=".9" fill="currentColor" stroke="none"/></g></symbol>
+  <symbol id="g-dag" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M8.1 7.4 10.4 16M15.9 7.4 13.6 16M8.4 6h7.2" stroke-width="1.6" stroke-linecap="round"/></g></symbol>
+  <symbol id="g-sor" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="6" rx="7" ry="2.6"/><path d="M5 6v12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6M5 12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6"/></g></symbol>
+</svg>
+
+<header class="topbar">
+  <div class="topbar__in">
+    <div class="brand">
+      <svg id="logo" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <circle cx="8" cy="20" r="4" stroke="currentColor" stroke-width="2"/><circle cx="32" cy="9" r="4" stroke="currentColor" stroke-width="2"/><circle cx="32" cy="31" r="4" stroke="currentColor" stroke-width="2"/>
+        <path d="M11.4 18.2 L28.6 10.4 M11.4 21.8 L28.6 29.6 M32 13 L32 27" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span>PIPELINE <span class="slash">//</span> <b>CONTROL</b></span>
+    </div>
+    <div class="topbar__spacer"></div>
+    <div class="status-readout">
+      <span class="grp hide-sm"><span>BUILD</span><b>2026.06</b></span>
+      <span class="grp hide-sm"><span>SVCS</span><b>09</b></span>
+      <span class="grp"><span class="dot"></span><span>STATUS</span> <b>OPERATIONAL</b></span>
+      <span class="grp" id="clock" style="min-width:74px"></span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="rail" aria-label="Sections">
+    <h6>// Sections</h6>
+    <a href="#overview" class="navlink"><span class="ix">00</span>Overview</a>
+    <a href="#pipeline" class="navlink"><span class="ix">01</span>The pipeline</a>
+    <a href="#registry" class="navlink"><span class="ix">02</span>Service registry</a>
+    <a href="#console" class="navlink"><span class="ix">03</span>Live console</a>
+    <a href="#ledger" class="navlink"><span class="ix">04</span>Rename ledger</a>
+    <a href="#deprecations" class="navlink"><span class="ix">05</span>Deprecation watch</a>
+    <a href="#recall" class="navlink"><span class="ix">06</span>Quick recall</a>
+    <div class="leg">
+      <h6 style="margin:0 0 10px 0">// Signal legend</h6>
+      <div><span class="sw b-blue"></span>Ingest &amp; transport</div>
+      <div><span class="sw b-green"></span>Compute / process</div>
+      <div><span class="sw b-yellow"></span>Orchestrate</div>
+      <div><span class="sw b-red"></span>Govern &amp; record</div>
+    </div>
+  </nav>
+
+  <main>
+    <section class="hero" id="overview">
+      <div class="kicker">Onboarding console · GCP data engineering stack</div>
+      <h1>The path from <span class="g1">event</span> to <span class="g4">system of record</span>, one stack.</h1>
+      <p class="sub">A field guide to the nine moving parts your pipelines run on — what each one is <em>now</em>, what it used to be called, the version you should be on, and a mental model so it sticks. <b style="color:var(--ink)">Click any service card</b> to open its full deep-dive.</p>
+      <div class="meta">
+        <span class="chip">3 services renamed in <b>2024–2026</b></span>
+        <span class="chip">Airflow <b>3.2.2</b> current</span>
+        <span class="chip">3 deprecations <b>landing 2026</b></span>
+        <span class="chip">Tap a card for <b>full detail</b></span>
+      </div>
+      <div class="pipe">
+        <div class="pipe__hd">
+          <span class="t"><b>DATA FLOW</b> · ingest → route → process → orchestrate → govern → record</span>
+          <span class="live"><i></i>EVENT IN TRANSIT</span>
+        </div>
+        <div class="flow">
+          <div class="track"></div><div class="packet"></div>
+          <div class="node" data-h="blue"><div class="orb"><span class="ico" data-ico="pubsub"></span></div><div class="lab">Pub/Sub<span>Ingest</span></div></div>
+          <div class="node" data-h="blue"><div class="orb"><span class="ico" data-ico="eventarc"></span></div><div class="lab">Eventarc<span>Route</span></div></div>
+          <div class="node" data-h="green"><div class="orb"><span class="ico" data-ico="run"></span></div><div class="lab">Cloud Run<span>Process</span></div></div>
+          <div class="node" data-h="yellow"><div class="orb"><span class="ico" data-ico="composer"></span></div><div class="lab">Composer<span>Orchestrate</span></div></div>
+          <div class="node" data-h="red"><div class="orb"><span class="ico" data-ico="dataplex"></span></div><div class="lab">Catalog<span>Govern</span></div></div>
+          <div class="node" data-h="red"><div class="orb"><span class="ico" data-ico="sor"></span></div><div class="lab">SOR<span>Record</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="pipeline">
+      <div class="eyebrow">01 — The mental model</div>
+      <h2>One sentence to hang everything on</h2>
+      <p class="lead">A change happens somewhere. <b style="color:var(--blue-t)">Pub/Sub</b> catches it and <b style="color:var(--blue-t)">Eventarc</b> routes it; <b style="color:var(--green-t)">Cloud Run</b> processes it; <b style="color:var(--yellow-t)">Airflow/Composer</b> coordinates the bigger job; the <b style="color:var(--red-t)">Catalog</b> governs it and it settles into a <b style="color:var(--red-t)">system of record</b>. Four colours, four jobs — that's the whole map.</p>
+      <div class="stages">
+        <div class="stage" data-h="blue"><div class="n">INGEST · TRANSPORT</div><h4>Move the message</h4><p>Get the event off the source onto a durable, decoupled channel. <b>Pub/Sub, Eventarc.</b></p></div>
+        <div class="stage" data-h="green"><div class="n">COMPUTE</div><h4>Run the code</h4><p>Do the work — transform, enrich, call an API — on demand, scaling to zero. <b>Cloud Run, Cloud Run functions.</b></p></div>
+        <div class="stage" data-h="yellow"><div class="n">ORCHESTRATE</div><h4>Coordinate the steps</h4><p>Sequence many tasks in order, on a schedule, with retries and visibility. <b>Airflow, Composer, the DAG.</b></p></div>
+        <div class="stage" data-h="red"><div class="n">GOVERN · RECORD</div><h4>Make it trustworthy</h4><p>Catalogue, secure and add meaning; land the authoritative copy. <b>Knowledge Catalog, the SOR.</b></p></div>
+      </div>
+    </section>
+
+    <section class="block" id="registry">
+      <div class="eyebrow">02 — Service registry</div>
+      <h2>Previous name → current name → version</h2>
+      <p class="lead">One card per service. <b>Click to open the full deep-dive</b> — each drawer has tabs for Overview, Naming &amp; history, Versions, and the Mental model. Google kept the old API identifiers after every public rebrand, which is exactly where new hires get tripped up.</p>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <section class="block" id="console">
+      <div class="eyebrow">03 — Live console</div>
+      <h2>What it looks like when it's running</h2>
+      <p class="lead">A recreation of the kind of monitoring view you'll live in — service-health tiles, an Airflow DAG run, and a streaming log. Built from scratch; numbers are illustrative.</p>
+      <div class="console">
+        <div class="console__bar">
+          <div class="dots"><i></i><i></i><i></i></div>
+          <div class="console__url"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 2a7 7 0 0 0-7 7v3H4v8h16v-8h-1V9a7 7 0 0 0-7-7z" stroke="#5E6E80" stroke-width="2"/></svg><b>console.cloud · </b>monitoring/pipelines/orders-ingest</div>
+          <span class="console__tag">● LIVE</span>
+        </div>
+        <div class="console__tabs">
+          <button class="on">Overview</button><button>Pub/Sub</button><button>Cloud Run</button><button>Airflow DAGs</button><button>Logs</button><button>Catalog</button>
+        </div>
+        <div class="console__body">
+          <div class="tile"><div class="th"><span class="nm"><span class="ico sm" data-ico="pubsub"></span>Pub/Sub · orders</span></div><div class="v g-blue" data-count="1284" data-suffix="/s">0/s</div><div class="sub">throughput · <span class="up">▲ 4.2%</span></div><svg class="spark" data-spark="blue" viewBox="0 0 120 34" preserveAspectRatio="none"></svg></div>
+          <div class="tile"><div class="th"><span class="nm"><span class="ico sm" data-ico="run"></span>Cloud Run · transform</span></div><div class="v g-green" data-count="62" data-suffix="ms">0ms</div><div class="sub">p50 latency · <span class="up">stable</span></div><svg class="spark" data-spark="green" viewBox="0 0 120 34" preserveAspectRatio="none"></svg></div>
+          <div class="tile"><div class="th"><span class="nm"><span class="ico sm" data-ico="composer"></span>Composer · DAGs</span></div><div class="v g-yellow" data-count="18" data-suffix=" ok">0 ok</div><div class="sub">runs today · 0 failed</div><svg class="spark" data-spark="yellow" viewBox="0 0 120 34" preserveAspectRatio="none"></svg></div>
+          <div class="tile"><div class="th"><span class="nm"><span class="ico sm" data-ico="dataplex"></span>Catalog · assets</span></div><div class="v g-red" data-count="3470" data-suffix="">0</div><div class="sub">governed · <span class="up">▲ 12 new</span></div><svg class="spark" data-spark="red" viewBox="0 0 120 34" preserveAspectRatio="none"></svg></div>
+          <div class="panel-wide">
+            <h5>orders_etl · DAG run <span class="rid" id="dag-rid">run_2026-06-23T08:14Z</span></h5>
+            <div class="dag-run" id="dag-run">
+              <div class="dag-row"><span class="tk">ingest_pubsub</span><div class="bar s-success"><div class="fill"></div><span class="st">success</span></div></div>
+              <div class="dag-row"><span class="tk">validate_schema</span><div class="bar s-success"><div class="fill"></div><span class="st">success</span></div></div>
+              <div class="dag-row"><span class="tk">transform_run_job</span><div class="bar s-running"><div class="fill"></div><span class="st">running</span></div></div>
+              <div class="dag-row"><span class="tk">write_to_sor</span><div class="bar s-queued"><div class="fill"></div><span class="st">queued</span></div></div>
+              <div class="dag-row"><span class="tk">catalog_lineage</span><div class="bar s-queued"><div class="fill"></div><span class="st">queued</span></div></div>
+            </div>
+          </div>
+          <div class="panel-wide"><h5>Cloud Logging · tail <span class="rid">severity ≥ INFO</span></h5><div class="logs" id="logstream"></div></div>
+        </div>
+        <div class="console__note">// Recreated interface for onboarding. Not affiliated with Google. Service icons are the official Google Cloud product icons (from cloud.google.com/icons, via the IcePanel CDN); Airflow uses the Apache Airflow logo.</div>
+      </div>
+    </section>
+
+    <section class="block" id="ledger">
+      <div class="eyebrow">04 — Rename ledger</div>
+      <h2>The 2024–2026 renames, in order</h2>
+      <p class="lead">Tutorials, Stack Overflow answers and even some Google docs still use the old names. Here's the timeline so an old name never throws you.</p>
+      <div class="ledger">
+        <div class="lrow" data-h="green"><div class="date"><b>2024.08.21</b>rebrand</div><div class="ev"><b><span class="old">Cloud Functions</span> → <span class="new">Cloud Run functions</span></b><p>More than a name change — the Functions infrastructure was unified with Cloud Run. 1st gen became "Cloud Run functions (1st gen)". The v2 API and gcloud commands stayed.</p></div></div>
+        <div class="lrow" data-h="yellow"><div class="date"><b>2025.03.17</b>GA</div><div class="ev"><b>Cloud Composer 3 reaches GA</b><p>Simplified networking, evergreen versioning and hidden infrastructure — the cluster no longer lives in your project. Billing moves to DCUs.</p></div></div>
+        <div class="lrow" data-h="yellow"><div class="date"><b>2025.04.22</b>release</div><div class="ev"><b>Apache Airflow <span class="new">3.0.0</span> ships</b><p>The biggest release in Airflow's history: new React UI, DAG versioning, a Task Execution API / Task SDK (<code>airflow.sdk</code>), and event-driven scheduling.</p></div></div>
+        <div class="lrow" data-h="red"><div class="date"><b>2026.04.10</b>rebrand</div><div class="ev"><b><span class="old">Dataplex Universal Catalog</span> → <span class="new">Knowledge Catalog</span></b><p>Repositioned as a Gemini-powered context engine. The API, client library, CLI and IAM names all stay unchanged — only the product name moved.</p></div></div>
+        <div class="lrow" data-h="yellow"><div class="date"><b>2026.04.15</b>rebrand</div><div class="ev"><b><span class="old">Cloud Composer</span> → <span class="new">Managed Service for Apache Airflow</span></b><p>Composer 1/2/3 become Managed Airflow Gen 1/2/3. Same day, Airflow 3 reached GA inside Composer 3.</p></div></div>
+      </div>
+    </section>
+
+    <section class="block" id="deprecations">
+      <div class="eyebrow">05 — Deprecation watch</div>
+      <h2>Don't start anything new on these</h2>
+      <p class="lead">Three sunsets land in 2026. Inherit a project sitting on one of them and migration is the first ticket.</p>
+      <div class="deps">
+        <div class="dep"><div class="hd"><svg class="w" viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v5M12 17.5v.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Sunsetting</div><h4>Pub/Sub Lite</h4><p>Closed to new customers since Sep 2024. Migrate to Pub/Sub or Managed Service for Apache Kafka.</p><div class="when">Shuts down <b>Jun 30, 2026</b></div></div>
+        <div class="dep"><div class="hd"><svg class="w" viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v5M12 17.5v.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Sunsetting</div><h4>Data Catalog (standalone)</h4><p>Folded into Knowledge Catalog. Move metadata and lineage over before access starts breaking.</p><div class="when">Phased shutdown from <b>Jun 1, 2026</b></div></div>
+        <div class="dep"><div class="hd"><svg class="w" viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v5M12 17.5v.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>End of life</div><h4>Composer 1 &amp; 2.0.x</h4><p>Both reach EOL. Upgrade to Composer 3 / Managed Airflow Gen 3, which supports Airflow 3.</p><div class="when">EOL <b>Sep 15, 2026</b></div></div>
+      </div>
+    </section>
+
+    <section class="block" id="recall">
+      <div class="eyebrow">06 — Quick recall</div>
+      <h2>The analogy deck</h2>
+      <p class="lead">One image per service. When you forget the docs, you'll remember these.</p>
+      <div class="recall-grid">
+        <div class="card" data-h="blue"><div class="em">📰</div><div class="bd"><h4>Pub/Sub = newspaper subscription</h4><p>Drop one edition in a <b>topic</b>; every subscriber gets a copy. The publisher never needs to know who's reading.</p></div></div>
+        <div class="card" data-h="blue"><div class="em">🚦</div><div class="bd"><h4>Eventarc = railway switchyard</h4><p>It hears every "something happened" and throws the points so each event reaches <b>exactly the right track</b>.</p></div></div>
+        <div class="card" data-h="green"><div class="em">🚚</div><div class="bd"><h4>Cloud Run = food truck</h4><p>The grill fires up only when an order arrives, then powers down. A <b>job</b> is the same kitchen booked for one catering run.</p></div></div>
+        <div class="card" data-h="green"><div class="em">🥤</div><div class="bd"><h4>Cloud Run functions = vending machine</h4><p>One button, one snack, no staff. <b>Single-purpose</b> code that wakes on an event and bills per use.</p></div></div>
+        <div class="card" data-h="yellow"><div class="em">🍰</div><div class="bd"><h4>Airflow = recipe with steps</h4><p>You can't frost the cake before it bakes. The <b>DAG</b> is the recipe's flowchart, run on a timer.</p></div></div>
+        <div class="card" data-h="yellow"><div class="em">🍱</div><div class="bd"><h4>Composer = catering company</h4><p>They run the kitchen (Airflow) for you. You bring the <b>recipes</b> (DAGs); they own the appliances.</p></div></div>
+        <div class="card" data-h="yellow"><div class="em">🚇</div><div class="bd"><h4>DAG = one-way subway map</h4><p>One-way tracks, <b>no loops</b>. You always reach the end and never circle back.</p></div></div>
+        <div class="card" data-h="red"><div class="em">📇</div><div class="bd"><h4>Knowledge Catalog = card catalog</h4><p>Every dataset shelved, labelled and findable — and now an <b>AI librarian</b> can fetch the right one.</p></div></div>
+        <div class="card" data-h="red"><div class="em">🏛️</div><div class="bd"><h4>System of Record = birth registry</h4><p>Plenty of systems store your birthdate, but only one is the <b>official truth</b>. Everything else is a copy.</p></div></div>
+        <div class="card" data-h="blue"><div class="em">🧭</div><div class="bd"><h4>Routing = the points operator</h4><p>Across Pub/Sub, Cloud Run, Airflow and Eventarc, "routing" is just <b>sending each thing to its destination</b>.</p></div></div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="ft">
+        <div class="note"><b>Accurate as of June 23, 2026.</b> Names follow Google's current docs; APIs/CLIs keep old identifiers (<code style="font-size:10px">cloudfunctions</code>, <code style="font-size:10px">dataplex</code>, <code style="font-size:10px">composer</code>). A few GA dates (Composer Jul 2018, Composer 2 ~Dec 2021) are month-level from secondary sources. Pub/Sub Lite shutdown differs between older (Mar 18) and current (Jun 30, 2026) Google pages — treat Jun 30 as operative and verify. Console numbers are illustrative. Service icons are the official Google Cloud product icons (cloud.google.com/icons, hotlinked via the IcePanel CDN, with a GitHub mirror fallback); the Apache Airflow logo is an Apache Software Foundation trademark.</div>
+        <div class="sig"><svg viewBox="0 0 40 40" fill="none"><circle cx="8" cy="20" r="4" stroke="currentColor" stroke-width="2"/><circle cx="32" cy="9" r="4" stroke="currentColor" stroke-width="2"/><circle cx="32" cy="31" r="4" stroke="currentColor" stroke-width="2"/><path d="M11.4 18.2 L28.6 10.4 M11.4 21.8 L28.6 29.6 M32 13 L32 27" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>PIPELINE // CONTROL</div>
+      </div>
+    </footer>
+  </main>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dwTitle" aria-hidden="true">
+  <div class="drawer__head">
+    <span class="ico lg" id="dwIco"></span>
+    <div class="svc__id"><div class="drawer__cat" id="dwCat"></div><h3 id="dwTitle"></h3></div>
+    <button class="drawer__close" id="dwClose" aria-label="Close detail">✕</button>
+  </div>
+  <div class="drawer__body" id="dwBody"></div>
+</aside>
+
+<div id="deepstore" hidden>
+
+  <div class="deep" data-h="blue" data-ico="pubsub" data-cat="Ingest · transport" data-name="Pub/Sub topic" data-pill="GA">
+    <div class="dtabs"><button class="dtab on">Overview</button><button class="dtab">Naming &amp; history</button><button class="dtab">Editions</button><button class="dtab">Mental model</button></div>
+    <div class="dpanels">
+      <div class="dpanel on">
+        <p class="lead-line">Google Cloud Pub/Sub is a globally distributed, asynchronous messaging service. Publishers write messages to a <b>topic</b>; independent subscribers read them through subscriptions — neither side knows the other exists.</p>
+        <div class="d-h">The problem it solves</div>
+        <p>Without a message broker, every producer has to know every consumer, hold a connection open, and slow down if a consumer is busy. Pub/Sub breaks that coupling: it absorbs spikes, buffers durably, and lets you add or remove consumers without touching producers. It's the front door for most event-driven and streaming pipelines on GCP.</p>
+        <div class="d-h">The four words to know</div>
+        <dl class="pair">
+          <dt>Topic</dt><dd>A named resource a publisher sends to — the stream's identity.</dd>
+          <dt>Subscription</dt><dd>A named pipe from a topic to a consumer. <b>Push</b> (Pub/Sub calls your endpoint) or <b>pull</b> (you fetch).</dd>
+          <dt>Message</dt><dd>The payload plus optional key–value <b>attributes</b>.</dd>
+          <dt>Ack</dt><dd>The consumer's confirmation that a message was processed; un-acked messages are redelivered.</dd>
+        </dl>
+        <div class="d-h">Delivery guarantees</div>
+        <ul>
+          <li><b>At-least-once</b> by default — design consumers to be idempotent (the same message may arrive twice).</li>
+          <li><b>Ordered delivery</b> is opt-in, and only within the same <b>ordering key</b>.</li>
+          <li><b>Exactly-once</b> delivery is available as a subscription option.</li>
+          <li><b>Dead-letter topics</b> catch messages that repeatedly fail, so a poison message can't block the stream.</li>
+        </ul>
+        <div class="callout"><b>Where it sits:</b> Pub/Sub is the <b>ingest</b> layer. Common shape: producer → topic → subscription → Cloud Run / Dataflow → BigQuery. Native <b>BigQuery</b> and <b>Cloud Storage</b> subscriptions can land data with no code at all.</div>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">Full timeline</div>
+        <div class="tl">
+          <div class="it"><div class="dt">2014</div><div class="tx">First shown at Google I/O as part of Google's cloud data tooling.</div></div>
+          <div class="it"><div class="dt">Mar 2015</div><div class="tx"><b>Public beta.</b></div></div>
+          <div class="it"><div class="dt">Aug 2015</div><div class="tx"><b>General availability</b>, alongside Cloud Dataflow.</div></div>
+          <div class="it"><div class="dt">2018→24</div><div class="tx">Pub/Sub <b>Lite</b> introduced as a cheaper, partition-based, capacity-managed variant — later deprecated.</div></div>
+          <div class="it"><div class="dt">Today</div><div class="tx">Name <b>unchanged</b> since launch. Still simply "Pub/Sub".</div></div>
+        </div>
+        <div class="callout"><b>Naming note:</b> unusually for this list, Pub/Sub has never been rebranded. The only naming wrinkle is the separate product <b>Pub/Sub Lite</b>, which is being retired (see Editions).</div>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">Editions &amp; status</div>
+        <table class="vtable">
+          <thead><tr><th>Edition</th><th>What it is</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr class="now"><td><b>Pub/Sub</b></td><td>The standard global service. Auto-scales, no capacity planning.</td><td><b>GA — use this</b></td></tr>
+            <tr><td>Pub/Sub Lite</td><td>Partition-based, you provision throughput/storage. Cheaper at steady high volume.</td><td>Deprecated · shuts down Jun 30, 2026</td></tr>
+          </tbody>
+        </table>
+        <p>Pub/Sub itself is a managed service with <b>no version number</b> — Google updates it continuously. Schema support (Avro / Protocol Buffers) and native BigQuery / Cloud Storage subscriptions are part of the standard edition.</p>
+        <div class="callout warn"><b>Action:</b> if you find Pub/Sub <b>Lite</b> anywhere, plan a migration to standard Pub/Sub or to Managed Service for Apache Kafka before <b>June 30, 2026</b>.</div>
+      </div>
+      <div class="dpanel">
+        <div class="recall-box"><div class="em">📰</div><div><h5>A newspaper subscription</h5><p>Publishers drop one edition into a topic; every subscriber gets their own copy, and the publisher never needs to know who's reading.</p></div></div>
+        <div class="d-h">Mental model</div>
+        <p>Think of a <b>durable buffer that decouples senders from receivers</b>. The buffer holds messages until each consumer confirms it's done, and lets you fan one message out to many consumers (fan-out) or many producers into one stream (fan-in).</p>
+        <div class="d-h">Onboarding gotchas</div>
+        <ul>
+          <li>At-least-once means <b>duplicates happen</b> — make handlers idempotent.</li>
+          <li>Ordering is <b>not global</b>; it only holds within an ordering key.</li>
+          <li>A topic with no subscription <b>drops messages</b> — the subscription is what retains them.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="deep" data-h="green" data-ico="run" data-cat="Compute · process" data-name="Cloud Run job" data-pill="GA">
+    <div class="dtabs"><button class="dtab on">Overview</button><button class="dtab">Naming &amp; history</button><button class="dtab">Versions</button><button class="dtab">Mental model</button></div>
+    <div class="dpanels">
+      <div class="dpanel on">
+        <p class="lead-line">Cloud Run is Google's fully managed serverless container platform: package anything as a container and Cloud Run runs it, scales it, and (for services) scales it to zero when idle.</p>
+        <div class="d-h">Three resource types — know the difference</div>
+        <dl class="pair">
+          <dt>Service</dt><dd>Responds to <b>HTTP(S)</b> requests. Autoscales on traffic, supports concurrency and request timeouts up to 60 min.</dd>
+          <dt>Job</dt><dd>Runs a container <b>to completion</b> then stops — batch transforms, migrations, nightly reports. No HTTP listener. Tasks can run up to 7 days.</dd>
+          <dt>Worker pool</dt><dd>Non-HTTP, pull-based workloads (e.g. queue consumers). Reached GA in April 2026.</dd>
+        </dl>
+        <div class="d-h">Why people like it</div>
+        <ul>
+          <li><b>Any language, any binary</b> — if it runs in a container, it runs here.</li>
+          <li><b>Revisions &amp; traffic splitting</b> — deploy a new revision, send 5% of traffic, roll forward or back.</li>
+          <li><b>Scale to zero</b> (services) — you pay for what you use.</li>
+          <li><b>Array jobs</b> — a job can fan out into many parallel tasks via task index.</li>
+        </ul>
+        <div class="callout"><b>Jobs vs services in one line:</b> a <b>service</b> waits for requests; a <b>job</b> does a unit of work and exits. In a pipeline, a Cloud Run <b>job</b> is the natural home for a heavy transform step that Airflow triggers.</div>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">Full timeline</div>
+        <div class="tl">
+          <div class="it"><div class="dt">Apr 2019</div><div class="tx">Cloud Run <b>announced in beta</b> at Google Cloud Next.</div></div>
+          <div class="it"><div class="dt">Nov 2019</div><div class="tx"><b>General availability.</b></div></div>
+          <div class="it"><div class="dt">May 2022</div><div class="tx">Cloud Run <b>jobs</b> introduced in preview at Google I/O.</div></div>
+          <div class="it"><div class="dt">May 2023</div><div class="tx">Cloud Run jobs reach <b>GA</b>.</div></div>
+          <div class="it"><div class="dt">Apr 2026</div><div class="tx">Cloud Run <b>worker pools</b> reach GA.</div></div>
+        </div>
+        <div class="callout"><b>The one rename to know:</b> the sibling offering "<span class="old" style="text-decoration:line-through;color:var(--ink-faint)">Cloud Run for Anthos</span>" was renamed <b>Knative serving</b>. "Cloud Run" itself was never renamed.</div>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">There's no version number — there are resource types</div>
+        <p>Cloud Run is a continuously updated managed service, so it has no user-facing version. What you choose between is the <b>resource type</b> and the execution environment:</p>
+        <table class="vtable">
+          <thead><tr><th>Type</th><th>Trigger</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr class="now"><td><b>Service</b></td><td>HTTP request</td><td>GA</td></tr>
+            <tr class="now"><td><b>Job</b></td><td>Manual / scheduled / API</td><td>GA</td></tr>
+            <tr><td>Worker pool</td><td>Pull / queue</td><td>GA (Apr 2026)</td></tr>
+          </tbody>
+        </table>
+        <p>Cloud Run also offers <b>1st-gen and 2nd-gen execution environments</b> (the 2nd gen gives full Linux compatibility and network file-system support). GPU support is available for inference workloads.</p>
+      </div>
+      <div class="dpanel">
+        <div class="recall-box"><div class="em">🚚</div><div><h5>A food truck</h5><p>The grill only fires up when an order arrives, then powers down. A job is the same kitchen booked for one catering run — it cooks the order and closes.</p></div></div>
+        <div class="d-h">Mental model</div>
+        <p><b>Your container, scaled on demand.</b> A service is a kitchen that opens whenever a customer walks in; a job is that kitchen hired for a single fixed catering order.</p>
+        <div class="d-h">Onboarding gotchas</div>
+        <ul>
+          <li>Services <b>scale to zero</b> → first request after idle pays a <b>cold start</b>.</li>
+          <li>Jobs don't serve traffic — <b>don't</b> put an HTTP server in a job.</li>
+          <li>Concurrency is per-instance; a misconfigured concurrency of 1 quietly multiplies your cost.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="deep" data-h="green" data-ico="functions" data-cat="Compute · process" data-name="Cloud Run functions" data-pill="GA">
+    <div class="dtabs"><button class="dtab on">Overview</button><button class="dtab">Naming &amp; history</button><button class="dtab">Generations</button><button class="dtab">Mental model</button></div>
+    <div class="dpanels">
+      <div class="dpanel on">
+        <p class="lead-line">Cloud Run functions — the service formerly called Cloud Functions — runs a single function in response to an HTTP request or an event, with no container or server to manage.</p>
+        <div class="d-h">What it's for</div>
+        <p>It's Functions-as-a-Service: write one handler, deploy it, and Google runs and scales it. Perfect for glue — resize an uploaded image, validate a webhook, react to a file landing in storage, transform a Pub/Sub message. You bring a function; the platform brings everything else.</p>
+        <div class="d-h">How it's triggered</div>
+        <ul>
+          <li><b>HTTP</b> — a URL endpoint.</li>
+          <li><b>Events</b> — via Eventarc and Pub/Sub, from 125+ Google and third-party sources (storage, Firestore, audit logs, and more).</li>
+        </ul>
+        <div class="callout"><b>The big idea behind the 2024 rename:</b> Cloud Run functions now runs <b>on the same infrastructure as Cloud Run</b>. A function is essentially a Cloud Run service that Google builds and manages for you from your source — so it inherits Cloud Run's concurrency, scaling and networking.</div>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">Full timeline</div>
+        <div class="tl">
+          <div class="it"><div class="dt">Feb 2016</div><div class="tx"><b>Cloud Functions</b> launches in alpha.</div></div>
+          <div class="it"><div class="dt">2017</div><div class="tx">Reaches <b>general availability</b>.</div></div>
+          <div class="it"><div class="dt">Mar 2022</div><div class="tx"><b>2nd gen</b> enters public preview — built on Cloud Run + Eventarc.</div></div>
+          <div class="it"><div class="dt">Aug 2022</div><div class="tx">2nd gen reaches GA.</div></div>
+          <div class="it"><div class="dt">Aug 21 2024</div><div class="tx"><b>Renamed "Cloud Run functions."</b> Google: "this goes beyond a simple name change — we've unified the Cloud Functions infrastructure with Cloud Run."</div></div>
+        </div>
+        <div class="callout"><b>API didn't move:</b> the deployment API and gcloud commands still carry <code>cloudfunctions</code> (the v2 API). The product name changed; the identifiers didn't.</div>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">1st gen vs 2nd gen</div>
+        <p>After the rename, the two generations are named like this:</p>
+        <table class="vtable">
+          <thead><tr><th>Was</th><th>Now</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Cloud Functions (1st gen)</td><td><b>Cloud Run functions (1st gen)</b></td><td>Original architecture. Still supported.</td></tr>
+            <tr class="now"><td>Cloud Functions (2nd gen)</td><td><b>Cloud Run functions</b></td><td>On Cloud Run + Eventarc — concurrency up to 1,000/instance, up to 16 GB / 4 vCPU (32 GB / 8 vCPU in preview), 60-min timeouts, 125+ event sources.</td></tr>
+          </tbody>
+        </table>
+        <p>For new work, use <b>Cloud Run functions</b> (the 2nd-gen line) unless you have a specific 1st-gen dependency.</p>
+      </div>
+      <div class="dpanel">
+        <div class="recall-box"><div class="em">🥤</div><div><h5>A vending machine</h5><p>One button, one snack, no staff. Single-purpose code that wakes on an event, does one job, and bills per use.</p></div></div>
+        <div class="d-h">Mental model</div>
+        <p><b>Event-triggered code, billed per use.</b> Where Cloud Run is "bring a container," functions is "bring a function and we'll wrap it in a container for you."</p>
+        <div class="d-h">Onboarding gotchas</div>
+        <ul>
+          <li>Names are confusing on purpose-built infra: product = "Cloud Run functions", API = <code>cloudfunctions</code>.</li>
+          <li>1st gen and 2nd gen have different limits and trigger models — check which one a legacy function uses.</li>
+          <li>Cold starts apply; keep dependencies lean for latency-sensitive paths.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="deep" data-h="red" data-ico="dataplex" data-cat="Govern · catalog" data-name="Knowledge Catalog" data-pill="GA">
+    <div class="dtabs"><button class="dtab on">Overview</button><button class="dtab">Naming &amp; history</button><button class="dtab">Status</button><button class="dtab">Mental model</button></div>
+    <div class="dpanels">
+      <div class="dpanel on">
+        <p class="lead-line">Knowledge Catalog — the product that began as Dataplex — discovers, catalogues, governs and adds meaning to data across your lakes and warehouses, from one control plane.</p>
+        <div class="d-h">What it does</div>
+        <ul>
+          <li><b>Discover &amp; catalogue</b> — automatically finds datasets (BigQuery, Cloud Storage and more) and builds a searchable catalog of metadata.</li>
+          <li><b>Govern</b> — apply policies, quality checks and access controls consistently, regardless of where the data physically lives.</li>
+          <li><b>Add context</b> — business metadata, data lineage, and (in the current generation) AI-ready context that grounds Gemini and AI agents in your actual enterprise data.</li>
+        </ul>
+        <div class="callout"><b>Why it matters for a pipeline:</b> it's the <b>governance</b> layer. Once data is processed, the catalog is how anyone — human or AI — finds the right dataset, trusts it, and sees where it came from.</div>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">Full naming history (this one moved a lot)</div>
+        <div class="tl">
+          <div class="it"><div class="dt">May 2021</div><div class="tx"><b>Dataplex</b> launches in preview as an "intelligent data fabric."</div></div>
+          <div class="it"><div class="dt">Feb 2022</div><div class="tx">Reaches <b>GA</b>.</div></div>
+          <div class="it"><div class="dt">2024</div><div class="tx">The standalone <b>Data Catalog</b> product is folded in; the catalog is branded <b>Dataplex Catalog</b>, then <b>Dataplex Universal Catalog</b>.</div></div>
+          <div class="it"><div class="dt">Apr 10 2026</div><div class="tx"><b>Renamed "Knowledge Catalog."</b> Google: "the API, client library, CLI and IAM names remain unchanged."</div></div>
+        </div>
+        <div class="callout"><b>API didn't move:</b> everything in code still says <code>dataplex</code>. Only the product name became "Knowledge Catalog."</div>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">Status &amp; the deprecation it absorbed</div>
+        <table class="vtable">
+          <thead><tr><th>Thing</th><th>State</th></tr></thead>
+          <tbody>
+            <tr class="now"><td><b>Knowledge Catalog</b> (the product line)</td><td><b>GA</b> — some AI features (e.g. lineage MCP server) in preview</td></tr>
+            <tr><td>Data Catalog (the old standalone product)</td><td>Deprecated · phased shutdown begins <b>Jun 1, 2026</b></td></tr>
+          </tbody>
+        </table>
+        <div class="callout warn"><b>Action:</b> if a project still calls the old <b>Data Catalog</b> APIs, migrate metadata and lineage to Knowledge Catalog — access starts breaking <b>from June 1, 2026</b>.</div>
+      </div>
+      <div class="dpanel">
+        <div class="recall-box"><div class="em">📇</div><div><h5>The library's card catalog</h5><p>Every dataset is shelved, labelled and findable — and now there's an AI librarian who can fetch exactly the right one and tell you where it came from.</p></div></div>
+        <div class="d-h">Mental model</div>
+        <p><b>Find, govern and add meaning to every dataset.</b> It doesn't store your data; it's the index, the rulebook and the provenance record laid over wherever the data already lives.</p>
+        <div class="d-h">Onboarding gotchas</div>
+        <ul>
+          <li>Three names float around in docs and tutorials — <b>Dataplex</b>, <b>Dataplex Universal Catalog</b>, <b>Knowledge Catalog</b> — they're the same lineage.</li>
+          <li>"Data Catalog" (no "plex") is the <b>old, dying</b> product; don't build new on it.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="deep" data-h="yellow" data-ico="dag" data-cat="Orchestrate · concept" data-name="DAG" data-pill="CONCEPT">
+    <div class="dtabs"><button class="dtab on">Overview</button><button class="dtab">Origin</button><button class="dtab">In Airflow</button><button class="dtab">Mental model</button></div>
+    <div class="dpanels">
+      <div class="dpanel on">
+        <p class="lead-line">A DAG is a <b>Directed Acyclic Graph</b>: nodes connected by one-way edges, where following the arrows never loops back to where you started.</p>
+        <div class="d-h">Unpack the three words</div>
+        <dl class="pair">
+          <dt>Directed</dt><dd>Edges have a direction — A → B means "A before B."</dd>
+          <dt>Acyclic</dt><dd>No cycles — you can never follow the arrows in a loop.</dd>
+          <dt>Graph</dt><dd>A set of nodes and the edges between them.</dd>
+        </dl>
+        <p>Because there are no cycles, a DAG can always be put in a valid running order (a <b>topological sort</b>). That's exactly why orchestration tools model workflows as DAGs: tasks become <b>nodes</b>, dependencies become <b>edges</b>, and the engine can always work out what to run next.</p>
+        <div class="callout"><b>Not a product.</b> A DAG is a concept from mathematics and computer science — there's no version number, no vendor. It just shows up everywhere work has dependencies.</div>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">Where the idea comes from</div>
+        <p>The DAG predates every data tool. It's a core structure in graph theory, and you've already used it without naming it:</p>
+        <ul>
+          <li><b>Git history</b> — commits point to parents, never to descendants.</li>
+          <li><b>Build systems</b> (Make, Bazel) — compile dependencies before the thing that needs them.</li>
+          <li><b>Spreadsheets</b> — a cell's formula depends on other cells; circular references are forbidden (that's the "acyclic" rule).</li>
+          <li><b>Citations, task schedules, package managers</b> — all DAGs.</li>
+        </ul>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">How "DAG" shows up in Airflow</div>
+        <p>In Airflow a DAG is defined in a Python file; the tasks are Operators, Sensors or TaskFlow functions. There are two authoring styles:</p>
+        <ul>
+          <li><b>Traditional</b> — the <code>DAG</code> class / context manager, wiring tasks with <code>&gt;&gt;</code>.</li>
+          <li><b>TaskFlow API</b> — the <code>@dag</code> and <code>@task</code> decorators, introduced in <b>Airflow 2.0 (Dec 2020)</b>, which infer dependencies and pass data automatically.</li>
+        </ul>
+        <table class="vtable">
+          <thead><tr><th>Convention</th><th>Detail</th></tr></thead>
+          <tbody>
+            <tr><td>Casing</td><td>Historically "DAG" (the acronym); Airflow 3 docs stylise it "<b>Dag</b>" in prose, while code keeps <code>dag_id</code>, <code>@dag</code>, the <code>DAG</code> class.</td></tr>
+            <tr class="now"><td>Import (Airflow 3)</td><td>Moved to <code>airflow.sdk</code> — e.g. <code>from airflow.sdk import dag</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="dpanel">
+        <div class="recall-box"><div class="em">🚇</div><div><h5>A one-way subway map</h5><p>One-way tracks and no loops. You always reach the end of the line and never circle back to the station you started at.</p></div></div>
+        <div class="d-h">Mental model</div>
+        <p><b>Tasks as nodes, dependencies as one-way edges, never a cycle.</b> Or: a recipe's flowchart — you can't frost before you bake, and the steps always have a valid order.</p>
+        <div class="d-h">Onboarding gotchas</div>
+        <ul>
+          <li>A cycle is <b>illegal</b> — if task A waits on B and B waits on A, the graph won't run.</li>
+          <li>Tasks should be <b>idempotent</b>, because a DAG run can retry any node.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="deep" data-h="yellow" data-ico="airflow" data-cat="Orchestrate · open source" data-name="Apache Airflow" data-pill="v3.2.2">
+    <div class="dtabs"><button class="dtab on">Overview</button><button class="dtab">History</button><button class="dtab">Versions</button><button class="dtab">Mental model</button></div>
+    <div class="dpanels">
+      <div class="dpanel on">
+        <p class="lead-line">Apache Airflow is the open-source standard for orchestrating workflows. You write pipelines as Python — "workflows as code" — and Airflow schedules, runs, retries and monitors them.</p>
+        <div class="d-h">The moving parts</div>
+        <dl class="pair">
+          <dt>Scheduler</dt><dd>Decides what runs when, and dispatches tasks.</dd>
+          <dt>Executor / workers</dt><dd>Actually run the tasks (locally, on Celery, on Kubernetes…).</dd>
+          <dt>Metadata DB</dt><dd>Stores DAG state, runs, history.</dd>
+          <dt>Web UI</dt><dd>Visualise DAGs, inspect runs, retry, read logs.</dd>
+        </dl>
+        <div class="d-h">The vocabulary</div>
+        <ul>
+          <li><b>Operators</b> — a unit of work (run SQL, call an API, launch a container).</li>
+          <li><b>Sensors</b> — wait for a condition (a file appears, a time passes).</li>
+          <li><b>Hooks</b> — reusable connections to external systems.</li>
+          <li><b>XCom</b> — the channel tasks use to pass small bits of data.</li>
+          <li><b>Providers</b> — a huge ecosystem of pre-built integrations (GCP, AWS, Snowflake, dbt…).</li>
+        </ul>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">From an Airbnb side-project to an Apache standard</div>
+        <div class="tl">
+          <div class="it"><div class="dt">Oct 2014</div><div class="tx">Created at <b>Airbnb</b> by Maxime Beauchemin.</div></div>
+          <div class="it"><div class="dt">Jun 2015</div><div class="tx"><b>Open-sourced.</b></div></div>
+          <div class="it"><div class="dt">Mar 2016</div><div class="tx">Joins the <b>Apache Incubator</b>.</div></div>
+          <div class="it"><div class="dt">Jan 2019</div><div class="tx">Becomes a <b>top-level Apache project</b>.</div></div>
+          <div class="it"><div class="dt">Dec 2020</div><div class="tx"><b>Airflow 2.0</b> — TaskFlow API, full REST API, HA scheduler.</div></div>
+          <div class="it"><div class="dt">Apr 22 2025</div><div class="tx"><b>Airflow 3.0.0</b> — the biggest release ever.</div></div>
+          <div class="it"><div class="dt">May 29 2026</div><div class="tx">Current stable <b>3.2.2</b>.</div></div>
+        </div>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">Version map</div>
+        <table class="vtable">
+          <thead><tr><th>Version</th><th>Landmark</th><th>When</th></tr></thead>
+          <tbody>
+            <tr><td>1.x</td><td>The original line</td><td>2016+</td></tr>
+            <tr><td>2.0</td><td>TaskFlow API, REST API, HA scheduler</td><td>Dec 2020</td></tr>
+            <tr><td>2.3 / 2.4</td><td>Dynamic task mapping · datasets (data-aware scheduling)</td><td>2022</td></tr>
+            <tr><td>3.0.0</td><td>React UI, DAG versioning, Task Execution API / Task SDK (<code>airflow.sdk</code>), scheduler-execution split, event-driven scheduling</td><td>Apr 2025</td></tr>
+            <tr><td>3.1</td><td>Human-in-the-Loop, deadline alerts, UI in 17 languages (latest patch 3.1.5, Dec 2025)</td><td>Nov 2025</td></tr>
+            <tr class="now"><td><b>3.2.2</b></td><td><b>Current stable</b> · experimental multi-team support</td><td>May 2026</td></tr>
+          </tbody>
+        </table>
+        <div class="callout"><b>For new work:</b> target <b>Airflow 3.2.x</b>. Airflow follows semantic versioning with Active and Limited support phases.</div>
+      </div>
+      <div class="dpanel">
+        <div class="recall-box"><div class="em">🍰</div><div><h5>A recipe with dependency steps</h5><p>You can't frost the cake before it bakes. The DAG is the recipe's flowchart; Airflow is the kitchen timer and the chef that runs it on schedule.</p></div></div>
+        <div class="d-h">Mental model</div>
+        <p><b>Workflows as code — scheduled and observable.</b> Everything is a Python file in version control, so pipelines get reviewed, tested and diffed like any other code.</p>
+        <div class="d-h">Onboarding gotchas</div>
+        <ul>
+          <li>Airflow 3 has <b>breaking changes</b> from 2.x — check the migration guide before upgrading.</li>
+          <li>The scheduler runs your DAG file on a loop — keep top-level code cheap (no heavy work at import time).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="deep" data-h="yellow" data-ico="composer" data-cat="Orchestrate · managed" data-name="Managed Service for Apache Airflow" data-pill="Gen 3">
+    <div class="dtabs"><button class="dtab on">Overview</button><button class="dtab">Naming &amp; history</button><button class="dtab">Generations</button><button class="dtab">Mental model</button></div>
+    <div class="dpanels">
+      <div class="dpanel on">
+        <p class="lead-line">Cloud Composer — now "Managed Service for Apache Airflow" — is Google running Airflow for you: it provisions the Airflow components, wires them into GCP, and keeps them patched.</p>
+        <div class="d-h">What you get</div>
+        <ul>
+          <li>A managed Airflow environment (scheduler, workers, web UI, metadata DB) without operating any of it.</li>
+          <li>A <b>Cloud Storage bucket</b> where you drop your DAG files.</li>
+          <li>Built-in integration with <b>IAM, Cloud Logging and Cloud Monitoring</b>, plus the GCP provider operators (BigQuery, Dataflow, Vertex AI…).</li>
+        </ul>
+        <div class="callout"><b>Composer vs Airflow:</b> same Airflow, same DAGs — Composer just removes the servers, upgrades and scaling from your plate. If you know Airflow, you know Composer.</div>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">Full timeline</div>
+        <div class="tl">
+          <div class="it"><div class="dt">May 2018</div><div class="tx"><b>Cloud Composer</b> enters beta.</div></div>
+          <div class="it"><div class="dt">Jul 2018</div><div class="tx">Reaches <b>GA</b> at Google Cloud Next.</div></div>
+          <div class="it"><div class="dt">~Dec 2021</div><div class="tx"><b>Composer 2</b> GA — autoscaling, HA scheduler.</div></div>
+          <div class="it"><div class="dt">Mar 17 2025</div><div class="tx"><b>Composer 3</b> GA — hidden infra, evergreen versioning, DCU billing.</div></div>
+          <div class="it"><div class="dt">Apr 15 2026</div><div class="tx"><b>Renamed "Managed Service for Apache Airflow."</b> Same day, Airflow 3 reached GA inside Composer 3.</div></div>
+        </div>
+        <div class="callout"><b>API didn't move:</b> code and CLI still say <code>composer</code> / <code>CloudComposer</code>. Image aliases look like <code>composer-3-airflow-3.1.7-build.N</code>; internal builds carry a <code>+composer</code> suffix.</div>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">Generations — and which Airflow each runs</div>
+        <table class="vtable">
+          <thead><tr><th>Was</th><th>Now</th><th>Airflow</th></tr></thead>
+          <tbody>
+            <tr><td>Composer 1</td><td>Managed Airflow (Legacy Gen 1)</td><td>Airflow 2 only · EOL Sep 15 2026</td></tr>
+            <tr><td>Composer 2</td><td>Managed Airflow (Gen 2)</td><td>Airflow 2 only (no Airflow 3); 2.0.x EOL Sep 15 2026</td></tr>
+            <tr class="now"><td><b>Composer 3</b></td><td><b>Managed Airflow (Gen 3)</b></td><td><b>Airflow 2 and 3</b> (Airflow 3 GA Apr 2026)</td></tr>
+          </tbody>
+        </table>
+        <div class="callout warn"><b>Action:</b> start new environments on <b>Gen 3</b>. <b>Composer 1</b> and <b>Composer 2 version 2.0.x</b> reach end of life on <b>Sep 15, 2026</b>.</div>
+      </div>
+      <div class="dpanel">
+        <div class="recall-box"><div class="em">🍱</div><div><h5>A catering company that runs the kitchen</h5><p>You bring the recipes (your DAGs); they own and maintain all the appliances, do the washing up, and upgrade the ovens.</p></div></div>
+        <div class="d-h">Mental model</div>
+        <p><b>Airflow, minus the servers.</b> Same code, same concepts — Google handles provisioning, patching, scaling and availability.</p>
+        <div class="d-h">Onboarding gotchas</div>
+        <ul>
+          <li>"Cloud Composer" and "Managed Service for Apache Airflow" are the <b>same product</b> post-April 2026.</li>
+          <li>Only <b>Gen 3</b> supports Airflow 3 — Gen 2 can't run it.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="deep" data-h="red" data-ico="sor" data-cat="Record · concept" data-name="System of Record (SOR)" data-pill="CONCEPT">
+    <div class="dtabs"><button class="dtab on">Overview</button><button class="dtab">Related terms</button><button class="dtab">In practice</button><button class="dtab">Mental model</button></div>
+    <div class="dpanels">
+      <div class="dpanel on">
+        <p class="lead-line">A System of Record (SOR) is the <b>authoritative source for a given piece of data</b> — the one place where that data's value is definitively established and maintained.</p>
+        <div class="d-h">What it means</div>
+        <p>When the same data lives in several systems, the SOR is the master that arbitrates. Changes are made <b>there first</b> and propagate outward; every other copy is downstream. It's foundational in data architecture because it answers a deceptively hard question: when two systems disagree, which one is right?</p>
+        <div class="d-h">It's domain-specific</div>
+        <ul>
+          <li>An <b>HR system</b> is the SOR for employee identity.</li>
+          <li>An <b>ERP</b> is the SOR for financials.</li>
+          <li>A banking <b>core / CIS</b> is the SOR for an account balance.</li>
+        </ul>
+        <div class="callout"><b>Not a product.</b> "System of Record" is a role a system plays, not software you buy. In Data Vault modelling the same idea is called the "record source."</div>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">The family of terms (don't mix these up)</div>
+        <dl class="pair">
+          <dt>System of engagement</dt><dd>User-facing, collaborative systems (CRM, mobile, social). Term coined by <b>Geoffrey Moore in 2011</b>. SORs are about efficiency &amp; compliance; systems of engagement about effectiveness.</dd>
+          <dt>System of reference</dt><dd>An authoritative, curated copy used for lookup — often equated with "source of truth."</dd>
+          <dt>Golden record</dt><dd>In Master Data Management, the single consolidated, deduplicated "best" version of an entity (customer, product).</dd>
+          <dt>Single source of truth</dt><dd>The broader practice of keeping one authoritative value per data element.</dd>
+        </dl>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">Where the SOR sits in a pipeline</div>
+        <p>It's the <b>destination</b> end of the flow. After events are ingested, routed, processed and orchestrated, the curated, authoritative result lands in a system of record — often a <b>BigQuery</b> table or an operational database — with the catalog governing it and lineage recording where it came from.</p>
+        <ul>
+          <li>The SOR holds the version everyone else trusts and copies from.</li>
+          <li>Reporting marts, caches and dashboards are <b>copies</b>, not the SOR.</li>
+          <li>Governance (Knowledge Catalog) plus lineage is what lets you prove a value's provenance back to its SOR.</li>
+        </ul>
+      </div>
+      <div class="dpanel">
+        <div class="recall-box"><div class="em">🏛️</div><div><h5>The government birth registry</h5><p>Lots of systems store your birthdate — your bank, your airline, your doctor — but only one is the official truth. Everything else is a copy of the registry.</p></div></div>
+        <div class="d-h">Mental model</div>
+        <p><b>The one place a fact is officially true.</b> If you need to change the fact, you change it in the SOR; everywhere else eventually catches up.</p>
+        <div class="d-h">Onboarding gotchas</div>
+        <ul>
+          <li>Don't confuse the SOR (authoritative) with a <b>cache or reporting copy</b>.</li>
+          <li>"System of record" vs "system of engagement" is a common interview distinction — engagement is the front-of-house, record is the source of truth.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="deep" data-h="blue" data-ico="eventarc" data-cat="Route · the Routing layer" data-name="Routing — via Eventarc" data-pill="GA">
+    <div class="dtabs"><button class="dtab on">Overview</button><button class="dtab">Routing across the stack</button><button class="dtab">Eventarc history</button><button class="dtab">Mental model</button></div>
+    <div class="dpanels">
+      <div class="dpanel on">
+        <p class="lead-line">"Routing" is the job of sending each message, event or request to its correct destination. On GCP the dedicated event-routing service is <b>Eventarc</b>.</p>
+        <div class="d-h">What Eventarc does</div>
+        <p>Eventarc listens for "something happened" across Google Cloud and delivers a standardised event to your handler. It uses the open <b>CloudEvents</b> format, draws from 130+ sources, and delivers to targets like Cloud Run, GKE, Workflows and internal HTTP endpoints — with Pub/Sub as the transport underneath.</p>
+        <ul>
+          <li><b>Sources</b> — direct events from ~90 Google services, Cloud Audit Logs, and Pub/Sub messages.</li>
+          <li><b>Triggers</b> — a rule that says "when this event matches, send it there."</li>
+          <li><b>Targets</b> — where the event is delivered.</li>
+        </ul>
+        <div class="callout"><b>Connection to functions:</b> every event-driven Cloud Run function uses an Eventarc trigger under the hood. Eventarc is the plumbing that turns "a file landed in storage" into "my code runs."</div>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">"Routing" isn't one thing — it appears at every layer</div>
+        <table class="vtable">
+          <thead><tr><th>Layer</th><th>What "routing" means there</th></tr></thead>
+          <tbody>
+            <tr><td>Pub/Sub</td><td>Topics fan messages out to subscriptions; messages route globally to the nearest permitted region.</td></tr>
+            <tr><td>Cloud Run</td><td><b>Traffic routing</b> — splitting requests across service revisions (e.g. 90/10 for a canary).</td></tr>
+            <tr><td>Airflow / Composer</td><td><b>Task routing</b> — branch operators choose a path; executors route tasks to the right worker queue.</td></tr>
+            <tr class="now"><td><b>Eventarc</b></td><td><b>Event routing</b> — match events from many sources and deliver to the right handler.</td></tr>
+          </tbody>
+        </table>
+        <p>So when someone says "routing" on this stack, ask <b>which layer</b> — message, request, task, or event.</p>
+      </div>
+      <div class="dpanel">
+        <div class="d-h">Eventarc timeline</div>
+        <div class="tl">
+          <div class="it"><div class="dt">Oct 2020</div><div class="tx">Launches in <b>public preview</b>.</div></div>
+          <div class="it"><div class="dt">Jan 2021</div><div class="tx">Reaches <b>GA</b>. At GA the <code>--matching-criteria</code> flag was renamed <code>--event-filters</code>.</div></div>
+          <div class="it"><div class="dt">Today</div><div class="tx">Offered in two editions: <b>Eventarc Standard</b> and <b>Eventarc Advanced</b> (advanced routing, transformations, a message bus).</div></div>
+        </div>
+      </div>
+      <div class="dpanel">
+        <div class="recall-box"><div class="em">🚦</div><div><h5>A railway switchyard</h5><p>Same trains, same tracks — but the points operator decides which track each train takes. Eventarc is the operator for events.</p></div></div>
+        <div class="d-h">Mental model</div>
+        <p><b>One event format, many sources, delivered to the right handler.</b> Routing in general: send each thing to its correct destination — whether that "thing" is a message, a request, a task or an event.</p>
+        <div class="d-h">Onboarding gotchas</div>
+        <ul>
+          <li>"Routing" is overloaded — always clarify the layer.</li>
+          <li>Eventarc rides on Pub/Sub, so Pub/Sub delivery semantics (at-least-once) apply to events too.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Official Google Cloud product icons (IcePanel CDN — the genuine Google-authored set,
+  // same files gcpicons.com serves, sourced from cloud.google.com/icons) + Apache Airflow's
+  // own logo. Each entry lists primary then mirror URLs; if all fail we draw an inline glyph.
+  var ICONS = {
+    pubsub:   {srcs:['https://icon.icepanel.io/GCP/svg/PubSub.svg',        'https://gcp-icons.svg.zone/images/pubsub.svg'],         fb:'g-pubsub'},
+    eventarc: {srcs:['https://icon.icepanel.io/GCP/svg/Eventarc.svg',      'https://gcp-icons.svg.zone/images/eventarc.svg'],       fb:'g-eventarc'},
+    run:      {srcs:['https://icon.icepanel.io/GCP/svg/Cloud-Run.svg',     'https://gcp-icons.svg.zone/images/cloud_run.svg'],      fb:'g-run'},
+    functions:{srcs:['https://icon.icepanel.io/GCP/svg/Cloud-Functions.svg','https://gcp-icons.svg.zone/images/cloud_functions.svg'],fb:'g-functions'},
+    composer: {srcs:['https://icon.icepanel.io/GCP/svg/Cloud-Composer.svg','https://gcp-icons.svg.zone/images/cloud_composer.svg'], fb:'g-composer'},
+    dataplex: {srcs:['https://icon.icepanel.io/GCP/svg/Dataplex.svg',      'https://gcp-icons.svg.zone/images/dataplex.svg'],       fb:'g-dataplex'},
+    airflow:  {srcs:['https://airflow.apache.org/images/airflow-icon.svg','https://cdn.jsdelivr.net/npm/simple-icons/icons/apacheairflow.svg'], fb:'g-airflow'},
+    dag:      {srcs:[], fb:'g-dag'},   // concept — no official logo
+    sor:      {srcs:[], fb:'g-sor'}    // concept — no official logo
+  };
+  function fallbackSVG(fb){ return '<svg viewBox="0 0 24 24"><use href="#'+fb+'"/></svg>'; }
+  function renderIcon(el){
+    var key = el.getAttribute('data-ico'); var def = ICONS[key];
+    if(!def){ el.innerHTML = fallbackSVG('g-dag'); return; }
+    var srcs = (def.srcs||[]).slice();
+    if(!srcs.length){ el.innerHTML = fallbackSVG(def.fb); return; }
+    var img = new Image();
+    img.alt = key; img.loading = 'lazy'; img.decoding = 'async';
+    img.onerror = function(){            // cascade: try next mirror, else inline glyph
+      srcs.shift();
+      if(srcs.length){ img.src = srcs[0]; }
+      else { el.innerHTML = fallbackSVG(def.fb); }
+    };
+    el.innerHTML = ''; el.appendChild(img); img.src = srcs[0];
+  }
+  function renderAllIcons(scope){ (scope||document).querySelectorAll('.ico[data-ico]').forEach(renderIcon); }
+  renderAllIcons();
+
+  var logo = document.getElementById('logo');
+  if(logo && !reduce){
+    logo.querySelectorAll('path,circle').forEach(function(el){
+      try{ var len = el.getTotalLength?el.getTotalLength():80;
+        el.style.strokeDasharray=len; el.style.strokeDashoffset=len;
+        el.style.transition='stroke-dashoffset 1.1s ease '+(Math.random()*0.3)+'s';
+        requestAnimationFrame(function(){requestAnimationFrame(function(){el.style.strokeDashoffset=0;});});
+      }catch(e){}
+    });
+  }
+
+  var clock = document.getElementById('clock');
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function tick(){ if(!clock)return; var d=new Date(); clock.textContent = pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()); }
+  tick(); setInterval(tick,1000);
+
+  var links = Array.prototype.slice.call(document.querySelectorAll('.navlink'));
+  var secs = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function spy(){ var y=window.scrollY+130, idx=0; secs.forEach(function(s,i){ if(s&&s.offsetTop<=y)idx=i; }); links.forEach(function(a,i){ a.classList.toggle('on',i===idx); }); }
+  spy(); window.addEventListener('scroll',spy,{passive:true});
+
+  var store = document.getElementById('deepstore');
+  var deeps = Array.prototype.slice.call(store.querySelectorAll('.deep'));
+  var grid = document.getElementById('grid');
+
+  var SUMMARY = {
+    'Pub/Sub topic':{lineage:[['2014-15','Cloud Pub/Sub','beta Mar 2015, GA Aug 2015',false],['Today','Pub/Sub','name unchanged',true]],does:'Async messaging. Publishers send to a <b>topic</b>; subscribers read via subscriptions - durable, global, fan-out.',recall:'A newspaper subscription - drop one edition in, every subscriber gets a copy'},
+    'Cloud Run job':{lineage:[['2019','Cloud Run','beta Apr, GA Nov 2019',false],['2022-23','Jobs preview','GA May 2023',false],['Note','Cloud Run for Anthos','renamed Knative serving',true]],does:'<b>Services</b> answer HTTP &amp; scale to zero; <b>jobs</b> run a task to completion then stop.',recall:'A food truck - the grill fires up only when an order arrives'},
+    'Cloud Run functions':{lineage:[['2016-17','Cloud Functions','alpha 2016, GA 2017',false],['2022','2nd gen GA','on Cloud Run + Eventarc',false],['2024.08','renamed','Cloud Run functions',true]],does:'Single-purpose code that runs on an event or HTTP, no container to manage. API stays <b>cloudfunctions</b>.',recall:'A vending machine - one button, one snack, no staff'},
+    'Knowledge Catalog':{lineage:[['2021-22','Dataplex','preview 2021, GA Feb 2022',false],['2024','Universal Catalog','absorbs Data Catalog',false],['2026.04','renamed','Knowledge Catalog',true]],does:'Discovers, catalogues, governs &amp; adds AI context to data. API/CLI/IAM still say <b>dataplex</b>.',recall:'A library card catalog - now with an AI librarian'},
+    'DAG':{lineage:[['Origin','graph theory / CS','directed acyclic graph',false],['2020','TaskFlow @dag','Airflow 2.0',false],['Airflow 3','airflow.sdk','styled Dag',true]],does:'Models a workflow: tasks are <b>nodes</b>, dependencies are <b>one-way edges</b>, never a loop. Not a product.',recall:'A subway map with one-way tracks and no loops'},
+    'Apache Airflow':{lineage:[['2014-16','Airbnb to OSS','Apache incubator 2016',false],['2019-20','top-level project','2.0 (Dec 2020)',false],['2025-26','3.0 (Apr 2025)','3.2.2 (May 2026)',true]],does:'Author, schedule &amp; monitor workflows as Python code. 3.x: new UI, DAG versioning, event-driven scheduling.',recall:'A recipe with dependency steps, run on a timer'},
+    'Managed Service for Apache Airflow':{lineage:[['2018','Cloud Composer','beta May, GA Jul 2018',false],['2021-25','Composer 2','Composer 3 GA Mar 2025',false],['2026.04','renamed','Managed Service for Apache Airflow',true]],does:'Google-run Airflow. Gen 3 hides infra &amp; runs Airflow 2 <em>and</em> 3. API stays <b>composer</b>.',recall:'A catering firm that runs the kitchen - you bring the recipes'},
+    'System of Record (SOR)':{lineage:[['Origin','data architecture','authoritative source',false],['Contrast','system of engagement','Moore, 2011',false],['Kin','golden record','MDM / source of truth',true]],does:'The <b>one place</b> a data element value is authoritative. Others copy from it; changes happen here first.',recall:'The government birth registry - only one copy is official'},
+    'Routing - via Eventarc':{lineage:[['2020','Eventarc preview','GA Jan 2021',false],['Today','Standard / Advanced','event routing service',true],['Layers','msg / request / task','/ event',false]],does:'Sending each event/message/request to its destination. Eventarc routes events (CloudEvents) from 130+ sources.',recall:'A railway switchyard - the points decide each train track'}
+  };
+
+  deeps.forEach(function(deep,i){
+    var name=deep.getAttribute('data-name'), cat=deep.getAttribute('data-cat'),
+        pill=deep.getAttribute('data-pill'), ico=deep.getAttribute('data-ico'), h=deep.getAttribute('data-h');
+    var tabCount=deep.querySelectorAll('.dtab').length;
+    var key = name.replace(/\u2014/g,'-');
+    var s=SUMMARY[name]||SUMMARY[key]||{lineage:[],does:'',recall:''};
+    var lin=s.lineage.map(function(r){
+      var body;
+      if(r[3]){ body='<span class="now">'+r[1]+'</span><span style="color:var(--ink-faint)"> &middot; '+r[2]+'</span>'; }
+      else { body='<span class="cur" style="color:var(--ink-dim)">'+r[1]+'</span> <span class="arr">&rarr;</span> <span class="cur">'+r[2]+'</span>'; }
+      return '<div class="row"><span class="yr">'+r[0]+'</span><span>'+body+'</span></div>';
+    }).join('');
+    var card=document.createElement('article');
+    card.className='svc'; card.setAttribute('data-h',h); card.setAttribute('tabindex','0');
+    card.setAttribute('role','button'); card.setAttribute('data-target',i);
+    card.setAttribute('aria-label','Open full detail for '+name);
+    card.innerHTML =
+      '<div class="svc__top"><span class="ico" data-ico="'+ico+'"></span>'+
+        '<div class="svc__id"><div class="svc__cat">'+cat+'</div><div class="svc__name">'+name+'</div></div>'+
+        '<div class="svc__pill">'+pill+'</div></div>'+
+      '<div class="lineage">'+lin+'</div>'+
+      '<dl><dt>Does</dt><dd>'+s.does+'</dd><dt>Recall</dt><dd class="an">'+s.recall+'</dd></dl>'+
+      '<div class="svc__cta"><span>View full detail</span><span class="tabs-hint">'+tabCount+' tabs &middot; click to open <span class="arrow">&rarr;</span></span></div>';
+    grid.appendChild(card);
+  });
+  renderAllIcons(grid);
+
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:0.12});
+  document.querySelectorAll('.svc').forEach(function(el,i){ el.style.transitionDelay=(reduce?0:(i%2)*0.06+'s'); if(reduce){el.classList.add('in');}else{io.observe(el);} });
+
+  var scrim=document.getElementById('scrim'), drawer=document.getElementById('drawer'),
+      dwBody=document.getElementById('dwBody'), dwTitle=document.getElementById('dwTitle'),
+      dwCat=document.getElementById('dwCat'), dwIco=document.getElementById('dwIco'), dwClose=document.getElementById('dwClose');
+  var lastFocus=null;
+  var hColors={blue:'var(--blue-t)',green:'var(--green-t)',yellow:'var(--yellow-t)',red:'var(--red-t)'};
+
+  function initTabs(){
+    var tabs=Array.prototype.slice.call(dwBody.querySelectorAll('.dtab'));
+    var panels=Array.prototype.slice.call(dwBody.querySelectorAll('.dpanel'));
+    tabs.forEach(function(t,i){
+      t.addEventListener('click',function(){
+        tabs.forEach(function(x){x.classList.remove('on');});
+        panels.forEach(function(x){x.classList.remove('on');});
+        t.classList.add('on'); if(panels[i])panels[i].classList.add('on');
+        dwBody.scrollTop=0;
+      });
+    });
+  }
+  function openDrawer(idx){
+    var deep=deeps[idx]; if(!deep)return;
+    lastFocus=document.activeElement;
+    dwBody.innerHTML=deep.outerHTML;
+    dwTitle.textContent=deep.getAttribute('data-name');
+    dwCat.textContent=deep.getAttribute('data-cat');
+    dwCat.style.color=hColors[deep.getAttribute('data-h')]||'var(--blue-t)';
+    dwIco.setAttribute('data-ico',deep.getAttribute('data-ico')); renderIcon(dwIco);
+    renderAllIcons(dwBody);
+    initTabs();
+    scrim.classList.add('open'); drawer.classList.add('open'); drawer.setAttribute('aria-hidden','false');
+    document.body.classList.add('locked');
+    setTimeout(function(){dwClose.focus();},60);
+  }
+  function closeDrawer(){
+    scrim.classList.remove('open'); drawer.classList.remove('open'); drawer.setAttribute('aria-hidden','true');
+    document.body.classList.remove('locked');
+    if(lastFocus&&lastFocus.focus)lastFocus.focus();
+  }
+  grid.addEventListener('click',function(e){ var c=e.target.closest('.svc'); if(c)openDrawer(+c.getAttribute('data-target')); });
+  grid.addEventListener('keydown',function(e){ var c=e.target.closest('.svc'); if(c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openDrawer(+c.getAttribute('data-target'));} });
+  scrim.addEventListener('click',closeDrawer);
+  dwClose.addEventListener('click',closeDrawer);
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&drawer.classList.contains('open'))closeDrawer(); });
+  drawer.addEventListener('keydown',function(e){
+    if(e.key!=='Tab')return;
+    var f=drawer.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])');
+    if(!f.length)return; var first=f[0], last=f[f.length-1];
+    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+  });
+
+  function countUp(el){
+    var target=parseFloat(el.getAttribute('data-count')), suf=el.getAttribute('data-suffix')||'';
+    if(reduce){el.textContent=target.toLocaleString()+suf;return;}
+    var t0=null,dur=1100;
+    function step(ts){if(!t0)t0=ts;var p2=Math.min((ts-t0)/dur,1),e=1-Math.pow(1-p2,3);el.textContent=Math.round(target*e).toLocaleString()+suf;if(p2<1)requestAnimationFrame(step);}
+    requestAnimationFrame(step);
+  }
+  var tIO=new IntersectionObserver(function(en){en.forEach(function(e){if(e.isIntersecting){countUp(e.target);tIO.unobserve(e.target);}});},{threshold:0.5});
+  document.querySelectorAll('[data-count]').forEach(function(el){tIO.observe(el);});
+
+  var COL={blue:'#7DA9FF',green:'#5FD787',yellow:'#FFD24A',red:'#FF8178'};
+  document.querySelectorAll('[data-spark]').forEach(function(svg){
+    var c=COL[svg.getAttribute('data-spark')]||'#7DA9FF',n=24,pts=[],v=18+Math.random()*6;
+    for(var i=0;i<n;i++){v+=(Math.random()-0.5)*7;v=Math.max(5,Math.min(29,v));pts.push(v);}
+    var step=120/(n-1);
+    var d=pts.map(function(y,i){return (i?'L':'M')+(i*step).toFixed(1)+' '+(34-y).toFixed(1);}).join(' ');
+    var ns='http://www.w3.org/2000/svg';
+    var fill=document.createElementNS(ns,'path');fill.setAttribute('d',d+' L120 34 L0 34 Z');fill.setAttribute('fill',c);fill.setAttribute('opacity','0.10');
+    var line=document.createElementNS(ns,'path');line.setAttribute('d',d);line.setAttribute('fill','none');line.setAttribute('stroke',c);line.setAttribute('stroke-width','1.6');line.setAttribute('stroke-linejoin','round');
+    svg.appendChild(fill);svg.appendChild(line);
+    if(!reduce){var L=line.getTotalLength();line.style.strokeDasharray=L;line.style.strokeDashoffset=L;line.style.transition='stroke-dashoffset 1.4s ease 0.2s';
+      requestAnimationFrame(function(){requestAnimationFrame(function(){line.style.strokeDashoffset=0;});});}
+  });
+
+  var rows=Array.prototype.slice.call(document.querySelectorAll('#dag-run .bar'));
+  function setRow(bar,state){ bar.className='bar s-'+state; var st=bar.querySelector('.st'); if(st)st.textContent=state; }
+  function runDag(){
+    if(reduce)return;
+    setRow(rows[0],'running');setRow(rows[1],'queued');setRow(rows[2],'queued');setRow(rows[3],'queued');setRow(rows[4],'queued');
+    [[600,0,'success',1,'running'],[1500,1,'success',2,'running'],[2600,2,'success',3,'running'],[3500,3,'success',4,'running'],[4400,4,'success',-1,'']].forEach(function(s){
+      setTimeout(function(){ setRow(rows[s[1]],s[2]); if(s[3]>=0)setRow(rows[s[3]],s[4]); },s[0]);
+    });
+  }
+  if(rows.length&&!reduce){ runDag(); setInterval(runDag,9000); }
+
+  var stream=document.getElementById('logstream');
+  var LOGS=[
+    ['info','pubsub','message received topic=orders id=7f3a..'],
+    ['ok','run','transform-job container started rev=00042-bla'],
+    ['info','eventarc','routed CloudEvent storage type=finalize'],
+    ['ok','run','batch complete rows=12480 dur=2.1s'],
+    ['info','airflow','task transform_run_job to running'],
+    ['warn','pubsub','subscription backlog 1.2k msgs, scaling out'],
+    ['ok','catalog','lineage updated asset=orders_curated'],
+    ['info','sor','upsert bigquery.orders 12,480 rows'],
+    ['ok','airflow','dag orders_etl marked success'],
+    ['info','run','autoscaled 3 to 1 instances (idle)'],
+    ['err','run','retry 1/3 timeout calling enrich-api'],
+    ['ok','run','retry succeeded, latency 840ms'],
+    ['info','catalog','3 new assets discovered in lake']
+  ];
+  function nowts(){ var d=new Date(); return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()); }
+  var li=0;
+  function addLog(){
+    if(!stream)return;
+    var L=LOGS[li%LOGS.length]; li++;
+    var lv={info:'lv-info',ok:'lv-ok',warn:'lv-warn',err:'lv-err'}[L[0]];
+    var lvtxt={info:'INFO',ok:'OK',warn:'WARN',err:'ERROR'}[L[0]];
+    var row=document.createElement('div'); row.className='ln';
+    row.innerHTML='<span class="ts">'+nowts()+'</span><span class="lv '+lv+'">'+lvtxt+'</span><span class="msg"><b style="color:#92A2B5">'+L[1]+'</b> '+L[2]+'</span>';
+    stream.appendChild(row);
+    while(stream.children.length>9)stream.removeChild(stream.firstChild);
+  }
+  if(stream){ if(reduce){ for(var k=0;k<7;k++)addLog(); } else { for(var j=0;j<6;j++)addLog(); setInterval(addLog,2100); } }
+
+})();
+</script>
+</body>
+</html>
