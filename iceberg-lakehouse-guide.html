@@ -579,6 +579,42 @@ footer{max-width:var(--maxw);margin:0 auto;padding:30px 22px 60px;border-top:1px
 .stepcode{font-family:var(--mono);font-size:.74rem;white-space:pre-wrap;color:var(--glacier);background:rgba(4,18,30,.6);
   border:1px solid var(--line);border-radius:9px;padding:10px 12px;line-height:1.5;overflow-x:auto;margin:8px 0 0}
 .stepcode .c{color:#5f8aa0}
+/* ===== BEFORE / AFTER DATA TABLES ===== */
+.card .ex{font-size:.74rem;color:var(--muted);margin:8px 0 0;line-height:1.4;border-top:1px solid var(--line);padding-top:7px}
+.card .ex b{color:var(--ice-bright);font-family:var(--mono);font-size:.66rem}
+.bacap{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ice);margin:12px 0 5px}
+.bacap.aft{color:#5fe0a0}
+.baop{font-family:var(--mono);font-size:.76rem;white-space:pre-wrap;color:#cfeaf2;background:rgba(4,18,30,.6);
+  border:1px solid var(--line);border-left:3px solid var(--ice);border-radius:0 9px 9px 0;padding:9px 12px;margin:10px 0;line-height:1.5}
+.baop .c{color:#5f8aa0}
+.dtable td.chg,.dtable th.chg{background:rgba(67,197,224,.18);color:#eafaff;font-weight:600}
+.dtable td.add,.dtable th.add{background:rgba(40,200,64,.14);color:#bdf3c8}
+.dtable td.del,.dtable th.del{opacity:.45;text-decoration:line-through}
+.dtable td.mask{color:#5fe0a0;font-weight:600}
+
+/* ===== ICEBERG COMPONENTS TREE ===== */
+.ctree{border:1px solid var(--line);border-radius:16px;padding:16px 14px;margin:14px 0 0;background:var(--card-2);overflow-x:auto}
+.ctin{min-width:540px}
+.clabel{font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ice);margin:12px 0 6px;display:flex;align-items:center;gap:8px}
+.clabel .cnum{width:20px;height:20px;border-radius:50%;background:var(--ice);color:#04202b;display:grid;place-items:center;font-weight:700;font-size:.66rem;flex:none}
+.crow{display:flex;gap:8px;flex-wrap:nowrap}
+.cbox{flex:1 1 0;min-width:88px;border:1px solid var(--line);border-radius:9px;padding:8px 9px;background:rgba(8,30,50,.55);font-family:var(--mono);font-size:.64rem;color:var(--glacier);text-align:center}
+.cbox small{display:block;color:var(--muted);font-size:.56rem;margin-top:2px}
+.cbox.cat{border-color:var(--ice);background:rgba(67,197,224,.1);color:#cdeffb}
+.cbox.meta{border-color:#9a6cff;background:rgba(120,80,230,.13);color:#dcc6ff}
+.cbox.data{border-color:#43c5e0;color:#cdeffb}
+.cband{font-family:var(--mono);font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:center;border-top:1px dashed var(--line);border-bottom:1px dashed var(--line);padding:5px;margin:12px 0}
+.cdown{text-align:center;color:var(--ice);font-size:.95rem;margin:3px 0}
+
+/* ===== TIMELINE ===== */
+.tl{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 0}
+@media(max-width:760px){.tl{grid-template-columns:1fr}}
+.tlcard{border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--card-2)}
+.tlcard .tlyr{font-family:var(--mono);font-size:.66rem;color:var(--ice);letter-spacing:.05em}
+.tlcard h4{font-family:var(--display);font-size:.98rem;margin:4px 0 8px;color:#fff}
+.tlcard .pc{font-size:.8rem;margin:0 0 4px;color:var(--glacier);display:flex;gap:7px}
+.tlcard .pc .pcl{font-family:var(--mono);font-size:.6rem;letter-spacing:.04em;flex:none;width:30px}
+.tlcard .pc.pro .pcl{color:#5fe0a0}.tlcard .pc.con .pcl{color:var(--pii)}
 </style>
 </head>
 <body>
@@ -650,6 +686,70 @@ footer{max-width:var(--maxw);margin:0 auto;padding:30px 22px 60px;border-top:1px
         <div class="berg-cap">A cross-section of one Iceberg table</div>
       </div>
     </div>
+  </div>
+
+  <div class="section">
+    <div class="eyebrow">Start here · what is Iceberg</div>
+    <h2 class="section-title">What is Apache Iceberg — and why it exists</h2>
+    <p class="lead"><b>Apache Iceberg is an open table format.</b> It's a set of metadata files that sit on top of your data files (Parquet) in cheap object storage and make them behave like one real database table — with ACID transactions, schema changes, hidden partitioning, and time travel. The engine sees a clean table; Iceberg manages the messy file-tracking underneath.</p>
+    <div class="callout warn"><span class="lbl">Why it's required</span>Object stores (GCS, S3) can't do an atomic "commit" across many files and have no real "rename folder." The old approach (Hive) tracked a table as <b>folders of files</b> — so changing a column or the partitioning meant rewriting the whole table, finding data meant slowly listing millions of directories, and two writers at once could corrupt the table. Iceberg fixes this by moving the source of truth into <b>immutable metadata + one atomic pointer swap</b>.</div>
+
+    <p class="pretitle">What you get — with an example on our table</p>
+    <table class="dtable">
+      <tr><th>Benefit</th><th>What it means</th><th>On <code>bronze.customers</code></th></tr>
+      <tr><td>ACID transactions</td><td>writes are all-or-nothing; safe concurrency</td><td>two jobs append June rows — no half-written, corrupt table</td></tr>
+      <tr><td>Schema evolution</td><td>add / rename / drop columns, no data rewrite</td><td>add a <code>region</code> column with one command; old rows still read fine</td></tr>
+      <tr><td>Hidden partitioning</td><td>prune files without a special partition column</td><td>filter <code>ingested_at</code> → only June files are read</td></tr>
+      <tr><td>Time travel</td><td>query or roll back to any past snapshot</td><td>read the table "as of" just before a bad load, then roll back</td></tr>
+      <tr><td>One copy, many engines</td><td>same files read by every tool</td><td>BigQuery, Spark, Trino all query these rows — no copies</td></tr>
+    </table>
+
+    <p class="pretitle">A 10-second taste — add a column, change zero data</p>
+    <div class="bacap">Before</div>
+    <table class="dtable" style="max-width:520px"><tr><th>customer_id</th><th>city</th><th>txn_amount</th></tr>
+      <tr><td>1001</td><td>Mumbai</td><td>2,500.00</td></tr><tr><td>1002</td><td>Pune</td><td>540.50</td></tr><tr><td>1003</td><td>Mumbai</td><td>12,999.00</td></tr></table>
+    <div class="baop"><span class="c">-- metadata-only: no Parquet file is rewritten</span>
+ALTER TABLE bronze.customers ADD COLUMN region STRING DEFAULT 'APAC';</div>
+    <div class="bacap aft">After</div>
+    <table class="dtable" style="max-width:520px"><tr><th>customer_id</th><th>city</th><th>txn_amount</th><th class="add">region</th></tr>
+      <tr><td>1001</td><td>Mumbai</td><td>2,500.00</td><td class="add">APAC</td></tr><tr><td>1002</td><td>Pune</td><td>540.50</td><td class="add">APAC</td></tr><tr><td>1003</td><td>Mumbai</td><td>12,999.00</td><td class="add">APAC</td></tr></table>
+    <div class="note">The new column appears instantly across billions of rows because Iceberg only edits a tiny JSON file — the data files are never touched. (Full before/after examples live in the Schema, Partitioning &amp; Console tabs.)</div>
+
+    <p class="pretitle" style="margin-top:24px">How data was managed — before vs now</p>
+    <table class="dtable">
+      <tr><th>Task</th><th>Old way — Hive tables</th><th>New way — Apache Iceberg</th></tr>
+      <tr><td>Track files</td><td class="no">directories (a folder per partition)</td><td class="yes">a metadata tree (manifests list every file)</td></tr>
+      <tr><td>Find data</td><td class="no">list directories — slow on GCS/S3</td><td class="yes">read metadata + prune — fast</td></tr>
+      <tr><td>Change a column</td><td class="no">risky, often a full rewrite</td><td class="yes">metadata-only</td></tr>
+      <tr><td>Change partitioning</td><td class="no">rebuild the whole table</td><td class="yes">metadata-only evolution</td></tr>
+      <tr><td>Two writers at once</td><td class="no">unsafe</td><td class="yes">atomic commit + retry</td></tr>
+      <tr><td>Undo a bad load</td><td class="no">restore from a backup</td><td class="yes">roll back a snapshot</td></tr>
+    </table>
+
+    <p class="pretitle" style="margin-top:24px">The timeline — how we got here</p>
+    <div class="tl">
+      <div class="tlcard">
+        <div class="tlyr">≈2010–2016 · Hive on Hadoop &amp; S3</div>
+        <h4>Netflix managed data with Hive</h4>
+        <p class="pc pro"><span class="pcl">PRO</span><span>SQL over petabytes; Hive Metastore everywhere; the industry standard.</span></p>
+        <p class="pc con"><span class="pcl">CON</span><span>Listing millions of S3 directories to plan a query was painfully slow.</span></p>
+        <p class="pc con"><span class="pcl">CON</span><span>No atomic commits; partition/schema changes meant rewriting the table; concurrent writes were unsafe.</span></p>
+      </div>
+      <div class="tlcard">
+        <div class="tlyr">2016 · Uber (open-sourced 2017)</div>
+        <h4>Uber built Apache Hudi</h4>
+        <p class="pc pro"><span class="pcl">PRO</span><span>Fast <b>upserts/deletes</b> + a record-level index; built for streaming &amp; CDC; incremental queries.</span></p>
+        <p class="pc con"><span class="pcl">CON</span><span>Still Hive-style partitioning (no partition evolution); fewer non-Spark engines; more moving parts to operate.</span></p>
+      </div>
+      <div class="tlcard">
+        <div class="tlyr">2017 → Apache 2018, top-level 2020</div>
+        <h4>Netflix built Apache Iceberg</h4>
+        <p class="pc pro"><span class="pcl">PRO</span><span>Metadata tree → O(1) planning, atomic commits, <b>hidden partitioning + evolution</b>, time travel.</span></p>
+        <p class="pc pro"><span class="pcl">PRO</span><span>Engine-neutral &amp; vendor-neutral — Spark, Flink, Trino, BigQuery, Snowflake on one copy.</span></p>
+        <p class="pc con"><span class="pcl">CON</span><span>Needs a catalog and periodic maintenance (compaction, expire snapshots).</span></p>
+      </div>
+    </div>
+    <div class="note"><b>How Apache Iceberg overcame the rest:</b> it kept Hudi's transactional promise but added what Hive lacked and Hudi didn't — a true <b>metadata layer</b> that makes planning instant, schema &amp; partition changes free, and the format readable by <i>every</i> engine instead of mostly Spark. Format <b>V3</b> (2025–2026) even folded in Hudi/Delta-style deletion vectors, so the three formats are converging. <button class="btn" style="margin-top:10px" data-goto="formats">Compare Iceberg vs Hive vs Hudi vs Delta ↗</button></div>
   </div>
 
   <div class="section">
@@ -790,22 +890,22 @@ footer{max-width:var(--maxw);margin:0 auto;padding:30px 22px 60px;border-top:1px
     <h2 class="section-title">Every core concept, with an analogy</h2>
     <p class="lead">The words people trip over — defined precisely, shown how Iceberg implements them, and paired with a mental model. Tap any.</p>
     <div class="grid g4">
-      <div class="card hover clickable" data-drawer="transaction"><div class="kicker">Database</div><h3>Transaction</h3><p>One indivisible unit of work — all of it commits, or none does.</p></div>
-      <div class="card hover clickable" data-drawer="acid"><div class="kicker">Guarantee</div><h3>ACID</h3><p>Atomicity, Consistency, Isolation, Durability — the four promises.</p></div>
-      <div class="card hover clickable" data-drawer="atomicity"><div class="kicker">A in ACID</div><h3>Atomicity</h3><p>All-or-nothing, via one atomic pointer swap. No partial tables.</p></div>
-      <div class="card hover clickable" data-drawer="commitproto"><div class="kicker">Commit</div><h3>Catalog update</h3><p>How a write becomes visible: compare-and-swap of the metadata pointer.</p></div>
-      <div class="card hover clickable" data-drawer="catalog"><div class="kicker">Pointer</div><h3>Catalog</h3><p>Maps a table name → its current metadata file. The source of truth.</p></div>
-      <div class="card hover clickable" data-drawer="metatree"><div class="kicker">The tree</div><h3>Metadata</h3><p>metadata.json → manifest list → manifests → data files.</p></div>
-      <div class="card hover clickable" data-drawer="snapshot"><div class="kicker">Versioning</div><h3>Snapshot</h3><p>An immutable point-in-time view of the whole table. Like a git commit.</p></div>
-      <div class="card hover clickable" data-drawer="partconcept"><div class="kicker">Layout</div><h3>Partitioning</h3><p>Grouping rows so queries skip what they don't need.</p></div>
-      <div class="card hover clickable" data-drawer="datasetfile"><div class="kicker">Logical vs physical</div><h3>Dataset vs file</h3><p>One logical table = many physical Parquet files, tracked by metadata.</p></div>
-      <div class="card hover clickable" data-drawer="canonical"><div class="kicker">Standard form</div><h3>Canonical</h3><p>The single authoritative / standardized representation of data.</p></div>
-      <div class="card hover clickable" data-drawer="hadoop"><div class="kicker">History</div><h3>Hadoop cluster</h3><p>The framework that launched big data: HDFS + MapReduce + YARN.</p></div>
-      <div class="card hover clickable" data-drawer="hdfs"><div class="kicker">Storage</div><h3>HDFS</h3><p>Distributed file system; object storage (GCS) largely replaced it.</p></div>
-      <div class="card hover clickable" data-drawer="microbatch"><div class="kicker">Streaming</div><h3>Micro-batching</h3><p>A stream as rapid tiny batches — Spark Structured Streaming.</p></div>
-      <div class="card hover clickable" data-drawer="hidden"><div class="kicker">Iceberg trick</div><h3>Hidden partitioning</h3><p>Partition by a transform of a column, with no extra column.</p></div>
-      <div class="card hover clickable" data-drawer="timetravel"><div class="kicker">Audit</div><h3>Time travel</h3><p>Query or roll back to any past snapshot by id or timestamp.</p></div>
-      <div class="card hover clickable" data-drawer="schemaev"><div class="kicker">Agility</div><h3>Schema evolution</h3><p>Add/drop/rename/reorder/widen columns with no rewrite.</p></div>
+      <div class="card hover clickable" data-drawer="transaction"><div class="kicker">Database</div><h3>Transaction</h3><p>One indivisible unit of work — every change inside it commits together, or none does. No half-finished states are ever visible.</p><p class="ex"><b>e.g.</b> a MERGE that updates 3 rows and inserts 1 into <code>bronze.customers</code> either lands all 4 changes or zero.</p></div>
+      <div class="card hover clickable" data-drawer="acid"><div class="kicker">Guarantee</div><h3>ACID</h3><p><b>A</b>tomicity, <b>C</b>onsistency, <b>I</b>solation, <b>D</b>urability — the four promises that make a table trustworthy under failures and concurrency.</p><p class="ex"><b>e.g.</b> two jobs appending June rows to <code>bronze.customers</code> can't corrupt or half-mix the table.</p></div>
+      <div class="card hover clickable" data-drawer="atomicity"><div class="kicker">A in ACID</div><h3>Atomicity</h3><p>All-or-nothing. Iceberg achieves it with a single atomic compare-and-swap of the metadata pointer — never a partially-written table.</p><p class="ex"><b>e.g.</b> if a write of 1M rows fails midway, readers still see the old snapshot — nothing leaked.</p></div>
+      <div class="card hover clickable" data-drawer="commitproto"><div class="kicker">Commit</div><h3>Catalog update (commit)</h3><p>The moment a write becomes visible: the catalog compare-and-swaps the table's pointer from metadata vN → vN+1.</p><p class="ex"><b>e.g.</b> after loading row 1005, the commit flips <code>bronze.customers</code> to the new snapshot for everyone at once.</p></div>
+      <div class="card hover clickable" data-drawer="catalog"><div class="kicker">Pointer</div><h3>Catalog</h3><p>The registry mapping a table <i>name</i> → its current <code>metadata.json</code>. The single source of truth every engine consults first.</p><p class="ex"><b>e.g.</b> "<code>bronze.customers</code>" → <code>gs://…/metadata/00007.metadata.json</code>.</p></div>
+      <div class="card hover clickable" data-drawer="metatree"><div class="kicker">The tree</div><h3>Metadata tree</h3><p>The layered chain Iceberg keeps beside the data: <code>metadata.json</code> → manifest list → manifest files → data files.</p><p class="ex"><b>e.g.</b> querying <code>bronze.customers</code> walks this tree top-down, pruning at each level.</p></div>
+      <div class="card hover clickable" data-drawer="snapshot"><div class="kicker">Versioning</div><h3>Snapshot</h3><p>An immutable, point-in-time view of the <i>entire</i> table — one per commit. Like a git commit you can read or revert to.</p><p class="ex"><b>e.g.</b> snapshot 101 = before today's load; 102 = after. Both stay readable.</p></div>
+      <div class="card hover clickable" data-drawer="partconcept"><div class="kicker">Layout</div><h3>Partitioning</h3><p>Physically grouping rows by a key so a query reads only the relevant groups instead of the whole table.</p><p class="ex"><b>e.g.</b> partition <code>bronze.customers</code> by <code>day(ingested_at)</code> → a June-2 filter reads only June-2 files.</p></div>
+      <div class="card hover clickable" data-drawer="datasetfile"><div class="kicker">Logical vs physical</div><h3>Dataset vs file</h3><p>One logical <i>table</i> is made of many physical <i>files</i>. You query the table; Iceberg's metadata tracks which files currently belong to it.</p><p class="ex"><b>e.g.</b> <code>bronze.customers</code> (1 table) = dozens of Parquet files across day-partitions.</p></div>
+      <div class="card hover clickable" data-drawer="canonical"><div class="kicker">Standard form</div><h3>Canonical</h3><p>The single authoritative, standardized representation everyone agrees on — no competing copies or formats.</p><p class="ex"><b>e.g.</b> the canonical customer record lives once in <code>bronze.customers</code>, read by BigQuery <i>and</i> Spark.</p></div>
+      <div class="card hover clickable" data-drawer="hadoop"><div class="kicker">History</div><h3>Hadoop cluster</h3><p>The framework that launched big data: HDFS (storage) + MapReduce (compute) + YARN (scheduling) on clusters of cheap machines.</p><p class="ex"><b>e.g.</b> early Netflix ran Hive-on-Hadoop before object storage + Iceberg.</p></div>
+      <div class="card hover clickable" data-drawer="hdfs"><div class="kicker">Storage</div><h3>HDFS</h3><p>Hadoop's distributed file system. Cloud object storage (GCS, S3) has largely replaced it — cheaper, infinitely scalable, decoupled from compute.</p><p class="ex"><b>e.g.</b> our <code>bronze.customers</code> files sit in GCS, not HDFS.</p></div>
+      <div class="card hover clickable" data-drawer="microbatch"><div class="kicker">Streaming</div><h3>Micro-batching</h3><p>Treating a continuous stream as a rapid series of tiny batches — the model Spark Structured Streaming uses to write often.</p><p class="ex"><b>e.g.</b> append new <code>bronze.customers</code> rows every 60s as small snapshots, then compact.</p></div>
+      <div class="card hover clickable" data-drawer="hidden"><div class="kicker">Iceberg trick</div><h3>Hidden partitioning</h3><p>Partition by a <i>transform</i> of a real column (e.g. <code>day(ts)</code>) with no extra stored column — so queries can't forget the partition filter.</p><p class="ex"><b>e.g.</b> filter <code>ingested_at</code> directly; Iceberg derives the day partition and prunes.</p></div>
+      <div class="card hover clickable" data-drawer="timetravel"><div class="kicker">Audit</div><h3>Time travel</h3><p>Query — or roll back to — any retained past snapshot, by snapshot-id or timestamp. Auditing and "undo" come free.</p><p class="ex"><b>e.g.</b> <code>SELECT * FROM bronze.customers FOR SYSTEM_TIME AS OF '2026-06-01 12:00:00'</code>.</p></div>
+      <div class="card hover clickable" data-drawer="schemaev"><div class="kicker">Agility</div><h3>Schema evolution</h3><p>Add / drop / rename / reorder / widen columns as a metadata-only edit — no data files are rewritten, thanks to permanent field-IDs.</p><p class="ex"><b>e.g.</b> <code>ALTER TABLE bronze.customers ADD COLUMN loyalty_tier STRING</code> — instant.</p></div>
     </div>
   </div>
 </section>
@@ -915,6 +1015,61 @@ footer{max-width:var(--maxw);margin:0 auto;padding:30px 22px 60px;border-top:1px
     <div class="eyebrow">01 · Architecture internals</div>
     <h2 class="section-title">The metadata tree, top to bottom</h2>
     <p class="lead">A read starts at the catalog and walks <i>down</i>. A write builds new layers and ends with one atomic swap at the top. Click any stratum to open its full anatomy.</p>
+
+    <div class="eyebrow" style="margin-top:6px">The components, branch by branch</div>
+    <h3 style="font-family:var(--display);font-size:1.05rem;margin:0 0 4px">One table = a 5-level tree that fans out downward</h3>
+    <p style="color:var(--glacier);font-size:.86rem;margin:0 0 4px">Each level points to several items in the level below it. One catalog entry → one current metadata file → one manifest list per snapshot → many manifest files → many data files.</p>
+    <div class="ctree"><div class="ctin">
+      <div class="clabel"><span class="cnum">1</span> Iceberg catalog</div>
+      <div class="crow"><div class="cbox cat">bronze.customers → <b>v2.metadata.json</b><small>the current metadata pointer (the only mutable thing)</small></div></div>
+      <div class="cdown">▼</div>
+      <div class="cband">metadata layer</div>
+      <div class="clabel"><span class="cnum">2</span> Metadata files</div>
+      <div class="crow"><div class="cbox meta">v1.metadata.json<small>snapshot s0</small></div><div class="cbox meta">v2.metadata.json<small>snapshots s0, s1 ← current</small></div></div>
+      <div class="cdown">▼</div>
+      <div class="clabel"><span class="cnum">3</span> Manifest lists <span style="color:var(--muted);text-transform:none;letter-spacing:0">· one per snapshot</span></div>
+      <div class="crow"><div class="cbox meta">snap-s0.avro<small>manifest list for s0</small></div><div class="cbox meta">snap-s1.avro<small>manifest list for s1</small></div></div>
+      <div class="cdown">▼</div>
+      <div class="clabel"><span class="cnum">4</span> Manifest files</div>
+      <div class="crow"><div class="cbox meta">m-0.avro</div><div class="cbox meta">m-1.avro</div><div class="cbox meta">m-2.avro</div><div class="cbox meta">m-3.avro</div></div>
+      <div class="cdown">▼</div>
+      <div class="cband">data layer</div>
+      <div class="clabel"><span class="cnum">5</span> Data files <span style="color:var(--muted);text-transform:none;letter-spacing:0">· Parquet (+ delete files / deletion vectors)</span></div>
+      <div class="crow"><div class="cbox data">data-0.parquet</div><div class="cbox data">data-1.parquet</div><div class="cbox data">data-2.parquet</div><div class="cbox data">data-3.parquet</div></div>
+    </div></div>
+    <div class="fcaps">
+      <div class="fcap"><span class="fcn">1</span><div><b>Catalog.</b> Holds just one thing per table: a pointer to the <i>current</i> <code>metadata.json</code>. A commit atomically swaps this pointer (s1 → s2).</div></div>
+      <div class="fcap"><span class="fcn">2</span><div><b>Metadata files.</b> Each <code>metadata.json</code> is a full table definition for a version: schema(s), partition spec(s), properties, and the list of snapshots so far. v2 knows about both s0 and s1.</div></div>
+      <div class="fcap"><span class="fcn">3</span><div><b>Manifest lists.</b> One per snapshot — the snapshot's "table of contents." It names the manifest files in that snapshot and stores partition-range stats so whole manifests can be skipped.</div></div>
+      <div class="fcap"><span class="fcn">4</span><div><b>Manifest files.</b> Each lists a batch of data files with per-file column min/max + null counts + row counts — the stats that let the engine skip individual files.</div></div>
+      <div class="fcap"><span class="fcn">5</span><div><b>Data files.</b> The actual rows, as Parquet, in your GCS bucket. Immutable: changes create <i>new</i> files and a new snapshot, never edits in place.</div></div>
+    </div>
+
+    <p class="pretitle" style="margin-top:20px">See the real tree on <code>bronze.customers</code> — query the metadata tables</p>
+    <div class="baop"><span class="c">-- 1+2: every snapshot the catalog/metadata knows about</span>
+SELECT snapshot_id, parent_id, operation, manifest_list
+FROM bronze.customers.snapshots ORDER BY committed_at;
+
+<span class="c">-- 3+4: the manifests in the CURRENT snapshot (the manifest list's contents)</span>
+SELECT path, added_data_files_count, existing_data_files_count, partition_summaries
+FROM bronze.customers.manifests;
+
+<span class="c">-- 5: the actual data files + the stats that drive file pruning</span>
+SELECT file_path, record_count, file_size_in_bytes, partition,
+       lower_bounds, upper_bounds
+FROM bronze.customers.files;</div>
+    <div class="baop"><span class="c"># On disk in GCS, the same 5 levels look like this:</span>
+gs://bucket/bronze/customers/
+  metadata/
+    v1.metadata.json            <span class="c"># level 2 (snapshot s0)</span>
+    v2.metadata.json            <span class="c"># level 2 (current: s0, s1)</span>
+    snap-s0-….avro              <span class="c"># level 3 (manifest list)</span>
+    snap-s1-….avro              <span class="c"># level 3 (manifest list)</span>
+    m-0.avro  m-1.avro  m-2.avro  m-3.avro   <span class="c"># level 4 (manifests)</span>
+  data/
+    ingested_at_day=2026-06-01/data-0.parquet   <span class="c"># level 5</span>
+    ingested_at_day=2026-06-02/data-1.parquet   <span class="c"># level 5</span></div>
+    <div class="note">The catalog only ever updates that one pointer at level 1 — which is exactly why a commit is atomic and instant, no matter how many files sit below. Click any stratum below for its deep dive.</div>
 
     <div class="strata">
       <div class="stratum s1" data-drawer="l-catalog">
@@ -1142,6 +1297,40 @@ ALTER TABLE bronze.customers ADD COLUMN region STRING DEFAULT 'APAC';
 
 <span style="color:#5f8aa0">-- drop — the field ID is retired FOREVER and never reused</span>
 ALTER TABLE bronze.customers DROP COLUMN loyalty_tier;</div></div>
+
+    <p class="pretitle" style="margin-top:18px">Watch the table change — before &amp; after each operation</p>
+    <p style="color:var(--glacier);font-size:.85rem;margin:0 0 2px">Applied to <code>bronze.customers</code>. Cyan = renamed, green = added, struck-through = dropped. Old Parquet files are never rewritten — only metadata changes.</p>
+
+    <div class="bacap">Before — original table</div>
+    <table class="dtable"><tr><th>customer_id</th><th>full_name</th><th>city</th><th>txn_amount</th></tr>
+      <tr><td>1001</td><td>Asha Rao</td><td>Mumbai</td><td>2,500.00</td></tr>
+      <tr><td>1002</td><td>Vikram Iyer</td><td>Pune</td><td>540.50</td></tr>
+      <tr><td>1003</td><td>Neha Gupta</td><td>Mumbai</td><td>12,999.00</td></tr></table>
+
+    <div class="baop"><span class="c">-- 1) RENAME a column (field-ID unchanged)</span>
+ALTER TABLE bronze.customers RENAME COLUMN full_name TO customer_name;</div>
+    <div class="bacap aft">After (1) — column header changes, values untouched</div>
+    <table class="dtable"><tr><th>customer_id</th><th class="chg">customer_name</th><th>city</th><th>txn_amount</th></tr>
+      <tr><td>1001</td><td class="chg">Asha Rao</td><td>Mumbai</td><td>2,500.00</td></tr>
+      <tr><td>1002</td><td class="chg">Vikram Iyer</td><td>Pune</td><td>540.50</td></tr>
+      <tr><td>1003</td><td class="chg">Neha Gupta</td><td>Mumbai</td><td>12,999.00</td></tr></table>
+
+    <div class="baop"><span class="c">-- 2) ADD a column with a V3 default (old rows get the default on read)</span>
+ALTER TABLE bronze.customers ADD COLUMN region STRING DEFAULT 'APAC';</div>
+    <div class="bacap aft">After (2) — new green column, populated for existing rows</div>
+    <table class="dtable"><tr><th>customer_id</th><th>customer_name</th><th>city</th><th>txn_amount</th><th class="add">region</th></tr>
+      <tr><td>1001</td><td>Asha Rao</td><td>Mumbai</td><td>2,500.00</td><td class="add">APAC</td></tr>
+      <tr><td>1002</td><td>Vikram Iyer</td><td>Pune</td><td>540.50</td><td class="add">APAC</td></tr>
+      <tr><td>1003</td><td>Neha Gupta</td><td>Mumbai</td><td>12,999.00</td><td class="add">APAC</td></tr></table>
+
+    <div class="baop"><span class="c">-- 3) DROP a column (field-ID retired forever; re-adding gives a fresh ID)</span>
+ALTER TABLE bronze.customers DROP COLUMN region;</div>
+    <div class="bacap aft">After (3) — column gone from the schema</div>
+    <table class="dtable"><tr><th>customer_id</th><th>customer_name</th><th>city</th><th>txn_amount</th><th class="del">region</th></tr>
+      <tr><td>1001</td><td>Asha Rao</td><td>Mumbai</td><td>2,500.00</td><td class="del">APAC</td></tr>
+      <tr><td>1002</td><td>Vikram Iyer</td><td>Pune</td><td>540.50</td><td class="del">APAC</td></tr>
+      <tr><td>1003</td><td>Neha Gupta</td><td>Mumbai</td><td>12,999.00</td><td class="del">APAC</td></tr></table>
+    <div class="note">Every one of these is a millisecond metadata edit — the data files for 1001–1003 were written once and never touched again. That's the whole point of field-IDs.</div>
 
     <p class="pretitle" style="margin-top:6px">Type promotion — only loss-less widening is allowed</p>
     <table class="dtable">
@@ -1502,6 +1691,29 @@ WHEN MATCHED THEN UPDATE SET *
 WHEN NOT MATCHED THEN INSERT *"""</span>)</pre>
       </div>
       <div class="note warn"><b>Governance &gt; code.</b> Masking in PySpark protects the <i>copy you write</i>. To protect the <i>source</i> column from unauthorized readers, also attach a BigQuery <b>policy tag</b> to <code>pan</code> — see the next tab.</div>
+
+      <p class="pretitle" style="margin-top:14px">What MERGE actually does — before &amp; after</p>
+      <p style="color:var(--glacier);font-size:.85rem;margin:0 0 2px">A CDC batch arrives with one changed customer and one brand-new one. Cyan = updated, green = inserted.</p>
+      <div class="bacap">Target <code>silver.customers</code> — before</div>
+      <table class="dtable"><tr><th>customer_id</th><th>city</th><th>txn_amount</th><th>updated_at</th></tr>
+        <tr><td>1001</td><td>Mumbai</td><td>2,500.00</td><td>2026-06-01</td></tr>
+        <tr><td>1002</td><td>Pune</td><td>540.50</td><td>2026-06-01</td></tr>
+        <tr><td>1003</td><td>Mumbai</td><td>12,999.00</td><td>2026-06-02</td></tr></table>
+      <div class="bacap" style="color:var(--muted)">Incoming CDC batch (source)</div>
+      <table class="dtable"><tr><th>customer_id</th><th>city</th><th>txn_amount</th></tr>
+        <tr><td class="chg">1002</td><td class="chg">Mumbai</td><td class="chg">880.00</td></tr>
+        <tr><td class="add">1005</td><td class="add">Delhi</td><td class="add">4,200.00</td></tr></table>
+      <div class="baop"><span class="c">-- match on key: update existing, insert new — atomically</span>
+MERGE INTO silver.customers t USING updates s ON t.customer_id = s.customer_id
+WHEN MATCHED THEN UPDATE SET *
+WHEN NOT MATCHED THEN INSERT *;</div>
+      <div class="bacap aft">After — 1002 updated, 1005 inserted, rest unchanged</div>
+      <table class="dtable"><tr><th>customer_id</th><th>city</th><th>txn_amount</th><th>updated_at</th></tr>
+        <tr><td>1001</td><td>Mumbai</td><td>2,500.00</td><td>2026-06-01</td></tr>
+        <tr><td class="chg">1002</td><td class="chg">Mumbai</td><td class="chg">880.00</td><td class="chg">2026-06-29</td></tr>
+        <tr><td>1003</td><td>Mumbai</td><td>12,999.00</td><td>2026-06-02</td></tr>
+        <tr><td class="add">1005</td><td class="add">Delhi</td><td class="add">4,200.00</td><td class="add">2026-06-29</td></tr></table>
+      <div class="note">All four outcomes (one update, one insert, two untouched) commit in a single snapshot. On a format-V3 table the update to 1002 lands as a cheap <b>deletion vector</b> + new row, not a file rewrite.</div>
     </div>
 
     <div class="subpanel" id="ps-stream">
@@ -1872,6 +2084,26 @@ CALL lake.system.expire_snapshots(table =&gt; 'bronze.customers', older_than =&g
     <div class="eyebrow">06 · Sensitive data · PAN column</div>
     <h2 class="section-title">Tag it, mask it, govern it</h2>
     <p class="lead">PAN (India's Permanent Account Number, format <code>AAAAA1234A</code>) is regulated PII under the DPDP Act, 2023. Below is a dummy <code>bronze.customers</code> sample. Flip the switch to see what an <i>authorized</i> vs <i>unauthorized</i> reader sees — masking is the difference between the two.</p>
+
+    <p class="pretitle">The masking operation — before &amp; after</p>
+    <p style="color:var(--glacier);font-size:.85rem;margin:0 0 2px">Two ways to protect <code>pan</code>: write a masked copy at Bronze→Silver, or attach a policy tag so unauthorized BigQuery readers see it masked automatically. Green = protected value.</p>
+    <div class="bacap">Before — raw <code>pan</code> (visible to anyone who can read the file)</div>
+    <table class="dtable" style="max-width:560px"><tr><th>customer_id</th><th>full_name</th><th><span style="color:var(--pii)">pan</span></th></tr>
+      <tr><td>1001</td><td>Asha Rao</td><td style="color:var(--pii)">ABCPR1234F</td></tr>
+      <tr><td>1002</td><td>Vikram Iyer</td><td style="color:var(--pii)">XYZPK9876L</td></tr>
+      <tr><td>1003</td><td>Neha Gupta</td><td style="color:var(--pii)">LMNPG4567Q</td></tr></table>
+    <div class="baop"><span class="c">-- A) Spark: write a partially-masked column into Silver</span>
+withColumn("pan_masked", concat(substring("pan",1,2), lit("XXXXXX"), substring("pan",9,2)))
+
+<span class="c">-- B) BigQuery: attach a policy tag → unauthorized readers auto-see NULL/masked</span>
+ALTER TABLE bronze.customers ALTER COLUMN pan
+  SET OPTIONS (policy_tags=['projects/p/locations/us/taxonomies/123/policyTags/456']);</div>
+    <div class="bacap aft">After — what an unauthorized reader gets</div>
+    <table class="dtable" style="max-width:560px"><tr><th>customer_id</th><th>full_name</th><th class="chg">pan (masked)</th></tr>
+      <tr><td>1001</td><td>Asha Rao</td><td class="mask">ABXXXXXX4F</td></tr>
+      <tr><td>1002</td><td>Vikram Iyer</td><td class="mask">XYXXXXXX6L</td></tr>
+      <tr><td>1003</td><td>Neha Gupta</td><td class="mask">LMXXXXXX7Q</td></tr></table>
+    <div class="note">Approach A protects the <i>copy you write</i>; approach B protects the <i>source column</i> for every engine via the catalog. Use both: tag at Bronze, mask at Bronze→Silver. The live table below lets you toggle authorized vs unauthorized to feel the difference.</div>
 
     <div class="pii-head">
       <span class="tag-pii">
