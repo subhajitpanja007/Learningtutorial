@@ -1102,6 +1102,50 @@ gs://bucket/bronze/customers/
 
     <div class="note">A <b>snapshot</b> is a complete, immutable picture of the table at one commit: it points at exactly one manifest list. The snapshot list inside <code>metadata.json</code> is what makes time travel and rollback a metadata-only operation — no data is copied.</div>
 
+    <div class="eyebrow" style="margin-top:22px">All 5 levels — what's actually inside each file</div>
+    <h3 style="font-family:var(--display);font-size:1.08rem;margin:0 0 4px">A concrete walk through one commit of <code>bronze.customers</code></h3>
+
+    <p class="pretitle">① Catalog entry — just a pointer</p>
+    <div class="baop">bronze.customers  →  gs://bucket/bronze/customers/metadata/<b>v2.metadata.json</b>
+<span class="c"># the ONLY thing a commit changes: this name → file mapping (atomic compare-and-swap)</span></div>
+
+    <p class="pretitle">② metadata.json — the whole table definition for this version</p>
+    <div class="baop">{
+  "format-version": 2,
+  "table-uuid": "9f1c-…",
+  "current-snapshot-id": 101,
+  "schemas": [{ "schema-id": 0, "fields": [
+    { "id": 1, "name": "customer_id", "type": "long",      "required": true },
+    { "id": 2, "name": "full_name",   "type": "string" },
+    { "id": 4, "name": "pan",         "type": "string" },
+    { "id": 7, "name": "ingested_at", "type": "timestamp" }   <span class="c"># field-IDs are permanent</span>
+  ]}],
+  "partition-specs": [{ "spec-id": 0, "fields": [
+    { "source-id": 7, "transform": "day", "name": "ingested_at_day" }   <span class="c"># hidden partitioning lives here</span>
+  ]}],
+  "snapshots": [
+    { "snapshot-id": 100, "manifest-list": "snap-100-….avro" },
+    { "snapshot-id": 101, "parent-snapshot-id": 100, "manifest-list": "snap-101-….avro" }
+  ]
+}</div>
+
+    <p class="pretitle">③ Manifest list <code>snap-101-….avro</code> — this snapshot's table of contents</p>
+    <table class="dtable"><tr><th>manifest_path</th><th>added_snapshot_id</th><th>partition lower</th><th>partition upper</th></tr>
+      <tr><td>m-1.avro</td><td>100</td><td>2026-06-01</td><td>2026-06-01</td></tr>
+      <tr><td>m-2.avro</td><td>101</td><td>2026-06-02</td><td>2026-06-02</td></tr></table>
+    <p style="color:var(--muted);font-size:.78rem;margin:5px 0 0">→ a query for <code>2026-06-02</code> reads only <b>m-2.avro</b> and skips m-1 using these partition ranges.</p>
+
+    <p class="pretitle">④ Manifest file <code>m-2.avro</code> — one row per data file, with the stats that drive skipping</p>
+    <table class="dtable"><tr><th>data_file</th><th>partition</th><th>record_count</th><th>lower(txn_amount)</th><th>upper(txn_amount)</th><th>null_count(pan)</th></tr>
+      <tr><td>data-1.parquet</td><td>2026-06-02</td><td>2</td><td>75.25</td><td>12,999.00</td><td>0</td></tr></table>
+    <p style="color:var(--muted);font-size:.78rem;margin:5px 0 0">→ <code>WHERE txn_amount &gt; 10000</code> keeps this file (upper = 12,999); a file with upper = 600 would be dropped here, before any Parquet is opened.</p>
+
+    <p class="pretitle">⑤ Data file <code>data-1.parquet</code> — the actual rows (+ footer stats inside)</p>
+    <table class="dtable"><tr><th>customer_id</th><th>full_name</th><th>city</th><th>txn_amount</th><th>ingested_at</th></tr>
+      <tr><td>1003</td><td>Neha Gupta</td><td>Mumbai</td><td>12,999.00</td><td>2026-06-02 11:02</td></tr>
+      <tr><td>1004</td><td>Sam Khan</td><td>Delhi</td><td>75.25</td><td>2026-06-02 18:45</td></tr></table>
+    <div class="note">Top-to-bottom, that's the entire table: <b>① pointer → ② definition → ③ snapshot contents → ④ file stats → ⑤ rows.</b> A read walks down this tree pruning at ③ and ④; a write builds ⑤→④→③→② then flips ① — atomically. The deep dives below open each layer.</div>
+
     <div class="grid g3" style="margin-top:22px">
       <div class="card hover clickable" data-drawer="cowmor"><div class="kicker">Updates &amp; deletes</div><h3>CoW vs MoR</h3><p>Copy-on-write rewrites whole files (fast reads, slow writes). Merge-on-read writes delete markers (fast writes, merge at read).</p></div>
       <div class="card hover clickable" data-drawer="maint"><div class="kicker">Housekeeping</div><h3>Compaction &amp; expiry</h3><p>Small files and old snapshots accumulate. <code>rewrite_data_files</code>, <code>expire_snapshots</code>, orphan cleanup keep it healthy.</p></div>
@@ -1387,6 +1431,51 @@ ADD COLUMN channel STRING
     <h2 class="section-title">Partitions you can't forget — and can change later</h2>
     <p class="lead">Iceberg's two partitioning superpowers: <b>hidden partitioning</b> (the layout is derived from a column by a transform, so queries never need a special partition column or filter) and <b>partition evolution</b> (change the scheme without rewriting history).</p>
 
+    <div class="eyebrow" style="margin-top:6px">How hidden partitioning actually works</div>
+    <h3 style="font-family:var(--display);font-size:1.08rem;margin:0 0 4px">The partition value is computed &amp; stored in metadata — not as a column</h3>
+    <p style="color:var(--glacier);font-size:.86rem;margin:0 0 2px">You declare a <b>transform</b> of a real column. On write, Iceberg computes that transform for each row, records it as the file's <i>partition tuple</i> in the manifest, and physically groups rows into files by it. You never add or see a partition column.</p>
+    <div class="baop"><span class="c">-- declare the transform; no extra "event_date" column exists</span>
+CREATE TABLE bronze.customers (
+  customer_id BIGINT, full_name STRING, email STRING, pan STRING,
+  city STRING, txn_amount DOUBLE, ingested_at TIMESTAMP)
+USING iceberg PARTITIONED BY (days(ingested_at));</div>
+    <div class="bacap">Where each row physically lands (computed from <code>ingested_at</code>)</div>
+    <table class="dtable"><tr><th>customer_id</th><th>ingested_at</th><th class="chg">partition = day(ingested_at)</th><th>file</th></tr>
+      <tr><td>1001</td><td>2026-06-01 09:14</td><td class="chg">ingested_at_day=2026-06-01</td><td>data-0.parquet</td></tr>
+      <tr><td>1002</td><td>2026-06-01 09:20</td><td class="chg">ingested_at_day=2026-06-01</td><td>data-0.parquet</td></tr>
+      <tr><td>1003</td><td>2026-06-02 11:02</td><td class="chg">ingested_at_day=2026-06-02</td><td>data-1.parquet</td></tr>
+      <tr><td>1004</td><td>2026-06-02 18:45</td><td class="chg">ingested_at_day=2026-06-02</td><td>data-1.parquet</td></tr></table>
+
+    <div class="baop"><span class="c">-- you filter the REAL column; Iceberg rewrites it into a partition filter</span>
+SELECT city, SUM(txn_amount) FROM bronze.customers
+WHERE ingested_at &gt;= '2026-06-02' GROUP BY city;</div>
+    <div class="bacap aft">What the query reads — automatic pruning</div>
+    <table class="dtable"><tr><th>partition</th><th>file</th><th>read?</th></tr>
+      <tr><td>ingested_at_day=2026-06-01</td><td>data-0.parquet</td><td class="del">✗ skipped (pruned)</td></tr>
+      <tr><td>ingested_at_day=2026-06-02</td><td>data-1.parquet</td><td class="add">✓ read → 1003, 1004</td></tr></table>
+    <div class="note">2 of 4 rows touched here — on a billion-row table that's the difference between seconds and minutes. The engine never lists directories; it reads the partition tuple from metadata and drops non-matching files.</div>
+
+    <p class="pretitle" style="margin-top:18px">Hidden (Iceberg) vs explicit (Hive) — why "hidden" matters</p>
+    <table class="dtable">
+      <tr><th>Question</th><th>Hive (explicit)</th><th>Iceberg (hidden)</th></tr>
+      <tr><td>Partition column</td><td class="no">a real stored column, e.g. <code>event_date</code></td><td class="yes">none — derived from <code>ingested_at</code></td></tr>
+      <tr><td>Query must filter…</td><td class="no"><code>event_date</code> explicitly</td><td class="yes">just <code>ingested_at</code> (the natural column)</td></tr>
+      <tr><td>Forget the partition filter?</td><td class="no">silent full-table scan</td><td class="yes">impossible — pruning is automatic</td></tr>
+      <tr><td>Source &amp; partition drift apart?</td><td class="no">yes (must keep them in sync)</td><td class="yes">never — one is computed from the other</td></tr>
+    </table>
+
+    <div class="eyebrow" style="margin-top:20px">Complex partitioning — multiple &amp; multi-arg transforms</div>
+    <h3 style="font-family:var(--display);font-size:1.08rem;margin:0 0 4px">Combine transforms; each row gets a partition <i>tuple</i></h3>
+    <div class="baop"><span class="c">-- time bin + hash bucket of city (good for date scans AND city joins)</span>
+ALTER TABLE bronze.customers
+  ADD PARTITION FIELD bucket(16, city);   <span class="c">-- now spec = (days(ingested_at), bucket(16, city))</span></div>
+    <table class="dtable"><tr><th>customer_id</th><th>city</th><th>day(ingested_at)</th><th>bucket(16, city)</th><th class="chg">partition tuple</th></tr>
+      <tr><td>1001</td><td>Mumbai</td><td>2026-06-01</td><td>5</td><td class="chg">(2026-06-01, 5)</td></tr>
+      <tr><td>1002</td><td>Pune</td><td>2026-06-01</td><td>12</td><td class="chg">(2026-06-01, 12)</td></tr>
+      <tr><td>1003</td><td>Mumbai</td><td>2026-06-02</td><td>5</td><td class="chg">(2026-06-02, 5)</td></tr>
+      <tr><td>1004</td><td>Delhi</td><td>2026-06-02</td><td>3</td><td class="chg">(2026-06-02, 3)</td></tr></table>
+    <div class="note"><code>bucket()</code> is <b>deterministic</b>: "Mumbai" always hashes to bucket 5, so two tables bucketed the same way on <code>city</code> can join without a shuffle. Format <b>V3</b> also adds multi-argument transforms. Avoid stacking too many transforms — every extra dimension multiplies the partition count and risks tiny files.</div>
+
     <div class="callout"><span class="lbl">On bronze.customers</span>
       <div style="font-family:var(--mono);font-size:.76rem;white-space:pre-wrap;color:var(--glacier);background:rgba(4,18,30,.6);border:1px solid var(--line);border-radius:10px;padding:12px 14px;line-height:1.55;overflow-x:auto;margin-top:8px"><span style="color:#5f8aa0">-- partition by day of ingestion + 16 hash buckets of city</span>
 CREATE TABLE bronze.customers (...) USING iceberg
@@ -1419,6 +1508,23 @@ FROM bronze.customers.partitions ORDER BY file_count DESC;
 SELECT file_path, record_count, file_size_in_bytes,
        lower_bounds, upper_bounds FROM bronze.customers.files;</div>
     <div class="note"><b>The over-partitioning trap:</b> <code>identity(customer_id)</code> would make a partition per customer → millions of tiny files and bloated metadata. Use <code>bucket(N, customer_id)</code> for high-cardinality keys and aim for <b>128 MB – 1 GB</b> per file. Because partition evolution is metadata-only, old files keep their old spec and queries plan correctly across both.</div>
+
+    <p class="pretitle" style="margin-top:18px">Partition evolution — before &amp; after (metadata-only, no rewrite)</p>
+    <p style="color:var(--glacier);font-size:.86rem;margin:0 0 2px">Traffic grew, so you switch from <code>months()</code> to <code>days()</code>. Old data keeps its old layout; new data uses the new one. Both are pruned correctly in a single query.</p>
+    <div class="bacap">Before — <code>SELECT * FROM bronze.customers.partitions</code> (spec 0 = monthly)</div>
+    <table class="dtable" style="max-width:620px"><tr><th>partition</th><th>spec_id</th><th>file_count</th><th>record_count</th></tr>
+      <tr><td>ingested_at_month=2026-05</td><td>0</td><td>8</td><td>41,990</td></tr>
+      <tr><td>ingested_at_month=2026-06</td><td>0</td><td>9</td><td>52,310</td></tr></table>
+    <div class="baop"><span class="c">-- evolve the spec: drop monthly, add daily (metadata-only)</span>
+ALTER TABLE bronze.customers DROP PARTITION FIELD months(ingested_at);
+ALTER TABLE bronze.customers ADD  PARTITION FIELD days(ingested_at);</div>
+    <div class="bacap aft">After — old monthly partitions stay; new writes land in daily partitions</div>
+    <table class="dtable" style="max-width:620px"><tr><th>partition</th><th>spec_id</th><th>file_count</th><th>note</th></tr>
+      <tr><td>ingested_at_month=2026-05</td><td>0</td><td>8</td><td>old data · old layout (untouched)</td></tr>
+      <tr><td>ingested_at_month=2026-06</td><td>0</td><td>9</td><td>old data · old layout (untouched)</td></tr>
+      <tr><td class="add">ingested_at_day=2026-07-01</td><td class="add">1</td><td class="add">2</td><td class="add">new data · new layout</td></tr>
+      <tr><td class="add">ingested_at_day=2026-07-02</td><td class="add">1</td><td class="add">2</td><td class="add">new data · new layout</td></tr></table>
+    <div class="note">A query for <code>2026-05 … 2026-07</code> prunes across <i>both</i> specs in one plan — each manifest carries the spec that was active when it was written. Want the old data in the new layout too? Run <code>rewrite_data_files</code> to recompact it into daily partitions — still without changing any query.</div>
 
     <div class="grid g2">
       <div class="card clickable hover" data-drawer="p-hidden">
@@ -2002,11 +2108,24 @@ USING iceberg PARTITIONED BY (days(ingested_at))""")</div></div></li>
 
       <li><b>Load the sample rows.</b>
         <div class="stepcode"><span class="c"># BigQuery</span>  INSERT INTO bronze.customers VALUES (1001,'Asha Rao','asha@ex.in','ABCPR1234F','Mumbai',2500.00, TIMESTAMP '2026-06-01 09:14:00');
-<span class="c"># Spark</span>     df.writeTo("lake.bronze.customers").append()</div></li>
+<span class="c"># Spark</span>     df.writeTo("lake.bronze.customers").append()</div>
+        <div class="bacap">Before — empty table</div>
+        <table class="dtable" style="max-width:480px"><tr><th>customer_id</th><th>city</th><th>txn_amount</th></tr><tr><td colspan="3" style="color:var(--muted);text-align:center">(0 rows)</td></tr></table>
+        <div class="bacap aft">After — rows committed (new snapshot)</div>
+        <table class="dtable" style="max-width:480px"><tr><th>customer_id</th><th>city</th><th>txn_amount</th></tr>
+          <tr><td class="add">1001</td><td class="add">Mumbai</td><td class="add">2,500.00</td></tr>
+          <tr><td class="add">1002</td><td class="add">Pune</td><td class="add">540.50</td></tr>
+          <tr><td class="add">1003</td><td class="add">Mumbai</td><td class="add">12,999.00</td></tr>
+          <tr><td class="add">1004</td><td class="add">Delhi</td><td class="add">75.25</td></tr></table></li>
 
       <li><b>Query it</b> — from either engine, on the one copy of data.
         <div class="stepcode">SELECT city, SUM(txn_amount) AS total
-FROM bronze.customers WHERE ingested_at &gt;= '2026-06-02' GROUP BY city;</div></li>
+FROM bronze.customers WHERE ingested_at &gt;= '2026-06-02' GROUP BY city;</div>
+        <div class="bacap aft">Result (read-only — the table is unchanged)</div>
+        <table class="dtable" style="max-width:360px"><tr><th>city</th><th>total</th></tr>
+          <tr><td>Mumbai</td><td>12,999.00</td></tr>
+          <tr><td>Delhi</td><td>75.25</td></tr></table>
+        <p style="color:var(--muted);font-size:.78rem;margin:5px 0 0">Only the <code>2026-06-02</code> partition is scanned (1003, 1004); June-1 rows are pruned by the <code>ingested_at</code> filter.</p></li>
 
       <li><b>Govern the <code>pan</code> column</b> — create a taxonomy + policy tag, attach it, turn on masking.
         <span class="where">Console · Dataplex › Policy tags (taxonomies)</span>
@@ -2166,6 +2285,44 @@ df = (spark.table(<span class="s">"bronze.customers"</span>)
 <span class="c"># no multi-GB file rewrite. Cheap compliance deletes are a V3 headline feature.</span>
 spark.sql(<span class="s">"DELETE FROM silver.customers WHERE customer_id = 100007"</span>)</pre>
     </div>
+  </div>
+
+  <div class="section">
+    <div class="eyebrow">Data-changing queries · before &amp; after</div>
+    <h2 class="section-title">Row delete &amp; compaction, on the rows</h2>
+    <p class="lead">Two write operations that visibly change the table — shown before and after. Row counts and stats are illustrative of a larger <code>bronze.customers</code>.</p>
+
+    <p class="pretitle">DELETE one row (V3: a deletion vector, not a file rewrite)</p>
+    <div class="bacap">Before</div>
+    <table class="dtable" style="max-width:480px"><tr><th>customer_id</th><th>city</th><th>txn_amount</th></tr>
+      <tr><td>1001</td><td>Mumbai</td><td>2,500.00</td></tr>
+      <tr><td>1002</td><td>Pune</td><td>540.50</td></tr>
+      <tr><td>1003</td><td>Mumbai</td><td>12,999.00</td></tr></table>
+    <div class="baop"><span class="c">-- compliance erasure (DPDP / GDPR)</span>
+DELETE FROM bronze.customers WHERE customer_id = 1002;</div>
+    <div class="bacap aft">After — row gone (marked by a deletion vector; no big file rewritten)</div>
+    <table class="dtable" style="max-width:480px"><tr><th>customer_id</th><th>city</th><th>txn_amount</th></tr>
+      <tr><td>1001</td><td>Mumbai</td><td>2,500.00</td></tr>
+      <tr><td class="del">1002</td><td class="del">Pune</td><td class="del">540.50</td></tr>
+      <tr><td>1003</td><td>Mumbai</td><td>12,999.00</td></tr></table>
+
+    <p class="pretitle" style="margin-top:18px">Compaction — many tiny files → few right-sized files (rows unchanged)</p>
+    <div class="bacap">Before — streaming created 40 tiny files in one partition</div>
+    <table class="dtable" style="max-width:560px"><tr><th>file</th><th>size</th><th>records</th></tr>
+      <tr><td>data-a.parquet</td><td class="del">4 MB</td><td>1,020</td></tr>
+      <tr><td>data-b.parquet</td><td class="del">3 MB</td><td>980</td></tr>
+      <tr><td>… 38 more …</td><td class="del">~3–5 MB each</td><td>…</td></tr>
+      <tr><td><b>40 files</b></td><td class="del"><b>~150 MB total · avg 3.7 MB</b></td><td><b>47,000</b></td></tr></table>
+    <div class="baop"><span class="c">-- bin-pack to ~128 MB targets (Spark/Dataproc)</span>
+CALL system.rewrite_data_files(
+  table =&gt; 'bronze.customers', strategy =&gt; 'binpack',
+  options =&gt; map('target-file-size-bytes','134217728'));</div>
+    <div class="bacap aft">After — 2 files, same 47,000 rows</div>
+    <table class="dtable" style="max-width:560px"><tr><th>file</th><th>size</th><th>records</th></tr>
+      <tr><td class="add">data-compact-0.parquet</td><td class="add">128 MB</td><td class="add">40,200</td></tr>
+      <tr><td class="add">data-compact-1.parquet</td><td class="add">22 MB</td><td class="add">6,800</td></tr>
+      <tr><td><b>2 files</b></td><td class="add"><b>~150 MB total · avg 75 MB</b></td><td><b>47,000</b></td></tr></table>
+    <div class="note">Compaction creates a <b>new snapshot</b> pointing at the merged files; old tiny files drop away on <code>expire_snapshots</code>. No row changes — but a scan now opens <b>2 files instead of 40</b>. Use <code>binpack</code> for sizing, <code>sort</code>/<code>zorder</code> to also cluster data for skipping.</div>
   </div>
 </section>
 
