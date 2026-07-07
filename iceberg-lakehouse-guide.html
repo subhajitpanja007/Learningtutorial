@@ -1390,6 +1390,59 @@ gs://bucket/bronze/customers/
     <h2 class="section-title">Change the schema. Touch zero data.</h2>
     <p class="lead">Iceberg tracks every column by a <b>unique, never-reused field ID</b>, not by name or position. Names and order live only in metadata, so renaming or reordering is a metadata edit. New columns read back as <code>NULL</code> for old files — or a default value in V3.</p>
 
+    <div class="eyebrow" style="margin-top:8px">Overview · the validation exercise</div>
+    <h3 style="font-family:var(--display);font-size:1.1rem;margin:0 0 4px">Load data → evolve the schema → do running Spark jobs survive?</h3>
+    <p style="color:var(--glacier);font-size:.86rem;margin:0 0 10px">The standard way to validate schema-evolution capability, done end-to-end here: an initial load into the Iceberg table, a set of live schema changes, and the verdict on whether existing transformation jobs keep working <b>without modifying their logic</b>.</p>
+
+    <p class="pretitle">Step 1 — Initial data load into the Iceberg table</p>
+    <div class="baop"><span class="c"># create + first load (schema v0: 7 columns)</span>
+spark.sql("""CREATE TABLE lake.bronze.customers (
+  customer_id BIGINT, full_name STRING, email STRING, pan STRING,
+  city STRING, txn_amount DOUBLE, ingested_at TIMESTAMP)
+  USING iceberg PARTITIONED BY (days(ingested_at))""")
+raw = spark.read.parquet("gs://cdm-landing/customers/2026-06-01/*.parquet")
+raw.writeTo("lake.bronze.customers").append()      <span class="c"># → snapshot 1</span></div>
+    <div class="bacap aft">Loaded — <code>bronze.customers</code>, schema v0 (snapshot 1)</div>
+    <table class="dtable" style="max-width:620px"><tr><th>customer_id</th><th>full_name</th><th>city</th><th>txn_amount</th><th>ingested_at</th></tr>
+      <tr><td>1001</td><td>Asha Rao</td><td>Mumbai</td><td>2,500.00</td><td>2026-06-01 09:14</td></tr>
+      <tr><td>1002</td><td>Vikram Iyer</td><td>Pune</td><td>540.50</td><td>2026-06-01 09:20</td></tr></table>
+
+    <p class="pretitle" style="margin-top:14px">Step 2 — A long-running Spark transformation job is already in production</p>
+    <div class="baop"><span class="c"># nightly Bronze→Silver job — written against schema v0, NEVER edited below</span>
+df = spark.table("lake.bronze.customers")
+out = (df.select("customer_id", "city", "txn_amount")          <span class="c"># explicit projection</span>
+         .filter("txn_amount &gt; 100")
+         .groupBy("city").sum("txn_amount"))
+out.writeTo("lake.silver.city_totals").createOrReplace()</div>
+
+    <p class="pretitle" style="margin-top:14px">Step 3 — Apply schema changes to the live table (validating evolution)</p>
+    <div class="baop"><span class="c">-- while the job keeps its nightly schedule:</span>
+ALTER TABLE lake.bronze.customers ADD COLUMN loyalty_tier STRING;          <span class="c">-- v1</span>
+ALTER TABLE lake.bronze.customers RENAME COLUMN full_name TO customer_name;<span class="c">-- v2</span>
+ALTER TABLE lake.bronze.customers ALTER COLUMN email AFTER customer_id;    <span class="c">-- v3</span>
+ALTER TABLE lake.bronze.customers DROP COLUMN loyalty_tier;                <span class="c">-- v4</span></div>
+    <div class="bacap aft">Schema history — all four changes are metadata commits; zero Parquet rewritten</div>
+    <table class="dtable" style="max-width:620px"><tr><th>version</th><th>change</th><th>data files touched</th><th>nightly job status</th></tr>
+      <tr><td>v1</td><td>ADD loyalty_tier</td><td>0</td><td class="add">✓ unchanged, runs fine</td></tr>
+      <tr><td>v2</td><td>RENAME full_name→customer_name</td><td>0</td><td class="add">✓ unchanged, runs fine</td></tr>
+      <tr><td>v3</td><td>REORDER email</td><td>0</td><td class="add">✓ unchanged, runs fine</td></tr>
+      <tr><td>v4</td><td>DROP loyalty_tier</td><td>0</td><td class="add">✓ unchanged, runs fine</td></tr></table>
+
+    <p class="pretitle" style="margin-top:14px">The verdict, in full — when jobs continue untouched, and the two real exceptions</p>
+    <p style="color:var(--glacier);font-size:.86rem;margin:0 0 6px"><b>Short answer: yes.</b> Existing Spark jobs continue querying and transforming with <b>no modification to their logic</b> for every schema change that doesn't remove or rename a column the job itself references. Here's why, mechanically: the job resolves its columns <i>by name at plan time</i>, Iceberg resolves data <i>by field-ID at read time</i> — so metadata edits around the job's columns are invisible to it.</p>
+    <table class="dtable">
+      <tr><th>Schema change on <code>bronze.customers</code></th><th>Job keeps working, untouched?</th><th>Why / what the job sees</th></tr>
+      <tr><td>ADD a column the job doesn't select (<code>loyalty_tier</code>)</td><td class="yes">✓ yes</td><td>its <code>select()</code> projects only its own columns; new column simply isn't read</td></tr>
+      <tr><td>ADD with V3 DEFAULT (<code>region 'APAC'</code>)</td><td class="yes">✓ yes</td><td>same — and any <i>new</i> reader of that column gets the default for old rows</td></tr>
+      <tr><td>RENAME a column the job doesn't use (<code>full_name→customer_name</code>)</td><td class="yes">✓ yes</td><td>field-ID unchanged; the job never mentions that name</td></tr>
+      <tr><td>REORDER any columns</td><td class="yes">✓ yes</td><td>Spark reads by name → ID, never by position</td></tr>
+      <tr><td>WIDEN a type it reads (<code>txn_amount</code> int→long)</td><td class="yes">✓ yes</td><td>loss-less promotion; old files up-cast on read; filters &amp; sums unaffected</td></tr>
+      <tr><td>DROP a column the job doesn't use</td><td class="yes">✓ yes</td><td>retired ID is simply skipped</td></tr>
+      <tr><td class="chg">RENAME a column the job <i>does</i> select (<code>city</code>)</td><td class="no">✗ breaks next run</td><td><code>AnalysisException: Column 'city' does not exist</code> — data is intact; the <i>name</i> the code binds to is gone</td></tr>
+      <tr><td class="chg">DROP a column the job <i>does</i> select (<code>txn_amount</code>)</td><td class="no">✗ breaks next run</td><td>same — a name-resolution failure at plan time, never silent wrong data</td></tr>
+    </table>
+    <div class="note"><b>The guarantee, stated precisely:</b> Iceberg makes schema evolution <i>data-safe</i> unconditionally (no rewrite, no corruption, no stale reads) and <i>job-safe</i> for all <b>additive and non-referenced</b> changes. It cannot make a job survive losing a name the job's own code references — no format can — but it converts what used to be a silent-corruption risk in Hive into a loud, immediate <code>AnalysisException</code>. Two practices close even that gap: run <code>SELECT</code>s with explicit projections (as above, never <code>SELECT *</code> into positional logic), and treat rename/drop of consumed columns as a coordinated change — add the new column first, migrate readers, drop the old one later. <button class="btn" style="margin-top:10px" data-drawer="ev-rename">Rename mechanics ↗</button> <button class="btn" data-drawer="ev-add">Add mechanics ↗</button></div>
+
     <div class="callout"><span class="lbl">On bronze.customers — every op is metadata-only</span>
       <div style="font-family:var(--mono);font-size:.76rem;white-space:pre-wrap;color:var(--glacier);background:rgba(4,18,30,.6);border:1px solid var(--line);border-radius:10px;padding:12px 14px;line-height:1.55;overflow-x:auto;margin-top:8px"><span style="color:#5f8aa0">-- add a column — old rows read NULL (or a V3 default), no rewrite</span>
 ALTER TABLE bronze.customers ADD COLUMN loyalty_tier STRING;
