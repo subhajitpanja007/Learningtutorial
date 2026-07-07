@@ -293,7 +293,7 @@ table.data tr:hover td{background:rgba(67,197,224,.04)}
 .scrim{position:fixed;inset:0;background:rgba(2,10,18,.62);backdrop-filter:blur(3px);opacity:0;
   pointer-events:none;transition:.28s;z-index:80}
 .scrim.open{opacity:1;pointer-events:auto}
-.drawer{position:fixed;top:0;right:0;height:100%;width:min(560px,94vw);z-index:90;
+.drawer{position:fixed;top:0;right:0;height:100%;width:min(780px,97vw);z-index:90;
   background:linear-gradient(180deg,#072036,#04141f);border-left:1px solid var(--line-2);
   box-shadow:-30px 0 80px -30px rgba(0,0,0,.8);transform:translateX(102%);transition:transform .32s cubic-bezier(.4,.9,.3,1);
   display:flex;flex-direction:column}
@@ -615,6 +615,23 @@ footer{max-width:var(--maxw);margin:0 auto;padding:30px 22px 60px;border-top:1px
 .tlcard .pc{font-size:.8rem;margin:0 0 4px;color:var(--glacier);display:flex;gap:7px}
 .tlcard .pc .pcl{font-family:var(--mono);font-size:.6rem;letter-spacing:.04em;flex:none;width:30px}
 .tlcard .pc.pro .pcl{color:#5fe0a0}.tlcard .pc.con .pcl{color:var(--pii)}
+/* WIZARD (create-table clone) */
+.wiz{border:1px solid var(--line);border-radius:12px;background:rgba(6,20,32,.6);padding:14px;margin:6px 0 0}
+.wizrow{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(120,150,170,.1)}
+.wizrow:last-of-type{border-bottom:0}
+.wizrow label{font-size:.74rem;color:#9fbccb;font-family:var(--mono)}
+.wizctl{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.wizinput{background:#0b2030;border:1px solid var(--line);border-radius:6px;padding:4px 9px;font-family:var(--mono);font-size:.75rem;color:#dff4fb}
+.wizsel{background:#0b2030;border:1px solid #2f6f86;border-radius:6px;padding:4px 9px;font-family:var(--mono);font-size:.75rem;color:#bfe9f6}
+.wizpill{border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:.72rem;color:#9fbccb;cursor:default}
+.wizpill.on{background:rgba(67,197,224,.15);border-color:var(--ice);color:#dff4fb}
+.wizhint{font-size:.68rem;color:var(--muted)}
+.wizschema{font-family:var(--mono);font-size:.7rem;color:#bfe9f6;line-height:1.7}
+.wizbtns{display:flex;gap:9px;margin-top:12px}
+.wizcreate{background:#1a73e8;color:#fff;border-radius:6px;padding:6px 16px;font-size:.78rem;font-weight:600;cursor:default}
+.wizcancel{border:1px solid var(--line);color:#9fbccb;border-radius:6px;padding:6px 16px;font-size:.78rem;cursor:default}
+.drawer .pre{white-space:pre-wrap;word-break:break-word}
+.drawer .dtable{font-size:.72rem}
 </style>
 </head>
 <body>
@@ -871,6 +888,27 @@ ALTER TABLE bronze.customers ADD COLUMN region STRING DEFAULT 'APAC';</div>
       <tr><td>ML / unstructured</td><td class="no">weak</td><td class="yes">strong</td><td class="yes">strong</td></tr>
     </table>
     <div class="note"><b>The two-tier problem Iceberg kills:</b> because lakes weren't reliable, teams ETL'd a curated copy <i>into</i> a warehouse — two systems, double storage, constant pipelines, stale data. The 2021 CIDR "Lakehouse" paper put it bluntly: 86% of analysts work with out-of-date data. A lakehouse keeps <b>one</b> governed copy of open files and lets every engine read it.</div>
+
+    <div class="eyebrow" style="margin-top:24px">Delta Lake, in detail</div>
+    <h2 class="section-title">What Delta Lake is — and how it differs from Iceberg &amp; Hudi</h2>
+    <p class="lead"><b>Delta Lake</b> is an open table format created at <b>Databricks</b> (open-sourced 2019, now under the Linux Foundation). Like Iceberg, it turns Parquet files in object storage into an ACID table with time travel and schema evolution — but its mechanism and ecosystem differ.</p>
+    <div class="grid g3">
+      <div class="card"><div class="kicker">The mechanism</div><h3>The <code>_delta_log</code></h3><p>Every change appends a JSON commit to a <code>_delta_log/</code> folder beside the data; periodic Parquet <b>checkpoints</b> speed reads. That ordered log — not a manifest tree — is Delta's source of truth.</p></div>
+      <div class="card"><div class="kicker">Layout</div><h3>Liquid Clustering</h3><p>Instead of fixed partitions, Delta clusters data by chosen keys and re-clusters incrementally — its answer to hidden partitioning + Z-order, but <b>no partition evolution</b> like Iceberg's.</p></div>
+      <div class="card"><div class="kicker">Interop</div><h3>UniForm + Delta Kernel</h3><p><b>UniForm</b> writes Iceberg/Hudi-readable metadata <i>from</i> a Delta table, so other engines can read it. <b>Delta Kernel</b> is a library to help non-Spark engines read Delta.</p></div>
+    </div>
+    <table class="dtable" style="margin-top:16px">
+      <tr><th>Dimension</th><th>Iceberg</th><th>Delta Lake</th><th>Hudi</th></tr>
+      <tr><td>Origin / steward</td><td>Netflix → Apache</td><td>Databricks → Linux Foundation</td><td>Uber → Apache</td></tr>
+      <tr><td>Metadata model</td><td>metadata.json → manifest list → manifests</td><td class="chg">ordered JSON commit log + checkpoints (<code>_delta_log</code>)</td><td>timeline + record-level index</td></tr>
+      <tr><td>Engine reach</td><td class="yes">broadest &amp; vendor-neutral</td><td class="no">deepest in Spark/Databricks (others via Kernel/UniForm)</td><td>strong in Spark</td></tr>
+      <tr><td>Partitioning</td><td class="yes">hidden + partition evolution</td><td>Liquid Clustering (no partition evolution)</td><td>Hive-style (no evolution)</td></tr>
+      <tr><td>Row-level / upserts</td><td>MERGE; deletion vectors (V3)</td><td>MERGE; deletion vectors</td><td class="yes">best-in-class upsert (CoW/MoR + index)</td></tr>
+      <tr><td>Best when</td><td>open, multi-engine platform</td><td class="chg">you're Databricks-centric</td><td>streaming / CDC-heavy</td></tr>
+    </table>
+    <div class="note"><b>How it differs, in one line:</b> all three give ACID + time travel over Parquet, but <b>Iceberg</b> optimizes for <i>open multi-engine</i> reach (and uniquely, partition evolution), <b>Delta</b> for <i>depth inside Databricks/Spark</i> (Liquid Clustering, an ordered log), and <b>Hudi</b> for <i>streaming upserts</i>. They're converging — V3 deletion vectors and tools like <b>Delta UniForm</b> and <b>Apache XTable</b> let one copy be read as more than one format. On GCP, BigQuery and the Lakehouse runtime catalog center on Iceberg. <button class="btn" style="margin-top:10px" data-drawer="vsdelta">Iceberg vs Delta — the verdict ↗</button> <button class="btn" data-drawer="hudi">Hudi deep dive ↗</button></div>
+
+    <button data-drawer="vsdelta" style="display:none"></button>
   </div>
 
   <div class="section">
@@ -883,6 +921,36 @@ ALTER TABLE bronze.customers ADD COLUMN region STRING DEFAULT 'APAC';</div>
       <div class="card hover clickable" data-drawer="z-gold"><div class="kicker" style="color:var(--gold)">Curated</div><h3>Gold</h3><p>Aggregates, marts, ML features — tuned per consumer. On GCP, often BigQuery-native for performance and governance.</p></div>
     </div>
     <div class="note"><b>Why Iceberg at every tier:</b> without ACID, Silver/Gold silently drift from Bronze. With Iceberg you get atomic loads at each layer, <b>time travel</b> to debug a bad transform against the exact prior Bronze snapshot, schema changes that flow downstream without breaking pipelines, and instant rollback of a bad batch. <button class="btn" style="margin-top:10px" data-drawer="medallion">How the layers connect ↗</button></div>
+  </div>
+
+  <div class="section">
+    <div class="eyebrow">The four guarantees</div>
+    <h2 class="section-title">ACID — what each letter means, on <code>bronze.customers</code></h2>
+    <p class="lead">"ACID" is the promise that makes a table trustworthy when writes fail or overlap. Here is each letter, what it guarantees, how Iceberg delivers it, and a concrete example on our rows.</p>
+    <table class="dtable">
+      <tr><th>Letter</th><th>Guarantee</th><th>How Iceberg does it</th><th>Example on <code>bronze.customers</code></th></tr>
+      <tr><td><b style="color:var(--ice-bright)">A</b> · Atomicity</td><td>all-or-nothing — a write fully lands or not at all</td><td>one atomic compare-and-swap of the catalog pointer (vN → vN+1)</td><td>a MERGE of 1 update + 1 insert either commits both or neither — never just one</td></tr>
+      <tr><td><b style="color:var(--ice-bright)">C</b> · Consistency</td><td>the table always satisfies its rules; no broken/partial state</td><td>schema + type checks at write; readers only ever see committed snapshots</td><td>a load that violates the schema is rejected — readers keep seeing the last valid snapshot</td></tr>
+      <tr><td><b style="color:var(--ice-bright)">I</b> · Isolation</td><td>concurrent writers don't corrupt or see each other's half-work</td><td>snapshot isolation + optimistic concurrency; the loser retries on the new snapshot</td><td>two jobs append June-1 &amp; June-2 at once; both land cleanly as separate snapshots</td></tr>
+      <tr><td><b style="color:var(--ice-bright)">D</b> · Durability</td><td>once committed, it survives crashes — permanently</td><td>immutable files + metadata persisted to GCS before the pointer flips</td><td>after the commit returns, rows 1001–1004 are on durable storage even if the cluster dies</td></tr>
+    </table>
+
+    <p class="pretitle">Isolation, shown — two writers, no lock, no corruption</p>
+    <div class="bacap">Before — both jobs start from snapshot 100</div>
+    <table class="dtable" style="max-width:520px"><tr><th>customer_id</th><th>city</th><th>ingested_at</th></tr>
+      <tr><td>1001</td><td>Mumbai</td><td>2026-06-01</td></tr>
+      <tr><td>1002</td><td>Pune</td><td>2026-06-01</td></tr></table>
+    <div class="baop"><span class="c">-- Writer A and Writer B run at the SAME time</span>
+A: INSERT INTO bronze.customers VALUES (1003,'Neha Gupta',...,'2026-06-02 11:02');
+B: INSERT INTO bronze.customers VALUES (1004,'Sam Khan', ...,'2026-06-02 18:45');
+<span class="c">-- A commits first (100→101). B's swap from 100 fails, B re-reads 101 and retries → 102.</span></div>
+    <div class="bacap aft">After — both committed, as two clean snapshots (nothing lost or mixed)</div>
+    <table class="dtable" style="max-width:520px"><tr><th>customer_id</th><th>city</th><th>ingested_at</th><th>snapshot</th></tr>
+      <tr><td>1001</td><td>Mumbai</td><td>2026-06-01</td><td>100</td></tr>
+      <tr><td>1002</td><td>Pune</td><td>2026-06-01</td><td>100</td></tr>
+      <tr><td class="add">1003</td><td class="add">Mumbai</td><td class="add">2026-06-02</td><td class="add">101 (Writer A)</td></tr>
+      <tr><td class="add">1004</td><td class="add">Delhi</td><td class="add">2026-06-02</td><td class="add">102 (Writer B, retried)</td></tr></table>
+    <div class="note">No database-style row locks are taken. Because the two appends touched different files, B's retry succeeds immediately on the new snapshot. Had they edited the <i>same</i> files, B would get a conflict and re-run — never a corrupt table. Tap the cards below for <b>Atomicity</b>, <b>ACID</b>, and the <b>commit protocol</b> in depth.</div>
   </div>
 
   <div class="section">
@@ -1421,6 +1489,57 @@ ADD COLUMN channel STRING
         </tbody>
       </table>
     </div>
+
+    <div class="section">
+      <div class="eyebrow">More worked examples</div>
+      <h2 class="section-title">Reorder, widen &amp; evolve nested columns</h2>
+      <p class="lead">Each below follows the same pattern: the table, the query, then the impact on the rows. All are metadata-only on <code>bronze.customers</code>.</p>
+
+      <p class="pretitle">① REORDER — move <code>email</code> after <code>customer_id</code></p>
+      <div class="bacap">Before — column order</div>
+      <table class="dtable" style="max-width:560px"><tr><th>customer_id</th><th>full_name</th><th>email</th><th>city</th></tr><tr><td>1001</td><td>Asha Rao</td><td>asha@ex.in</td><td>Mumbai</td></tr></table>
+      <div class="baop"><span class="c">-- display order is metadata; no file rewrite</span>
+ALTER TABLE bronze.customers ALTER COLUMN email AFTER customer_id;</div>
+      <div class="bacap aft">After — same values, new display order</div>
+      <table class="dtable" style="max-width:560px"><tr><th>customer_id</th><th class="chg">email</th><th>full_name</th><th>city</th></tr><tr><td>1001</td><td class="chg">asha@ex.in</td><td>Asha Rao</td><td>Mumbai</td></tr></table>
+      <div class="note">Impact: zero data change — Parquet stores columns by field-ID, not position, so reordering only edits the schema's display order.</div>
+
+      <p class="pretitle" style="margin-top:16px">② WIDEN — promote <code>txn_amount</code> from int to long (loss-less only)</p>
+      <div class="bacap">Before — schema type</div>
+      <table class="dtable" style="max-width:520px"><tr><th>column</th><th>type</th><th>sample</th></tr><tr><td>txn_amount</td><td>INT</td><td>2500</td></tr></table>
+      <div class="baop"><span class="c">-- allowed: int → long (widening). long → int is BLOCKED.</span>
+ALTER TABLE bronze.customers ALTER COLUMN txn_amount TYPE BIGINT;</div>
+      <div class="bacap aft">After — wider type, existing values read unchanged</div>
+      <table class="dtable" style="max-width:520px"><tr><th>column</th><th class="chg">type</th><th>sample</th></tr><tr><td>txn_amount</td><td class="chg">BIGINT</td><td>2500</td></tr></table>
+      <div class="note">Impact: old files keep their int encoding; readers up-cast on the fly. Reversing it (<code>long→int</code>) is refused because it could truncate data.</div>
+
+      <p class="pretitle" style="margin-top:16px">③ NESTED — add a field inside a <code>struct</code> column <code>address</code></p>
+      <div class="bacap">Before — <code>address</code> struct</div>
+      <table class="dtable" style="max-width:560px"><tr><th>customer_id</th><th>address (struct)</th></tr><tr><td>1001</td><td>{ city: Mumbai, pin: 400001 }</td></tr></table>
+      <div class="baop"><span class="c">-- evolve a nested field by its own ID; old rows read NULL for it</span>
+ALTER TABLE bronze.customers ADD COLUMN address.country STRING;</div>
+      <div class="bacap aft">After — new nested field, old rows NULL</div>
+      <table class="dtable" style="max-width:620px"><tr><th>customer_id</th><th class="chg">address (struct)</th></tr>
+        <tr><td>1001</td><td>{ city: Mumbai, pin: 400001, <span class="add">country: NULL</span> }</td></tr>
+        <tr><td class="add">1005</td><td>{ city: Delhi, pin: 110001, <span class="add">country: 'IN'</span> }</td></tr></table>
+      <div class="note">Impact: <code>struct</code>, <code>map</code> and <code>list</code> fields evolve by the same field-ID rules as top-level columns — add/drop/rename nested fields with no rewrite. Tap any row in the matrix above for that operation's deep dive.</div>
+
+      <p class="pretitle" style="margin-top:20px">④ Under the hood — how field-IDs make all of this safe</p>
+      <p style="color:var(--glacier);font-size:.86rem;margin:0 0 2px">Every column has a permanent numeric ID stored in <i>both</i> the table schema and every Parquet file. Engines match data by ID — names and positions are just labels.</p>
+      <table class="dtable" style="max-width:640px"><tr><th>schema (metadata.json)</th><th>Parquet file (old)</th><th>what a reader does</th></tr>
+        <tr><td>id 2 → "customer_name"</td><td>id 2 = "Asha Rao"</td><td class="yes">matches by id 2 → correct after any rename</td></tr>
+        <tr><td>id 8 → "loyalty_tier" (new)</td><td>id 8 absent</td><td class="yes">reads NULL / V3 default</td></tr>
+        <tr><td>id 4 dropped (pan)</td><td>id 4 = "ABCPR1234F"</td><td class="yes">ignored — id retired forever</td></tr></table>
+
+      <p class="pretitle" style="margin-top:16px">⑤ The stale-read proof — drop <code>pan</code>, later re-add <code>pan</code></p>
+      <div class="bacap">Before — old file still physically contains the old PAN bytes (id 4)</div>
+      <table class="dtable" style="max-width:480px"><tr><th>customer_id</th><th class="del">pan (id 4, dropped)</th></tr><tr><td>1001</td><td class="del">ABCPR1234F</td></tr></table>
+      <div class="baop"><span class="c">-- months later, someone re-adds a column with the same NAME</span>
+ALTER TABLE bronze.customers ADD COLUMN pan STRING;   <span class="c">-- gets a FRESH id (12)</span></div>
+      <div class="bacap aft">After — the new <code>pan</code> (id 12) reads NULL; the old id-4 bytes can never leak</div>
+      <table class="dtable" style="max-width:480px"><tr><th>customer_id</th><th class="add">pan (id 12, new)</th></tr><tr><td>1001</td><td class="add">NULL</td></tr></table>
+      <div class="note">Impact: this is exactly the bug name-based formats can hit ("un-deleting" a column when a name is reused) and position-based formats can't avoid. Iceberg's never-reused IDs make dropped data unreachable by construction — which matters doubly for PII like PAN.</div>
+    </div>
   </div>
 </section>
 
@@ -1552,6 +1671,82 @@ ALTER TABLE bronze.customers ADD  PARTITION FIELD days(ingested_at);</div>
       <div class="card clickable hover" data-drawer="p-truncate"><div class="kicker">Strings &amp; numbers</div><h3>truncate(W)</h3><p>Keeps the first W chars/units — e.g. <code>truncate(4, zipcode)</code>. Cheaper grouping than full identity.</p></div>
       <div class="card clickable hover" data-drawer="p-pitfall"><div class="kicker">The classic mistake</div><h3>Over-partitioning</h3><p>Partitioning a small table by <code>hour()</code> creates millions of tiny files. Aim for partitions of ~100MB–1GB, not "one folder per row."</p></div>
     </div>
+
+    <div class="eyebrow" style="margin-top:28px">Can one partitioning scheme span multiple tables?</div>
+    <h2 class="section-title">Yes — shared partitioning across two tables</h2>
+    <p class="lead">A partition <i>spec</i> belongs to one table, but you can give <b>two tables the same scheme on a shared key</b> so they line up on storage. Two real patterns, both on <code>bronze.customers</code> + a companion <code>bronze.transactions</code> table (<code>txn_id, customer_id, amount, ts</code>).</p>
+
+    <p class="pretitle">Pattern A · Identical <code>bucket(N, key)</code> → a shuffle-free join (storage-partitioned join)</p>
+    <p style="color:var(--glacier);font-size:.86rem;margin:0 0 2px">Bucket <b>both</b> tables the same way on <code>customer_id</code>. Equal customer_ids hash to the same bucket number in <i>both</i> tables, so a join can pair bucket-with-bucket and skip the network shuffle.</p>
+    <div class="baop"><span class="c">-- SAME transform + SAME N on the shared key in both tables</span>
+CREATE TABLE bronze.customers (...)    USING iceberg PARTITIONED BY (bucket(16, customer_id));
+CREATE TABLE bronze.transactions (...) USING iceberg PARTITIONED BY (bucket(16, customer_id));
+
+<span class="c">-- enable storage-partitioned join, then join on the bucket key</span>
+SET spark.sql.sources.v2.bucketing.enabled = true;
+SELECT c.city, SUM(t.amount)
+FROM bronze.transactions t JOIN bronze.customers c USING (customer_id)
+GROUP BY c.city;</div>
+    <div class="bacap">How the buckets line up (same <code>bucket(16, customer_id)</code> in both)</div>
+    <table class="dtable"><tr><th>customer_id</th><th>bucket → customers file</th><th>bucket → transactions file</th><th>join pairs</th></tr>
+      <tr><td>1001</td><td>b5 · cust-b5.parquet</td><td>b5 · txn-b5.parquet</td><td class="add">b5 ⋈ b5 (no shuffle)</td></tr>
+      <tr><td>1002</td><td>b12 · cust-b12.parquet</td><td>b12 · txn-b12.parquet</td><td class="add">b12 ⋈ b12 (no shuffle)</td></tr>
+      <tr><td>1003</td><td>b5 · cust-b5.parquet</td><td>b5 · txn-b5.parquet</td><td class="add">b5 ⋈ b5 (no shuffle)</td></tr>
+      <tr><td>1004</td><td>b3 · cust-b3.parquet</td><td>b3 · txn-b3.parquet</td><td class="add">b3 ⋈ b3 (no shuffle)</td></tr></table>
+    <div class="bacap aft">Join result</div>
+    <table class="dtable" style="max-width:320px"><tr><th>city</th><th>SUM(amount)</th></tr>
+      <tr><td>Mumbai</td><td>3,820.00</td></tr><tr><td>Pune</td><td>540.50</td></tr><tr><td>Delhi</td><td>75.25</td></tr></table>
+    <div class="note"><b>Why it works:</b> <code>bucket()</code> is deterministic — <code>customer_id=1001</code> hashes to bucket 5 in <i>every</i> table bucketed <code>(16, customer_id)</code>. Same N is mandatory: <code>bucket(16,…)</code> vs <code>bucket(32,…)</code> won't align. This is Iceberg's <b>storage-partitioned join</b> — the big payoff of partitioning two tables identically.</div>
+
+    <p class="pretitle" style="margin-top:18px">Pattern B · Partition one table by a key <i>derived from another</i> (ETL, not the spec)</p>
+    <p style="color:var(--glacier);font-size:.86rem;margin:0 0 2px">A partition spec can only reference the table's <b>own</b> columns. To partition <code>transactions</code> by the customer's <code>region</code> (which lives in <code>customers</code>), you <b>join it in during the write</b>, then partition by the now-local column.</p>
+    <div class="baop"><span class="c">-- 1) bring region over from customers, 2) partition transactions by it</span>
+CREATE TABLE bronze.transactions (
+  txn_id BIGINT, customer_id BIGINT, amount DOUBLE, ts TIMESTAMP, region STRING)
+USING iceberg PARTITIONED BY (identity(region), days(ts));
+
+INSERT INTO bronze.transactions
+SELECT t.txn_id, t.customer_id, t.amount, t.ts, c.region    <span class="c"># region looked up via join</span>
+FROM staging.transactions t JOIN bronze.customers c USING (customer_id);</div>
+    <div class="bacap">Source <code>transactions</code> (no region)  +  lookup from <code>customers</code></div>
+    <table class="dtable" style="max-width:560px"><tr><th>txn_id</th><th>customer_id</th><th>amount</th><th>← customers.region</th></tr>
+      <tr><td>9001</td><td>1001</td><td>2,500.00</td><td>APAC</td></tr>
+      <tr><td>9002</td><td>1004</td><td>75.25</td><td>APAC</td></tr></table>
+    <div class="bacap aft">After the join-on-write — <code>transactions</code> now partitioned by <code>region</code></div>
+    <table class="dtable" style="max-width:560px"><tr><th>txn_id</th><th>customer_id</th><th>amount</th><th class="add">region (partition)</th></tr>
+      <tr><td>9001</td><td>1001</td><td>2,500.00</td><td class="add">region=APAC</td></tr>
+      <tr><td>9002</td><td>1004</td><td>75.25</td><td class="add">region=APAC</td></tr></table>
+    <div class="note"><b>Key distinction:</b> Pattern A is a <i>native</i> Iceberg feature (two specs that happen to match → free join). Pattern B is an <i>ETL pattern</i> — Iceberg can't partition by another table's column directly, so you copy the value in at write time (a denormalization trade-off: faster region queries, but re-run if a customer's region changes). <button class="btn" style="margin-top:10px" data-drawer="p-multi">Full walkthrough ↗</button> <button class="btn" data-drawer="joins">Join strategies ↗</button></div>
+
+    <p class="pretitle" style="margin-top:22px">Choosing a transform — the decision table</p>
+    <table class="dtable">
+      <tr><th>Your column looks like…</th><th>Use</th><th>On bronze.customers</th><th>Why</th></tr>
+      <tr><td>timestamp / date, range-filtered</td><td><code>day()</code> / <code>month()</code></td><td><code>days(ingested_at)</code></td><td>time filters prune whole days</td></tr>
+      <tr><td>low cardinality (≤ hundreds)</td><td><code>identity</code></td><td><code>identity(city)</code></td><td>one clean partition per value</td></tr>
+      <tr><td>high cardinality (ids, PANs)</td><td><code>bucket(N)</code></td><td><code>bucket(16, customer_id)</code></td><td>even spread + shuffle-free joins</td></tr>
+      <tr><td>long strings / big numbers</td><td><code>truncate(W)</code></td><td><code>truncate(1000, txn_amount)</code></td><td>range bins without per-value explosion</td></tr>
+      <tr><td>a field you want to retire</td><td><code>void</code></td><td><code>void(city)</code></td><td>stop partitioning by it, keep metadata shape</td></tr>
+    </table>
+
+    <p class="pretitle" style="margin-top:16px">truncate(1000, txn_amount) — numeric range bins</p>
+    <div class="bacap">Where each row lands (bins of width 1000)</div>
+    <table class="dtable" style="max-width:560px"><tr><th>customer_id</th><th>txn_amount</th><th class="chg">partition = truncate(1000, ·)</th></tr>
+      <tr><td>1004</td><td>75.25</td><td class="chg">0</td></tr>
+      <tr><td>1002</td><td>540.50</td><td class="chg">0</td></tr>
+      <tr><td>1001</td><td>2,500.00</td><td class="chg">2000</td></tr>
+      <tr><td>1003</td><td>12,999.00</td><td class="chg">12000</td></tr></table>
+    <div class="baop">SELECT * FROM bronze.customers WHERE txn_amount BETWEEN 2000 AND 2999;</div>
+    <div class="bacap aft">Impact — only the bin-2000 files are read (1001); bins 0 and 12000 pruned</div>
+    <table class="dtable" style="max-width:420px"><tr><th>partition</th><th>read?</th></tr>
+      <tr><td class="del">0</td><td class="del">✗</td></tr><tr><td class="add">2000</td><td class="add">✓</td></tr><tr><td class="del">12000</td><td class="del">✗</td></tr></table>
+
+    <p class="pretitle" style="margin-top:16px">void — retiring a partition field cleanly</p>
+    <div class="baop"><span class="c">-- stop partitioning by city; history keeps its layout, spec shape stays compatible</span>
+ALTER TABLE bronze.customers REPLACE PARTITION FIELD city_bucket WITH void(city);</div>
+    <table class="dtable" style="max-width:560px"><tr><th>data</th><th>partition value for city field</th></tr>
+      <tr><td>old files (spec 0)</td><td>their original bucket, still pruned correctly</td></tr>
+      <tr><td class="add">new writes (spec 1)</td><td class="add">null (void) — city no longer splits files</td></tr></table>
+    <div class="note">Impact: <code>void</code> is the graceful off-switch — you keep reading old partitioned data as-is while new data ignores the field. Combined with <code>ADD PARTITION FIELD</code>, this is how layouts evolve for years without one rewrite.</div>
   </div>
 </section>
 
@@ -1768,6 +1963,19 @@ raw = spark.read.parquet(<span class="s">"gs://cdm-landing/customers/2026-06-26/
 (raw.withColumn(<span class="s">"ingested_at"</span>, current_timestamp())
     .writeTo(<span class="s">"bronze.customers"</span>).append())</pre>
       </div>
+      <p class="pretitle" style="margin-top:14px">Table &amp; output — <code>bronze.customers</code></p>
+      <div class="bacap">Before — table created, no rows yet</div>
+      <table class="dtable" style="max-width:480px"><tr><th>customer_id</th><th>city</th><th>txn_amount</th><th>ingested_at</th></tr><tr><td colspan="4" style="color:var(--muted);text-align:center">(0 rows)</td></tr></table>
+      <div class="bacap aft">After <code>.append()</code> — the CDM batch is committed as snapshot 1</div>
+      <table class="dtable" style="max-width:560px"><tr><th>customer_id</th><th>city</th><th>txn_amount</th><th>ingested_at</th></tr>
+        <tr><td class="add">1001</td><td class="add">Mumbai</td><td class="add">2,500.00</td><td class="add">2026-06-26 ...</td></tr>
+        <tr><td class="add">1002</td><td class="add">Pune</td><td class="add">540.50</td><td class="add">2026-06-26 ...</td></tr>
+        <tr><td class="add">1003</td><td class="add">Mumbai</td><td class="add">12,999.00</td><td class="add">2026-06-26 ...</td></tr>
+        <tr><td class="add">1004</td><td class="add">Delhi</td><td class="add">75.25</td><td class="add">2026-06-26 ...</td></tr></table>
+      <div class="baop"><span class="c">>>> spark.table("bronze.customers").count()</span>
+4
+<span class="c">>>> # files land under the day-partition derived from ingested_at</span>
+gs://…/bronze/customers/data/ingested_at_day=2026-06-26/00000-….parquet</div>
     </div>
 
     <div class="subpanel" id="ps-merge">
@@ -1845,6 +2053,17 @@ stream = (spark.readStream.format(<span class="s">"kafka"</span>)
   .toTable(<span class="s">"bronze.customers"</span>))</pre>
       </div>
       <div class="note"><b>For high-throughput CDC upserts</b>, Flink 2.0 + Iceberg 1.10 is the stronger engine — exactly-once <code>UPSERT</code> straight into a format-V3 table, where row updates land as cheap <b>deletion vectors</b> instead of file rewrites.</div>
+      <p class="pretitle" style="margin-top:14px">Output — writing to <code>bronze.customers</code>, one snapshot per micro-batch</p>
+      <div class="baop"><span class="c"># console progress (each trigger = one Iceberg commit = one new snapshot)</span>
+Batch: 0  | rows: 1,204 | snapshot 7741 committed | files +12
+Batch: 1  | rows:   980 | snapshot 7742 committed | files +9
+Batch: 2  | rows: 1,330 | snapshot 7743 committed | files +14</div>
+      <div class="bacap aft">Snapshot history after 3 micro-batches (<code>bronze.customers.snapshots</code>)</div>
+      <table class="dtable" style="max-width:560px"><tr><th>snapshot_id</th><th>operation</th><th>added_records</th><th>committed_at</th></tr>
+        <tr><td>7741</td><td>append</td><td>1,204</td><td>09:00:10</td></tr>
+        <tr><td>7742</td><td>append</td><td>980</td><td>09:01:10</td></tr>
+        <tr><td>7743</td><td>append</td><td>1,330</td><td>09:02:10</td></tr></table>
+      <p style="color:var(--muted);font-size:.78rem;margin:5px 0 0">Frequent tiny commits create many small files → schedule <code>rewrite_data_files</code> (see tab 6 / Performance) to compact them.</p>
     </div>
 
     <div class="subpanel" id="ps-tt">
@@ -1867,6 +2086,17 @@ spark.sql(<span class="s">"CALL lake.system.expire_snapshots("</span>
           <span class="s">"  table => 'silver.customers', older_than => TIMESTAMP '2026-06-01 00:00:00')"</span>)
 spark.sql(<span class="s">"CALL lake.system.remove_orphan_files('silver.customers')"</span>)</pre>
       </div>
+      <p class="pretitle" style="margin-top:14px">Output — querying <code>silver.customers</code> metadata tables</p>
+      <div class="baop"><span class="c">>>> spark.sql("SELECT * FROM silver.customers.snapshots").show()</span></div>
+      <table class="dtable" style="max-width:620px"><tr><th>committed_at</th><th>snapshot_id</th><th>parent_id</th><th>operation</th></tr>
+        <tr><td>2026-06-25 02:00</td><td>80276586</td><td>—</td><td>append</td></tr>
+        <tr><td>2026-06-26 02:00</td><td>80277001</td><td>80276586</td><td>overwrite</td></tr>
+        <tr><td>2026-06-27 02:00</td><td>80277455</td><td>80277001</td><td>delete</td></tr></table>
+      <div class="bacap aft">Time-travel read: <code>... FOR SYSTEM_TIME AS OF '2026-06-25 00:00:00'</code> → the table as it was then</div>
+      <table class="dtable" style="max-width:420px"><tr><th>customer_id</th><th>city</th><th>txn_amount</th></tr>
+        <tr><td>1001</td><td>Mumbai</td><td>2,500.00</td></tr>
+        <tr><td>1002</td><td>Pune</td><td>540.50</td></tr></table>
+      <p style="color:var(--muted);font-size:.78rem;margin:5px 0 0">Reading an old snapshot is metadata-only — it just follows that snapshot's manifest list; no data is copied or restored.</p>
     </div>
 
     <div class="subpanel" id="ps-bq">
@@ -1901,6 +2131,19 @@ ALTER TABLE lakehouse.bronze.customers
 CALL BQ.REFRESH_EXTERNAL_METADATA_CACHE(<span class="s">'lakehouse.bronze.customers'</span>);</pre>
       </div>
       <div class="note">Managed tables = BigQuery owns writes (DML, streaming, auto-optimization). External tables = another engine owns writes and BigQuery reads a refreshed snapshot. The REST catalog (tab 1) lets all engines share <i>one</i> source of truth.</div>
+
+      <p class="pretitle" style="margin-top:14px">Table &amp; output — <code>lakehouse.bronze.customers</code> (BigQuery DML)</p>
+      <div class="bacap">Before — empty managed Iceberg table</div>
+      <table class="dtable" style="max-width:420px"><tr><th>customer_id</th><th>full_name</th><th>city</th></tr><tr><td colspan="3" style="color:var(--muted);text-align:center">(0 rows)</td></tr></table>
+      <div class="baop"><span class="c">-- INSERT then UPDATE (both write Iceberg data + metadata in place)</span>
+INSERT INTO lakehouse.bronze.customers (customer_id, full_name) VALUES (1, 'Ananya R');
+UPDATE lakehouse.bronze.customers SET city = 'Pune' WHERE customer_id = 1;</div>
+      <div class="bacap aft">After — row inserted, then its city updated</div>
+      <table class="dtable" style="max-width:420px"><tr><th>customer_id</th><th>full_name</th><th>city</th></tr>
+        <tr><td class="add">1</td><td class="add">Ananya R</td><td class="chg">Pune</td></tr></table>
+      <div class="bacap aft">After the policy tag — unauthorized <code>SELECT pan, city FROM …</code></div>
+      <table class="dtable" style="max-width:360px"><tr><th>pan</th><th>city</th></tr><tr><td class="mask">▢ masked / access denied</td><td>Pune</td></tr></table>
+      <p style="color:var(--muted);font-size:.78rem;margin:5px 0 0">The same DML and policy tag are visible to Spark/Trino reading the table — one governed copy, every engine.</p>
     </div>
 
     <div class="subpanel" id="ps-submit">
@@ -1960,6 +2203,7 @@ gcloud dataproc jobs submit pyspark bronze_ingest.py \
           <div class="gcp-navi" data-gv="bq"><svg width="16" height="16" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6" fill="none" stroke="#74e2f5" stroke-width="1.6"/><path d="M15.5 15.5L20 20" stroke="#74e2f5" stroke-width="1.8"/><path d="M9 11h4M11 9v4" stroke="#74e2f5" stroke-width="1.3"/></svg> BigQuery</div>
           <div class="gcp-navi" data-gv="catalog"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3 3 7.5v9L12 21l9-4.5v-9Z" fill="none" stroke="#43c5e0" stroke-width="1.4"/><path d="M3 7.5 12 12l9-4.5M12 12v9" stroke="#43c5e0" stroke-width="1.1"/></svg> Lakehouse catalog</div>
           <div class="gcp-navi" data-gv="dataplex"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 3l3 3-3 3-3-3Z" fill="none" stroke="#48d6a3" stroke-width="1.4"/><path d="M6 12l3 3-3 3-3-3ZM18 12l3 3-3 3-3-3ZM12 15l3 3-3 3-3-3Z" fill="none" stroke="#48d6a3" stroke-width="1.4"/></svg> Dataplex governance</div>
+          <div class="gcp-navi" data-gv="create"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="#8ad6b0" stroke-width="2" stroke-linecap="round"/></svg> Create Iceberg table</div>
         </div>
         <div class="gcp-main">
           <!-- Dataproc / PySpark -->
@@ -2052,6 +2296,44 @@ raw = spark.read.parquet(<span class="s">"gs://cdm-landing/customers/2026-06-28/
               </div>
             </div>
             <div class="note warn" style="margin-top:14px"><b>The principle:</b> governance lives at the catalog/Storage-API layer, so swapping query engines never weakens it. <button class="btn" style="margin-top:8px" data-drawer="policy-tags">Policy tags deep dive ↗</button></div>
+          </div>
+          <!-- Create Iceberg table (wizard clone) -->
+          <div class="gcp-view" data-gview="create">
+            <div class="gcp-crumb">BigQuery &nbsp;›&nbsp; <b>Create table</b> &nbsp;›&nbsp; Apache Iceberg</div>
+            <p class="gcp-h">Create an Iceberg table — the console flow</p>
+            <p class="gcp-sub">A stylized recreation of the BigQuery "Create table" panel for a managed Apache Iceberg table. Fill the fields, or use the SQL below — both do the same thing. <span style="color:var(--muted)">(Illustrative styling, not the real console; icons are original glyphs.)</span></p>
+            <div class="wiz">
+              <div class="wizrow"><label>Source</label><div class="wizctl"><span class="wizpill on">Empty table</span><span class="wizpill">Google Cloud Storage</span><span class="wizpill">Upload</span></div></div>
+              <div class="wizrow"><label>Project</label><div class="wizctl"><span class="wizinput">iceberg-lakehouse-demo</span></div></div>
+              <div class="wizrow"><label>Dataset</label><div class="wizctl"><span class="wizinput">bronze</span></div></div>
+              <div class="wizrow"><label>Table</label><div class="wizctl"><span class="wizinput">customers</span></div></div>
+              <div class="wizrow"><label>Table type</label><div class="wizctl"><span class="wizsel">▾ Apache Iceberg (managed)</span></div></div>
+              <div class="wizrow"><label>Connection</label><div class="wizctl"><span class="wizsel">▾ us.my-biglake-conn</span> <span class="wizhint">→ its service account gets Storage access to the bucket</span></div></div>
+              <div class="wizrow"><label>Storage URI</label><div class="wizctl"><span class="wizinput">gs://my-lakehouse-bucket/bronze/customers</span></div></div>
+              <div class="wizrow"><label>File format</label><div class="wizctl"><span class="wizsel">▾ PARQUET</span></div></div>
+              <div class="wizrow"><label>Schema</label><div class="wizctl"><span class="wizschema">customer_id INT64 · full_name STRING · email STRING · <b style="color:var(--pii)">pan STRING</b> · city STRING · txn_amount NUMERIC · ingested_at TIMESTAMP</span></div></div>
+              <div class="wizrow"><label>Partition</label><div class="wizctl"><span class="wizsel">▾ By day — ingested_at</span> <span class="wizhint">hidden partitioning: no extra column</span></div></div>
+              <div class="wizbtns"><span class="wizcreate">Create table</span><span class="wizcancel">Cancel</span></div>
+            </div>
+            <p class="pretitle" style="margin-top:14px">…which is exactly this SQL (BigQuery)</p>
+            <div class="nbcell">
+              <div class="nbbar">SQL · BigQuery <button class="runbtn" data-run="run-create">▶ Create table</button></div>
+<pre><span class="k">CREATE TABLE</span> bronze.customers (
+  customer_id INT64, full_name STRING, email STRING,
+  pan STRING, city STRING, txn_amount NUMERIC, ingested_at TIMESTAMP)
+<span class="k">WITH CONNECTION</span> `iceberg-lakehouse-demo.us.my-biglake-conn`
+<span class="k">OPTIONS</span> (file_format=<span class="s">'PARQUET'</span>, table_format=<span class="s">'ICEBERG'</span>,
+  storage_uri=<span class="s">'gs://my-lakehouse-bucket/bronze/customers'</span>);</pre>
+              <div class="nbout" id="run-create"></div>
+            </div>
+            <p class="pretitle" style="margin-top:14px">Table &amp; impact — what you get after Create</p>
+            <div class="bacap aft">New table <code>bronze.customers</code> (empty, ready for loads)</div>
+            <table class="dtable" style="max-width:520px"><tr><th>column</th><th>type</th><th>note</th></tr>
+              <tr><td>customer_id</td><td>INT64</td><td>key</td></tr>
+              <tr><td class="chg">pan</td><td>STRING</td><td class="chg">tag with policy tag next</td></tr>
+              <tr><td>ingested_at</td><td>TIMESTAMP</td><td>partition source (day)</td></tr>
+              <tr><td colspan="3" style="color:var(--muted);text-align:center">0 rows · 1 snapshot (create) · metadata written to gs://…/bronze/customers/metadata/</td></tr></table>
+            <div class="note">Impact: an empty managed Iceberg table now exists — its <code>metadata.json</code> is in your bucket and the catalog points at it. Next: load rows (PySpark tab · Create &amp; ingest) and attach a policy tag to <code>pan</code> (PII tab). <button class="btn" style="margin-top:8px" data-drawer="gcp-managed">Managed vs external vs REST ↗</button></div>
           </div>
         </div>
       </div>
@@ -2465,6 +2747,8 @@ const C = {
     {t:'On our table',h:`<p><code>SELECT city, SUM(txn_amount) FROM bronze.customers GROUP BY city</code></p><ul><li><b>Row (CSV):</b> reads every byte of every row — <code>full_name</code>, <code>email</code>, <code>pan</code> included — just to reach two columns.</li><li><b>Columnar (Parquet):</b> opens only the <code>city</code> and <code>txn_amount</code> column chunks. The other 5 columns are never touched.</li></ul>`},
     {t:'Compression',h:`<p>A single column is one data type with repeating/similar values, so Parquet applies:</p><ul><li><b>Dictionary encoding</b> — <code>Mumbai, Pune, Mumbai, Delhi</code> → small integer codes + a dictionary.</li><li><b>Run-length encoding</b> — store "Mumbai ×2" instead of repeating it.</li><li>then a codec (Snappy / Zstd).</li></ul><p>Typical result: <b>2–10× smaller than CSV</b> (often 80–87% reduction).</p>`},
     {t:'Analogy',h:`<div class="callout"><span class="lbl">Mental model</span>A spreadsheet stored <b>one whole column at a time</b>: to grab everyone's salary you lift out just the "salary" column instead of reading every full row top to bottom.</div>`}
+  ,
+    {t:'Table & result',h:`<p>Read-only query on <code>bronze.customers</code> — table unchanged:</p><div class="baop">SELECT city, SUM(txn_amount) FROM bronze.customers GROUP BY city;</div><div class="bacap aft">Result — only 2 of 7 columns ever read</div><table class="dtable" style="max-width:320px"><tr><th>city</th><th>sum(txn_amount)</th></tr><tr><td>Mumbai</td><td>15,499.00</td></tr><tr><td>Pune</td><td>540.50</td></tr><tr><td>Delhi</td><td>75.25</td></tr></table>`}
   ]],
   parquet:['File format','Inside a Parquet file',[
     {t:'Structure',h:`<div class="steps"><li><b>File</b> begins/ends with magic bytes <code>PAR1</code>.</li><li><b>Row groups</b> — horizontal slices of rows (≈128MB–1GB each).</li><li><b>Column chunks</b> — within a row group, one chunk per column (this is the columnar part).</li><li><b>Pages</b> — each chunk splits into pages, the smallest unit of encoding/compression.</li><li><b>Footer</b> — schema + the location and <b>min/max stats</b> of every chunk.</li></div>`},
@@ -2504,6 +2788,8 @@ PARTITIONED BY (days(ingested_at), bucket(16, city));
 ALTER TABLE bronze.customers WRITE ORDERED BY city, txn_amount;</div></div><p>BigQuery analog: <code>PARTITION BY DATE(ingested_at) CLUSTER BY city</code>.</p>`},
     {t:'When',h:`<p>Partition by <b>time</b> (drops old data fast). <b>Sort</b> by the one dominant filter column. Reach for <b>Z-order</b> when several filter columns vary query-to-query (see the Z-ordering card).</p>`},
     {t:'Analogy',h:`<div class="callout"><span class="lbl">Mental model</span>Filing cabinets by month (<b>partition</b>) → alphabetize the folders inside one cabinet (<b>sort</b>) → organize a whole city by neighborhoods so nearby addresses sit together no matter which street you search (<b>cluster / Z-order</b>).</div>`}
+  ,
+    {t:'Table & result',h:`<p>On <code>bronze.customers</code> — partitioned by <code>days(ingested_at)</code>, sorted by <code>city</code>:</p><div class="baop">SELECT * FROM bronze.customers WHERE ingested_at &gt;= '2026-06-02' AND city = 'Mumbai';</div><div class="bacap aft">What the planner keeps</div><table class="dtable" style="max-width:320px"><tr><th>layer</th><th>kept</th></tr><tr><td>day partitions</td><td>1 of 2</td></tr><tr><td>files (after sort)</td><td>1 of 4</td></tr><tr><td class="add">rows scanned</td><td class="add">2 of 4</td></tr></table>`}
   ]],
   gcpcatalog:['GCP','Which catalog is ideal for GCP',[
     {t:'Verdict',h:`<div class="callout good"><span class="lbl">Recommended</span>Use the <b>Lakehouse runtime catalog's Iceberg REST endpoint</b> (the managed, serverless catalog formerly "BigLake metastore"). Serverless, credential-vending, Knowledge-Catalog-governed, multi-engine.</div>`},
@@ -2521,6 +2807,8 @@ CALL gcp_lakehouse.system.rewrite_data_files(
   sort_order =&gt; 'zorder(city, txn_amount)'
 );</div></div><p>Helps queries that filter <code>city</code> and/or <code>txn_amount</code> interchangeably.</p>`},
     {t:'Analogy',h:`<div class="callout"><span class="lbl">Mental model</span>Organize a city by <b>neighborhoods</b> so homes near each other on the 2-D map are also near each other in the 1-D address list — a courier filtering by latitude <i>or</i> longitude can skip whole regions.</div>`}
+  ,
+    {t:'Table & result',h:`<div class="bacap">Before — sorted by city only: a customer_id filter touches every file of <code>bronze.customers</code></div><table class="dtable"><tr><th>file</th><th>city range</th><th>customer_id range</th></tr><tr><td>f1</td><td>Delhi–Mumbai</td><td>1001–9999</td></tr><tr><td>f2</td><td>Mumbai–Pune</td><td>1000–9998</td></tr></table><div class="baop">CALL system.rewrite_data_files(table =&gt; 'bronze.customers', strategy =&gt; 'sort', sort_order =&gt; 'zorder(city, customer_id)');</div><div class="bacap aft">After Z-order — both columns clustered, filters on either skip files</div><table class="dtable"><tr><th>file</th><th>city range</th><th>customer_id range</th></tr><tr><td class="add">f1</td><td class="add">Delhi only</td><td class="add">1001–3500</td></tr><tr><td class="add">f2</td><td class="add">Mumbai–Pune</td><td class="add">3501–9999</td></tr></table>`}
   ]],
   bottlenecks:['Diagnosis','I/O vs CPU vs memory',[
     {t:'Three types',h:`<ul><li><b>I/O</b> (scan-bound) — lots of bytes read, low CPU. Reading too much / too many small files.</li><li><b>CPU</b> (compute-bound) — decompression, serialization, complex expressions; CPU saturated, little I/O wait.</li><li><b>Memory</b> — shuffle spill, OOM, heavy GC.</li></ul>`},
@@ -2538,6 +2826,8 @@ WHERE city = 'Mumbai' AND txn_amount BETWEEN 1000 AND 5000;
   'write.metadata.metrics.column.pan'             = 'full');
 SELECT * FROM bronze.customers WHERE pan = 'ABCDE1234F';</div></div><p>Bloom filters help <code>=</code>/<code>IN</code> only, never ranges.</p>`},
     {t:'Analogy',h:`<div class="callout"><span class="lbl">Mental model</span>Min/max = the aisle sign "prices $1k–$5k". The bloom filter = a <b>doorman</b> who instantly says "that exact PAN is <b>definitely not</b> in this room" (no false negatives) or "maybe — go check".</div>`}
+  ,
+    {t:'Table & result',h:`<div class="bacap"><code>bronze.customers</code> — per-file stats from the manifest</div><table class="dtable" style="max-width:340px"><tr><th>file</th><th>min–max txn_amount</th></tr><tr><td>data-0.parquet</td><td>75 – 2,500</td></tr><tr><td>data-1.parquet</td><td>540 – 12,999</td></tr></table><div class="baop">SELECT * FROM bronze.customers WHERE txn_amount &gt; 10000;</div><div class="bacap aft">Planner keeps only files whose max ≥ 10,000</div><table class="dtable" style="max-width:340px"><tr><th>file</th><th>read?</th></tr><tr><td class="del">data-0.parquet</td><td class="del">✗ skipped</td></tr><tr><td class="add">data-1.parquet</td><td class="add">✓ read → row 1003</td></tr></table>`}
   ]],
   compaction:['Maintenance','Compaction & merging',[
     {t:'Why',h:`<p>Streaming / micro-batch writes pile up tiny files (object stores can't append). Each open has fixed cost; metadata bloats; reads crawl. Target ~256–512 MB files with ~128 MB row groups.</p>`},
@@ -2548,13 +2838,30 @@ SELECT * FROM bronze.customers WHERE pan = 'ABCDE1234F';</div></div><p>Bloom fil
 <span class="c">-- then keep metadata healthy</span>
 CALL gcp_lakehouse.system.rewrite_manifests('bronze.customers');
 CALL gcp_lakehouse.system.expire_snapshots('bronze.customers', TIMESTAMP '2026-06-20 00:00:00');</div></div><p>Cadence: streaming hourly, batch right after load. BigQuery-managed Iceberg tables auto-compact — no manual OPTIMIZE/VACUUM.</p>`},
+    {t:'Before / after',h:`<p>Same rows, far fewer files — a scan opens 2 files instead of 40.</p><table class="dtable"><tr><th></th><th>files</th><th>avg size</th><th>rows</th></tr><tr><td>before</td><td class="del">40</td><td class="del">3.7 MB</td><td>47,000</td></tr><tr><td>after</td><td class="add">2</td><td class="add">75 MB</td><td>47,000</td></tr></table>`},
     {t:'Analogy',h:`<div class="callout"><span class="lbl">Mental model</span>Consolidate fifty <b>half-empty boxes</b> into a few full ones so the delivery truck (a scan) makes far fewer stops.</div>`}
+  ]],
+  'p-multi':['Partitioning','Shared partitioning across tables',[
+    {t:'Pattern A · shuffle-free join',h:`<p>Bucket two tables the <b>same way</b> on a shared key so equal keys land in the same bucket number in both — a join pairs bucket-with-bucket, no shuffle.</p><div class="precard"><button class="dcopy">copy</button><div class="pre">CREATE TABLE bronze.customers (...)    USING iceberg PARTITIONED BY (bucket(16, customer_id));
+CREATE TABLE bronze.transactions (...) USING iceberg PARTITIONED BY (bucket(16, customer_id));
+SET spark.sql.sources.v2.bucketing.enabled = true;
+SELECT c.city, SUM(t.amount) FROM bronze.transactions t
+JOIN bronze.customers c USING (customer_id) GROUP BY c.city;</div></div>`},
+    {t:'How buckets align',h:`<table class="dtable"><tr><th>customer_id</th><th>customers</th><th>transactions</th><th>pair</th></tr><tr><td>1001</td><td>b5</td><td>b5</td><td class="add">b5 ⋈ b5</td></tr><tr><td>1002</td><td>b12</td><td>b12</td><td class="add">b12 ⋈ b12</td></tr><tr><td>1004</td><td>b3</td><td>b3</td><td class="add">b3 ⋈ b3</td></tr></table><p>Same N is required: <code>bucket(16,…)</code> and <code>bucket(32,…)</code> do <b>not</b> align.</p>`},
+    {t:'Pattern B · key from another table',h:`<p>A spec can only reference the table's own columns. To partition <code>transactions</code> by the customer's <code>region</code>, join it in at write time:</p><div class="precard"><button class="dcopy">copy</button><div class="pre">CREATE TABLE bronze.transactions (..., region STRING)
+USING iceberg PARTITIONED BY (identity(region), days(ts));
+INSERT INTO bronze.transactions
+SELECT t.*, c.region FROM staging.transactions t
+JOIN bronze.customers c USING (customer_id);</div></div><table class="dtable"><tr><th>txn_id</th><th>amount</th><th>region (partition)</th></tr><tr><td>9001</td><td>2,500.00</td><td class="add">APAC</td></tr></table>`},
+    {t:'Which is which',h:`<p><b>A</b> = native Iceberg (two matching specs → free, shuffle-free join). <b>B</b> = an ETL pattern (denormalize the key in; re-run if it changes). Iceberg never partitions by another table's column directly.</p><div class="callout"><span class="lbl">Mental model</span>Pattern A is two libraries using the <b>same shelving system</b>, so a cross-library lookup is trivial. Pattern B is stamping each book with its owner's home city so you can shelve by city later.</div>`}
   ]],
   qtune:['Tuning','Tuning query execution',[
     {t:'AQE',h:`<p><b>Adaptive Query Execution</b> (on by default, Spark 3.2+) coalesces post-shuffle partitions, flips sort-merge → broadcast at runtime using real sizes, and splits skewed partitions. Keep it on.</p><div class="precard"><button class="dcopy">copy</button><div class="pre">spark.conf.set("spark.sql.adaptive.enabled","true")
 spark.conf.set("spark.sql.adaptive.skewJoin.enabled","true")</div></div>`},
     {t:'Knobs',h:`<ul><li><code>spark.sql.shuffle.partitions</code> — set high, let AQE coalesce.</li><li><code>write.target-file-size-bytes</code>, <code>write.distribution-mode=hash</code> for even files.</li><li><b>Iceberg reads:</b> <code>maxPartitionBytes</code> does NOT apply — use <code>read.split.target-size</code> (or <code>.option("split-size", …)</code>).</li></ul>`},
     {t:'Analogy',h:`<div class="callout"><span class="lbl">Mental model</span>AQE is a <b>GPS that reroutes mid-trip</b> using live traffic, instead of following a fixed plan drawn before you left.</div>`}
+  ,
+    {t:'Table & result',h:`<div class="bacap">Same query on <code>bronze.customers</code> — before tuning</div><table class="dtable" style="max-width:260px"><tr><th>metric</th><th>value</th></tr><tr><td>files read</td><td>40</td></tr><tr><td>shuffle</td><td>yes</td></tr><tr><td>runtime</td><td>92 s</td></tr></table><div class="baop">-- after: compaction + Z-order + storage-partitioned join + broadcast dims</div><div class="bacap aft">After tuning</div><table class="dtable" style="max-width:260px"><tr><th>metric</th><th>value</th></tr><tr><td class="add">files read</td><td class="add">2</td></tr><tr><td class="add">shuffle</td><td class="add">no (SPJ)</td></tr><tr><td class="add">runtime</td><td class="add">9 s</td></tr></table>`}
   ]],
   pushdown:['Performance','Predicate pushdown',[
     {t:'What',h:`<p>Push filters down to the scan/file layer so only relevant data is <b>read</b>, instead of loading everything and filtering in memory. Pair it with <b>column projection</b> — read only the columns you select.</p>`},
@@ -2563,6 +2870,8 @@ spark.conf.set("spark.sql.adaptive.skewJoin.enabled","true")</div></div>`},
 <span class="c"># BatchScan ... [filters: city='Delhi', txn_amount &gt; 10000]</span>
 <span class="c"># full_name / email / pan are never decoded</span></div></div>`},
     {t:'Analogy',h:`<div class="callout"><span class="lbl">Mental model</span>Hand your <b>shopping list to the warehouse clerk</b> who fetches only those items — instead of wheeling the entire warehouse to the checkout to sort through yourself.</div>`}
+  ,
+    {t:'Table & result',h:`<div class="bacap">Row groups inside data-1.parquet of <code>bronze.customers</code> (footer stats)</div><table class="dtable" style="max-width:320px"><tr><th>row group</th><th>min–max txn_amount</th></tr><tr><td>rg-0</td><td>75 – 600</td></tr><tr><td>rg-1</td><td>1,200 – 12,999</td></tr></table><div class="baop">SELECT * FROM bronze.customers WHERE txn_amount &gt; 10000;</div><div class="bacap aft">Pushdown keeps one row group</div><table class="dtable" style="max-width:300px"><tr><th>row group</th><th>read?</th></tr><tr><td class="del">rg-0</td><td class="del">✗ skipped</td></tr><tr><td class="add">rg-1</td><td class="add">✓ scanned</td></tr></table>`}
   ]],
   joins:['Performance','Optimizing joins',[
     {t:'Broadcast',h:`<p>When one side is small (&lt; <code>autoBroadcastJoinThreshold</code>, default 10 MB; AQE can convert at runtime), Spark ships it to every executor — <b>no shuffle</b>.</p><div class="precard"><button class="dcopy">copy</button><div class="pre">from pyspark.sql.functions import broadcast
@@ -2572,6 +2881,8 @@ cust.join(broadcast(city_dim), "city")</div></div>`},
     {t:'Shuffle / SMJ',h:`<p><b>Sort-merge join</b> (large ⋈ large): both sides shuffled + sorted on the key — the default for big tables, shuffle-heavy. AQE splits skewed keys (e.g. one dominant <code>city</code>).</p>`},
     {t:'Bucketing → SPJ',h:`<p>Bucket both Iceberg tables on the join key and Iceberg reports the layout so Spark can do a <b>shuffle-free Storage-Partitioned Join</b> (Iceberg ≥1.2, Spark ≥3.3; the join key must include the bucket column).</p><div class="precard"><button class="dcopy">copy</button><div class="pre">PARTITIONED BY (bucket(256, customer_id))   <span class="c">-- on BOTH tables</span></div></div>`},
     {t:'Analogy',h:`<div class="callout"><span class="lbl">Mental model</span><b>Broadcast</b> = hand every clerk a copy of a small lookup sheet. <b>SMJ</b> = two teams alphabetize their piles then walk the lists together. <b>SPJ/bucketing</b> = both warehouses pre-sorted into the same 256 numbered bins, so bin 42 only ever meets bin 42.</div>`}
+  ,
+    {t:'Table & result',h:`<p>Both tables bucketed <code>bucket(16, customer_id)</code>:</p><table class="dtable"><tr><th>customer_id</th><th>customers file</th><th>transactions file</th><th>join pair</th></tr><tr><td>1001</td><td>b5</td><td>b5</td><td class="add">b5 ⋈ b5</td></tr><tr><td>1004</td><td>b3</td><td>b3</td><td class="add">b3 ⋈ b3</td></tr></table><div class="baop">SELECT c.city, SUM(t.amount) FROM bronze.transactions t JOIN bronze.customers c USING (customer_id) GROUP BY c.city;</div><div class="bacap aft">Result — computed with no shuffle (SPJ)</div><table class="dtable" style="max-width:280px"><tr><th>city</th><th>sum(amount)</th></tr><tr><td>Mumbai</td><td>3,820.00</td></tr><tr><td>Delhi</td><td>75.25</td></tr></table>`}
   ]],
   caching:['Performance','Data caching',[
     {t:'Spark cache',h:`<p><code>cache()</code> = <code>persist(MEMORY_AND_DISK)</code> for DataFrames. It's <b>lazy</b> (materialized on first action) and <b>block-level, LRU-evicted</b> — calling it is not a guarantee data stays resident.</p><div class="precard"><button class="dcopy">copy</button><div class="pre">hot = spark.sql("SELECT customer_id, city, txn_amount "
@@ -2581,6 +2892,8 @@ hot.unpersist()</div></div>`},
     {t:'When it helps / hurts',h:`<p><b>Helps:</b> iterative/interactive workloads reusing the same DataFrame (ML loops, dashboards). <b>Hurts:</b> one-shot reads, or data too big for memory (eviction → recompute) — and it steals memory from shuffles.</p>`},
     {t:'GCP caches',h:`<p>BigQuery has a free <b>result cache</b> (identical queries) plus metadata caching for Lakehouse/BigLake tables; Dataproc workers also cache hot Parquet files.</p>`},
     {t:'Analogy',h:`<div class="callout"><span class="lbl">Mental model</span>Keep your <b>most-used book on your desk</b> instead of re-fetching from the library — but the desk (RAM) is small, so pin only books you'll actually reopen.</div>`}
+  ,
+    {t:'Table & result',h:`<div class="baop">spark.table("silver.customers").cache()</div><table class="dtable" style="max-width:320px"><tr><th>run</th><th>source</th><th>time</th></tr><tr><td>1st</td><td>GCS (Parquet)</td><td>14 s</td></tr><tr><td class="add">2nd</td><td class="add">executor memory</td><td class="add">0.8 s</td></tr></table><p>Cache is per-session; a new snapshot invalidates cached plans — re-cache after large writes.</p>`}
   ]],
   sparkui:['Diagnosis','Reading the Spark UI',[
     {t:'Where to look',h:`<p>Work top-down: <b>Jobs → Stages → Tasks → Executors / SQL</b>. The <b>SQL/DataFrame</b> tab shows the DAG — confirm pushdown (filters on the scan node) and the join type (<code>BroadcastHashJoin</code> vs <code>SortMergeJoin</code>).</p>`},
@@ -2641,6 +2954,8 @@ hot.unpersist()</div></div>`},
     {t:'Enables',h:`<ul><li><b>Time travel</b> — query AS OF a snapshot id or timestamp.</li><li><b>Rollback</b> — reset the pointer to a prior snapshot, no rewrite.</li><li><b>Isolation</b> — readers pin a snapshot; writers create new ones.</li><li><b>Branching / tagging</b> — named refs for WAP workflows.</li></ul>`},
     {t:'Lifecycle',h:`<p>Snapshots accumulate fast (especially streaming) and retain old files. <code>expire_snapshots</code> removes old ones and deletes files <i>uniquely</i> referenced by them. Safe order: expire → remove orphans → rewrite manifests.</p>`},
     {t:'Analogy',h:`<div class="callout"><span class="lbl">Mental model</span><b>Git commits for your table.</b> Time travel = <code>checkout</code>, rollback = <code>revert</code>, branches/tags = branches/tags, expiration = <code>git gc</code>.</div>`}
+  ,
+    {t:'Table & result',h:`<div class="baop">SELECT snapshot_id, operation, summary FROM bronze.customers.snapshots;</div><div class="bacap aft">Result — one row per commit</div><table class="dtable" style="max-width:320px"><tr><th>snapshot_id</th><th>operation</th><th>rows</th></tr><tr><td>100</td><td>append</td><td>+2</td></tr><tr><td>101</td><td>append</td><td>+1</td></tr><tr><td>102</td><td>delete</td><td>−1</td></tr></table><p>Time travel can read any of these; expire_snapshots trims the list.</p>`}
   ]],
   partconcept:['Layout','Partitioning (the concept)',[
     {t:'What',h:`<p>Partitioning groups related rows together physically so a query can <b>prune</b> (skip) the groups it doesn't need, cutting I/O dramatically.</p>`},
@@ -2675,6 +2990,8 @@ hot.unpersist()</div></div>`},
     {t:'With Iceberg',h:`<p>Each micro-batch commit creates a <b>new snapshot</b> and writes <b>small files</b>. Frequent commits cause snapshot accumulation (metadata bloat) and the <b>small-files problem</b> (tiny Parquet hurts planning and scans).</p>`},
     {t:'Must-do',h:`<p>Run <b>compaction</b> (<code>rewrite_data_files</code>, target ~128–512 MB) every 30–60 min and <b>expire snapshots</b> on a schedule. The #1 mistake is deploying the stream writer <i>without</i> the compaction service — performance degrades within days.</p>`},
     {t:'Analogy',h:`<div class="callout"><span class="lbl">Mental model</span>A <b>bus that leaves every 60 seconds</b> (vs a taxi per passenger = true streaming, vs a once-a-day coach = batch). Efficient and frequent — but you must periodically consolidate all those half-empty buses (compaction).</div>`}
+  ,
+    {t:'Table & result',h:`<div class="bacap"><code>bronze.customers.snapshots</code> after 3 micro-batches</div><table class="dtable" style="max-width:320px"><tr><th>snapshot</th><th>op</th><th>added rows</th></tr><tr><td>7741</td><td>append</td><td>1,204</td></tr><tr><td>7742</td><td>append</td><td>980</td></tr><tr><td>7743</td><td>append</td><td>1,330</td></tr></table><p>Each trigger = one commit → many small files; pair with nightly compaction.</p>`}
   ]],
   /* --- mental model --- */
   whatis:['Concept','Table format, not file format',`
@@ -2690,7 +3007,7 @@ hot.unpersist()</div></div>`},
     <h4>The contenders</h4><ul><li><b>Apache Iceberg</b> — open spec, multi-engine, no single-vendor control.</li><li><b>Delta Lake</b> — transaction log (<code>_delta_log</code>); strongest in the Spark/Databricks world.</li><li><b>Apache Hudi</b> — built around streaming upserts and incremental pulls.</li></ul>
     <p>All three solve the same core problem; Iceberg's bet is neutrality and a clean REST catalog spec.</p>`],
   catalog:['Layer 3','Catalog',`
-    <p>The catalog answers one question atomically: "for table <code>db.t</code>, what is the current metadata file?" The atomic swap of that pointer is what makes a commit all-or-nothing.</p>
+    <p>The catalog answers one question atomically: "for table <code>bronze.customers</code>, what is the current metadata file?" The atomic swap of that pointer is what makes a commit all-or-nothing.</p>
     <h4>Common catalogs</h4><ul><li><b>REST</b> — the modern standard; a vendor-neutral HTTP API.</li><li><b>Hive Metastore</b>, <b>Hadoop</b> (file-based, avoid in prod), <b>JDBC</b>.</li><li><b>AWS Glue</b>, <b>Nessie</b> (git-like branching), <b>Apache Polaris</b>.</li></ul>
     <h4>On GCP</h4><p>The <b>Lakehouse runtime catalog</b> (formerly BigLake metastore) exposes an Iceberg REST endpoint and is the recommended choice — one source of truth for Spark, Flink, Trino and BigQuery.</p>`],
   acid:['Reliability','ACID via optimistic concurrency',`
@@ -2700,11 +3017,13 @@ hot.unpersist()</div></div>`},
   timetravel:['Audit','Time travel & rollback',`
     <p>Every commit appends a snapshot to the snapshot list; old snapshots stay valid until expired. Querying the past is metadata-only — no data is copied.</p>
     <div class="pre">-- by timestamp
-SELECT * FROM t FOR SYSTEM_TIME AS OF TIMESTAMP '2026-06-01 00:00:00';
+SELECT * FROM silver.customers FOR SYSTEM_TIME AS OF TIMESTAMP '2026-06-01 00:00:00';
 -- by snapshot id
-SELECT * FROM t FOR SYSTEM_VERSION AS OF 80276586;
+SELECT * FROM silver.customers FOR SYSTEM_VERSION AS OF 80276586;
 -- undo a bad load
-CALL lake.system.rollback_to_snapshot('db.t', 80276586);</div>
+CALL lake.system.rollback_to_snapshot('silver.customers', 80276586);</div>
+    <p>Before &amp; after a rollback that undoes a bad batch (snapshot 102 → back to 101):</p>
+    <table class="dtable"><tr><th>customer_id</th><th>city</th><th>state</th></tr><tr><td>1001</td><td>Mumbai</td><td>kept</td></tr><tr><td>1002</td><td>Pune</td><td>kept</td></tr><tr><td class="del">9999</td><td class="del">BAD ROW</td><td class="del">removed by rollback</td></tr></table>
     <p>Bad batch at 2am? Roll back in seconds. Auditor asks "what did this table look like in Q1?" Answer it exactly.</p>`],
   schemaev:['Agility','Schema evolution',`
     <p>Add, drop, rename, reorder and widen columns as pure metadata changes — no data files touched — because every column has a stable, unique field ID. See §02 for the full safe-operation matrix and V3 default values.</p>`],
@@ -2737,15 +3056,15 @@ CALL lake.system.rollback_to_snapshot('db.t', 80276586);</div>
   'write.update.mode' = 'merge-on-read',
   'write.delete.mode' = 'merge-on-read',
   'write.merge.mode'  = 'merge-on-read');</div>
-    <p>V3 deletion vectors make MoR dramatically cheaper than V2 — the main reason to adopt V3 for mutable tables.</p>`],
+    <p>V3 deletion vectors make MoR dramatically cheaper than V2 — the main reason to adopt V3 for mutable tables.</p><div class="bacap">UPDATE 1 row of 1M inside a 512 MB file of <code>silver.customers</code></div><table class="dtable"><tr><th>mode</th><th>what gets written</th><th>read cost</th></tr><tr><td>Copy-on-Write</td><td>rewrites the whole 512 MB file</td><td>fastest reads</td></tr><tr><td class="add">Merge-on-Read (V3)</td><td class="add">a 2 KB deletion vector + 1 new row</td><td class="add">tiny merge at read</td></tr></table><div class="baop">ALTER TABLE silver.customers SET TBLPROPERTIES ('write.update.mode'='merge-on-read');</div>`],
   maint:['Housekeeping','Compaction & expiry',`
     <p>Streaming and frequent commits create many small files and a long snapshot history. Left alone, performance and storage cost degrade.</p>
-    <div class="pre">CALL lake.system.rewrite_data_files('db.t');   -- compact to target size
-CALL lake.system.rewrite_manifests('db.t');    -- tidy manifests
+    <div class="pre">CALL lake.system.rewrite_data_files('silver.customers');   -- compact to target size
+CALL lake.system.rewrite_manifests('silver.customers');    -- tidy manifests
 CALL lake.system.expire_snapshots(
-  table => 'db.t', older_than => TIMESTAMP '2026-06-01 00:00:00');
-CALL lake.system.remove_orphan_files('db.t');  -- delete unreferenced files</div>
-    <p><b>Target file size 128MB–1GB.</b> Note: <code>expire_snapshots</code> removes time-travel history, so set retention to match your audit/compliance window.</p>`],
+  table => 'silver.customers', older_than => TIMESTAMP '2026-06-01 00:00:00');
+CALL lake.system.remove_orphan_files('silver.customers');  -- delete unreferenced files</div>
+    <p><b>Target file size 128MB–1GB.</b> Note: <code>expire_snapshots</code> removes time-travel history, so set retention to match your audit/compliance window.</p><div class="bacap"><code>silver.customers</code> — before nightly housekeeping</div><table class="dtable" style="max-width:300px"><tr><th>metric</th><th>value</th></tr><tr><td>data files</td><td>40 (avg 4 MB)</td></tr><tr><td>snapshots</td><td>58 (30 days)</td></tr><tr><td>orphan files</td><td>7</td></tr></table><div class="bacap aft">After the four CALLs above</div><table class="dtable" style="max-width:300px"><tr><th>metric</th><th>value</th></tr><tr><td class="add">data files</td><td class="add">2 (≈128 MB each)</td></tr><tr><td class="add">snapshots</td><td class="add">12 (7-day window)</td></tr><tr><td class="add">orphan files</td><td class="add">0</td></tr></table>`],
   planning:['Speed','Three-level scan planning',`
     <p>Iceberg skips work before reading data, in three passes:</p>
     <ul><li><b>1 · Manifest list</b> — drop whole manifests by partition range.</li><li><b>2 · Manifest</b> — drop individual files by per-file partition values.</li><li><b>3 · File stats</b> — drop files by column min/max + null counts.</li></ul>
@@ -2799,6 +3118,8 @@ with tbl.update_schema() as upd:
       <li><b>Re-adding a dropped name.</b> Allowed, but it gets a fresh ID; it will <i>not</i> resurrect the old column's bytes (that's by design — see DROP).</li>
       <li><b>Engine lag.</b> A V3 default written by Spark&nbsp;4 may read back as <code>NULL</code> on an engine that doesn't yet understand defaults. Confirm reader support before relying on it.</li>
       </ul>`}
+  ,
+    {t:'Table & result',h:`<div class="bacap"><code>bronze.customers</code> — before</div><table class="dtable" style="max-width:240px"><tr><th>customer_id</th><th>city</th></tr><tr><td>1001</td><td>Mumbai</td></tr><tr><td>1003</td><td>Mumbai</td></tr></table><div class="baop">ALTER TABLE bronze.customers ADD COLUMN loyalty_tier STRING;</div><div class="bacap aft">After — old rows read NULL, zero rewrite</div><table class="dtable" style="max-width:320px"><tr><th>customer_id</th><th>city</th><th class="add">loyalty_tier</th></tr><tr><td>1001</td><td>Mumbai</td><td class="add">NULL</td></tr><tr><td>1003</td><td>Mumbai</td><td class="add">NULL</td></tr></table>`}
   ]],
   'ev-drop':['Schema op','DROP column',[
     {t:'Concept',h:`<p>Removes the column from the <i>current</i> schema. Its field ID is <b>retired forever and never reused</b> — the single most important rule in Iceberg evolution.</p>
@@ -2822,6 +3143,8 @@ with tbl.update_schema() as upd:
       <li><b>Partitioned-by a dropped column?</b> You generally must evolve the partition spec (drop the field via <code>void</code> or replace it) before/after — don't leave the spec referencing a gone column.</li>
       <li><b>Irreversible ID.</b> There is no "undrop." Re-adding gives a new ID and starts empty.</li>
       </ul>`}
+  ,
+    {t:'Table & result',h:`<div class="bacap">Before</div><table class="dtable" style="max-width:260px"><tr><th>customer_id</th><th>pan</th></tr><tr><td>1001</td><td>ABCPR1234F</td></tr></table><div class="baop">ALTER TABLE bronze.customers DROP COLUMN pan;</div><div class="bacap aft">After — field-ID retired forever; a future re-add gets a fresh ID</div><table class="dtable" style="max-width:240px"><tr><th>customer_id</th><th class="del">pan</th></tr><tr><td>1001</td><td class="del">—</td></tr></table>`}
   ]],
   'ev-rename':['Schema op','RENAME column',[
     {t:'Concept',h:`<p>Changes only the <code>id → name</code> mapping inside <code>metadata.json</code>. The underlying field ID is untouched, so <b>not a single data file is opened</b>.</p>
@@ -2840,6 +3163,8 @@ with tbl.update_schema() as upd:
       <li><b>Downstream views & BI.</b> The physical change is free, but anything referencing the old name by string (SQL views, dashboards, dbt models) breaks. Coordinate the rename.</li>
       <li><b>Name-mapping for migrated tables.</b> If the table was imported from files that lacked field IDs, a <code>schema.name-mapping.default</code> may pin names — verify after renaming.</li>
       </ul>`}
+  ,
+    {t:'Table & result',h:`<div class="bacap">Before</div><table class="dtable" style="max-width:260px"><tr><th>customer_id</th><th>full_name</th></tr><tr><td>1001</td><td>Asha Rao</td></tr></table><div class="baop">ALTER TABLE bronze.customers RENAME COLUMN full_name TO customer_name;</div><div class="bacap aft">After — same field-ID, values untouched</div><table class="dtable" style="max-width:260px"><tr><th>customer_id</th><th class="chg">customer_name</th></tr><tr><td>1001</td><td class="chg">Asha Rao</td></tr></table>`}
   ]],
   'ev-reorder':['Schema op','REORDER columns',[
     {t:'Concept',h:`<p>Column display order is <b>metadata only</b>. Physical storage order inside Parquet is irrelevant because columns are matched by ID, not position — so you can reorder freely, purely for readability.</p>`},
@@ -2852,6 +3177,8 @@ with tbl.update_schema() as upd:
     upd.move_first("region")
     upd.move_after("pan", "email_address")</div></div>`},
     {t:'Pitfalls',h:`<p>Essentially risk-free. The only thing to remember: <code>SELECT *</code> column order in results will change, so any consumer relying on <i>positional</i> unpacking of <code>*</code> (rare, and an anti-pattern) could be surprised. Reference columns by name.</p>`}
+  ,
+    {t:'Table & result',h:`<div class="bacap">Before — display order</div><table class="dtable" style="max-width:340px"><tr><th>customer_id</th><th>full_name</th><th>email</th></tr><tr><td>1001</td><td>Asha Rao</td><td>asha@ex.in</td></tr></table><div class="baop">ALTER TABLE bronze.customers ALTER COLUMN email AFTER customer_id;</div><div class="bacap aft">After — metadata-only reorder</div><table class="dtable" style="max-width:340px"><tr><th>customer_id</th><th class="chg">email</th><th>full_name</th></tr><tr><td>1001</td><td class="chg">asha@ex.in</td><td>Asha Rao</td></tr></table>`}
   ]],
   'ev-widen':['Schema op','WIDEN type (safe promotion)',[
     {t:'Concept',h:`<p>Iceberg permits only <b>loss-less</b> type promotions as metadata changes. Readers up-cast old values on the fly; no data is rewritten.</p>
@@ -2893,6 +3220,8 @@ WHERE qty BETWEEN -2147483648 AND 2147483647;
 ALTER TABLE t DROP COLUMN qty;
 ALTER TABLE t RENAME COLUMN qty_small TO qty;</div></div>`},
     {t:'Pitfalls',h:`<p>The interim <code>UPDATE</code> rewrites data files (copy-on-write) or writes deletes (merge-on-read), so it is <i>not</i> free like the safe promotions. Run it as a deliberate, tested migration — never assume narrowing is a metadata edit.</p>`}
+  ,
+    {t:'Table & result',h:`<div class="bacap">Attempt on <code>bronze.customers</code></div><div class="baop">ALTER TABLE bronze.customers ALTER COLUMN customer_id TYPE INT;   -- long → int</div><div class="bacap aft">Result — refused (would lose data)</div><table class="dtable"><tr><th class="del">engine output</th></tr><tr><td class="del">IllegalArgumentException: Cannot change column type: customer_id: long -&gt; int</td></tr></table>`}
   ]],
 
   /* --- partitioning --- */
@@ -2974,6 +3303,8 @@ spark.sql("""
       <li><b>Don't churn the spec.</b> Frequent partition changes fragment the table into many small-spec regions. Evolve deliberately, not reactively.</li>
       <li><b>Engines must understand the spec history</b> to prune correctly — keep readers reasonably current.</li>
       </ul>`}
+  ,
+    {t:'Table & result',h:`<div class="bacap"><code>bronze.customers.partitions</code> — before (spec 0 = monthly)</div><table class="dtable" style="max-width:320px"><tr><th>partition</th><th>spec_id</th><th>files</th></tr><tr><td>month=2026-05</td><td>0</td><td>8</td></tr><tr><td>month=2026-06</td><td>0</td><td>9</td></tr></table><div class="baop">ALTER TABLE bronze.customers DROP PARTITION FIELD months(ingested_at); ALTER TABLE bronze.customers ADD PARTITION FIELD days(ingested_at);</div><div class="bacap aft">After — old layout untouched, new writes daily</div><table class="dtable" style="max-width:320px"><tr><th>partition</th><th>spec_id</th><th>files</th></tr><tr><td>month=2026-06</td><td>0</td><td>9</td></tr><tr><td class="add">day=2026-07-01</td><td class="add">1</td><td class="add">2</td></tr></table>`}
   ]],
   'p-bucket':['Transform','bucket(N, col)',[
     {t:'Concept',h:`<p>Hashes each value into one of <b>N fixed buckets</b> (<code>hash(value) mod N</code>). Ideal for high-cardinality keys — IDs, PANs, emails — where date partitioning is meaningless and identity partitioning would explode.</p>
@@ -2997,6 +3328,8 @@ SELECT * FROM lake.silver.accounts WHERE account_id = 90210;</div></div>`},
 SELECT a.*, t.amount
 FROM accounts a JOIN txns t
   ON a.account_id = t.account_id;</div></div>`}
+  ,
+    {t:'Table & result',h:`<p>Hash assignment on <code>bronze.customers</code> — deterministic per value:</p><table class="dtable" style="max-width:280px"><tr><th>customer_id</th><th>bucket(16, customer_id)</th></tr><tr><td>1001</td><td>5</td></tr><tr><td>1002</td><td>12</td></tr><tr><td>1004</td><td>3</td></tr></table><p>The same id lands in the same bucket in <i>every</i> table bucketed (16, customer_id) — the basis of shuffle-free joins.</p>`}
   ]],
   'p-truncate':['Transform','truncate(W, col)',[
     {t:'Concept',h:`<p>Groups by a <b>prefix or width</b> rather than exact value. For strings it keeps the first W characters; for numbers it floors to the nearest multiple of W. Fewer, larger partitions than identity.</p>`},
@@ -3060,7 +3393,7 @@ CALL lake.system.expire_snapshots('bronze.events', TIMESTAMP '2026-06-20 00:00:0
     <div class="pre">MERGE INTO silver.customers t USING updates s
 ON t.customer_id = s.customer_id
 WHEN MATCHED THEN UPDATE SET *
-WHEN NOT MATCHED THEN INSERT *;</div>`],
+WHEN NOT MATCHED THEN INSERT *;</div><div class="bacap">Target <code>silver.customers</code> — before</div><table class="dtable" style="max-width:300px"><tr><th>customer_id</th><th>city</th><th>txn_amount</th></tr><tr><td>1002</td><td>Pune</td><td>540.50</td></tr></table><div class="bacap">Incoming CDC batch</div><table class="dtable" style="max-width:300px"><tr><th>customer_id</th><th>city</th><th>txn_amount</th></tr><tr><td class="chg">1002</td><td class="chg">Mumbai</td><td class="chg">880.00</td></tr><tr><td class="add">1005</td><td class="add">Delhi</td><td class="add">4,200.00</td></tr></table><div class="baop">MERGE INTO silver.customers t USING updates s ON t.customer_id = s.customer_id WHEN MATCHED THEN UPDATE SET * WHEN NOT MATCHED THEN INSERT *;</div><div class="bacap aft">After — one snapshot: 1002 updated, 1005 inserted</div><table class="dtable" style="max-width:300px"><tr><th>customer_id</th><th>city</th><th>txn_amount</th></tr><tr><td class="chg">1002</td><td class="chg">Mumbai</td><td class="chg">880.00</td></tr><tr><td class="add">1005</td><td class="add">Delhi</td><td class="add">4,200.00</td></tr></table>`],
   'z-gold':['Curated','Gold — serve',`
     <p>Iceberg table. Business-level marts and aggregates, partitioned for query patterns, served to BI and analysts — often through <b>BigQuery</b> over the same Iceberg data.</p>
     <h4>Properties</h4><ul><li>No raw PAN ever reaches here.</li><li>Partitioned/sorted for the dashboards that read it.</li><li>One copy, many engines (BigQuery + Spark + Trino).</li></ul>`],
@@ -3092,6 +3425,8 @@ spark.read.option("snapshot-id", 5512).table("lake.bronze.orders")</div></div>`}
       <li>Some Iceberg V3 features surface in BigQuery in <b>preview</b> — confirm before relying on deletion vectors there.</li>
       <li>Snapshot exports historically targeted V2 for broad reader compatibility.</li>
       </ul>`}
+  ,
+    {t:'Table & result',h:`<div class="baop">CREATE TABLE bronze.customers (…) WITH CONNECTION &#96;proj.us.conn&#96; OPTIONS (file_format='PARQUET', table_format='ICEBERG', storage_uri='gs://bucket/bronze/customers');</div><div class="bacap aft">Impact</div><table class="dtable" style="max-width:380px"><tr><th>what</th><th>where</th></tr><tr><td>empty managed table</td><td>bronze.customers (0 rows)</td></tr><tr><td>metadata v1</td><td>gs://bucket/bronze/customers/metadata/</td></tr><tr><td class="add">maintenance</td><td class="add">automatic (no OPTIMIZE/VACUUM)</td></tr></table>`}
   ]],
   'gcp-external':['GCP','Iceberg external tables',[
     {t:'Overview',h:`<p>BigQuery reads an Iceberg table that <b>another engine owns</b> (Spark/Flink writing to GCS). It's read-only from BigQuery's side.</p>
@@ -3104,6 +3439,8 @@ OPTIONS (
     {t:'Refresh',h:`<p>External tables cache metadata. After the owning engine commits new snapshots, refresh BigQuery's view so queries see the latest data:</p>
       <div class="precard"><button class="dcopy">copy</button><div class="pre">CALL BQ.REFRESH_EXTERNAL_METADATA_CACHE('lakehouse.bronze.events');</div></div>
       <div class="callout warn"><span class="lbl">Staleness</span>Forget the refresh and BigQuery reads an old snapshot. Automate it after each write batch, or prefer the REST catalog where all engines share live state.</div>`}
+  ,
+    {t:'Table & result',h:`<div class="baop">CALL BQ.REFRESH_EXTERNAL_METADATA_CACHE('lakehouse.bronze.customers');</div><table class="dtable" style="max-width:320px"><tr><th>metadata cache</th><th>snapshot seen</th></tr><tr><td>before refresh</td><td>101 (stale)</td></tr><tr><td class="add">after refresh</td><td class="add">103 (current)</td></tr></table><p>Spark/Flink own the writes; BigQuery reads the refreshed snapshot.</p>`}
   ]],
   'gcp-rest':['GCP · recommended','Lakehouse runtime catalog (REST)',[
     {t:'Why it wins',h:`<p>The 2026 default. A serverless Iceberg <b>REST catalog</b> that is <i>one source of truth</i> across BigQuery, Spark, Flink and Trino — no metadata copies, no per-engine connectors, no refresh dance.</p>
@@ -3175,7 +3512,8 @@ ALTER TABLE lakehouse.bronze.customers
   );</div></div>`},
     {t:'Enforcement',h:`<p>The rule is enforced <b>everywhere</b>, not just the BigQuery UI:</p>
       <ul><li>Through the <b>BigQuery Storage API</b>, so Spark reading via Managed Spark is governed too.</li><li>Across BI tools and the CLI.</li></ul>
-      <p>You can layer <b>dynamic data masking</b> on the tag so some roles see a masked value instead of a hard denial — graceful degradation rather than an error.</p>`}
+      <p>You can layer <b>dynamic data masking</b> on the tag so some roles see a masked value instead of a hard denial — graceful degradation rather than an error. Same query, two readers:</p>
+      <table class="dtable"><tr><th>customer_id</th><th>pan — authorized</th><th>pan — unauthorized</th></tr><tr><td>1001</td><td>ABCPR1234F</td><td class="mask">ABXXXXXX4F</td></tr><tr><td>1003</td><td>LMNPG4567Q</td><td class="mask">LMXXXXXX7Q</td></tr></table>`}
   ]],
   'pan-rule1':['Rule 1','Never log raw PAN',`<p>The quietest leak. <code>df.show()</code>, <code>collect()</code> + print, or an exception message that echoes a row will all ship raw PAN to Cloud Logging, notebooks, and stack traces.</p><ul><li>Debug on <code>pan_masked</code>, never <code>pan</code>.</li><li>Strip PII from exception handlers.</li><li>Disable verbose row logging in jobs that touch Bronze.</li></ul>`],
   'pan-rule2':['Rule 2','Mask at the Bronze→Silver boundary',`<p>Pick one place where raw PII stops. Bronze may hold raw PAN (tightly tagged); Silver and beyond hold only derived, safe forms.</p><p>This makes "is this dataset safe to share?" answerable by zone, not by auditing every query. Governed-by-default beats governed-by-vigilance.</p>`],
@@ -3188,7 +3526,7 @@ ALTER TABLE lakehouse.bronze.customers
     <h4>V3 fix</h4><p>One compact <b>Roaring-bitmap</b> (a Puffin file) per data file: bit = 1 means deleted, <b>O(1)</b> at read time. Up to ~10× faster DML; far cheaper GDPR/DPDP compliance deletes.</p>
     <div class="pre">ALTER TABLE t SET TBLPROPERTIES (
   'format-version'='3',
-  'write.delete.mode'='merge-on-read');  -- now deletes -> deletion vectors</div>`],
+  'write.delete.mode'='merge-on-read');  -- now deletes -> deletion vectors</div><div class="bacap"><code>bronze.customers</code> — before</div><table class="dtable" style="max-width:220px"><tr><th>customer_id</th><th>city</th></tr><tr><td>1002</td><td>Pune</td></tr></table><div class="baop">DELETE FROM bronze.customers WHERE customer_id = 1002;</div><div class="bacap aft">After — a 2 KB Puffin deletion vector marks the row; no 512 MB rewrite</div><table class="dtable" style="max-width:220px"><tr><th class="del">customer_id</th><th class="del">city</th></tr><tr><td class="del">1002</td><td class="del">Pune</td></tr></table>`],
   'v3-lineage':['V3','Row lineage',`
     <p>Every row carries two engine-maintained fields:</p>
     <ul><li><code>_row_id</code> — a stable unique id assigned on first insert.</li><li><code>_last_updated_sequence_number</code> — the commit that last changed the row.</li></ul>
@@ -3198,7 +3536,7 @@ ALTER TABLE lakehouse.bronze.customers
     <p>Replaces the old "store JSON as a STRING and parse on read" pattern — you can now filter on nested keys and the engine prunes files using nested statistics.</p>`],
   'v3-geo':['V3','Geo types + nanosecond time',`
     <ul><li><b>geometry</b> / <b>geography</b> — native spatial types for GIS-style analytics.</li><li><b>Nanosecond-precision timestamps</b> — for high-resolution event data.</li><li><b>Multi-argument partition transforms</b> — more expressive layouts.</li><li><b>unknown</b> type — defer resolving a column's type without blocking schema changes.</li></ul>`],
-  'v3-default':['V3','Default column values',`<p>Add a non-nullable column without rewriting data. <code>initial-default</code> applies to pre-existing rows; <code>write-default</code> applies to new writes that omit the column. See §02 for the matrix.</p><div class="pre">ALTER TABLE t ADD COLUMN region STRING DEFAULT 'APAC';</div>`],
+  'v3-default':['V3','Default column values',`<p>Add a non-nullable column without rewriting data. <code>initial-default</code> applies to pre-existing rows; <code>write-default</code> applies to new writes that omit the column. See §02 for the matrix.</p><div class="pre">ALTER TABLE t ADD COLUMN region STRING DEFAULT 'APAC';</div><div class="bacap">Before (format-version 3)</div><table class="dtable" style="max-width:220px"><tr><th>customer_id</th><th>city</th></tr><tr><td>1001</td><td>Mumbai</td></tr></table><div class="baop">ALTER TABLE bronze.customers ADD COLUMN region STRING DEFAULT 'APAC';</div><div class="bacap aft">After — old AND new rows read the default, zero rewrite</div><table class="dtable" style="max-width:260px"><tr><th>customer_id</th><th>city</th><th class="add">region</th></tr><tr><td>1001</td><td>Mumbai</td><td class="add">APAC</td></tr></table>`],
   'v3-compat':['V3','Compatibility & upgrade',`
     <p>Read the room before upgrading a table.</p>
     <ul><li><b>Forward:</b> a V3 reader can read V1/V2 tables.</li><li><b>Backward:</b> a V2 reader <b>cannot</b> read a V3 table.</li><li><b>One-way:</b> upgrading V2→V3 can't be reversed by standard ops.</li></ul>
@@ -3354,6 +3692,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDrawer(); });
       [`Mumbai       48,210   51,240,118`,0],
       [`Pune         22,940   20,155,402`,0],
       [`Bengaluru    31,007   38,876,955`,0]
+    ],
+    'run-create':[
+      [`<span class="dim">Creating table via Lakehouse runtime catalog…</span>`,600],
+      [`Registering bronze.customers → connection us.my-biglake-conn`,650],
+      [`Writing initial metadata → gs://my-lakehouse-bucket/bronze/customers/metadata/v1.metadata.json`,750],
+      [`<span class="ok">✓ Created managed Iceberg table bronze.customers — 0 rows · snapshot 1 (create)</span>`,0],
+      [`<span class="dim">Next: load rows, then attach a policy tag to pan.</span>`,0]
     ]
   };
   document.querySelectorAll('.runbtn[data-run]').forEach(btn=>{
