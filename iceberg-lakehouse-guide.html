@@ -2663,6 +2663,132 @@ CALL system.rewrite_data_files(
 
 <!-- ============================ 07 PRO / WHAT'S NEW ============================ -->
 <section class="panel" id="pro">
+  <div class="section" style="border-top:0">
+    <div class="eyebrow">07 · Format version evolution</div>
+    <h2 class="section-title">V1 → V2 → V3 → V4, with examples for each</h2>
+    <p class="lead">Iceberg's <b>format version</b> is a table property (<code>format-version</code> = 1, 2, or 3) that says which spec a table uses. It is <i>not</i> the library release number. Three spec versions are complete and community-adopted; <b>V4 is in active development and not yet adopted.</b></p>
+
+    <div class="callout warn"><span class="lbl">The #1 confusion — spec version ≠ library version</span>The <b>spec version</b> (1/2/3) is a property of your <i>table</i>. The <b>library version</b> (e.g. Iceberg 1.10.0, 1.11.0) is the <i>software</i> that reads/writes it. One library supports several spec versions — V3 features rolled out across libraries 1.8 → 1.11. Newer readers read older tables; older readers cannot read newer ones.</div>
+
+    <table class="dtable">
+      <tr><th>Capability</th><th>V1</th><th>V2</th><th>V3</th><th>V4 (planned)</th></tr>
+      <tr><td>Goal</td><td>tables over immutable files</td><td>row-level deletes / MoR</td><td>rich types · fast deletes · lineage</td><td>metadata restructure for scale</td></tr>
+      <tr><td>Row-level delete</td><td class="no">no (copy-on-write)</td><td class="yes">delete files</td><td class="yes">deletion vectors</td><td>—</td></tr>
+      <tr><td>Delete mechanism</td><td>none</td><td>position + equality files</td><td class="chg">Puffin/Roaring DV (1 per file)</td><td>—</td></tr>
+      <tr><td>Default column values</td><td class="no">no</td><td class="no">no</td><td class="yes">yes (initial/write)</td><td>yes</td></tr>
+      <tr><td>New types</td><td>base</td><td>base</td><td class="yes">variant · geo · ns-timestamp</td><td>typed stats</td></tr>
+      <tr><td>Row lineage</td><td class="no">no</td><td class="no">no</td><td class="yes">yes (_row_id)</td><td>yes</td></tr>
+      <tr><td>Status (2026)</td><td>legacy, readable</td><td>safe default</td><td class="chg">GA &amp; maturing</td><td class="no">proposal only</td></tr>
+      <tr><td>Min. library</td><td>0.x</td><td>0.12+ / 1.x</td><td>GA 1.10.0</td><td>none yet</td></tr>
+    </table>
+
+    <!-- V1 -->
+    <div class="eyebrow" style="margin-top:24px">V1 · ≈2018–2020 · the foundation</div>
+    <h3 style="font-family:var(--display);font-size:1.08rem;margin:0 0 4px">Analytic tables over immutable files</h3>
+    <p style="color:var(--glacier);font-size:.86rem;margin:0 0 6px">Everything the guide has shown so far is V1's baseline: the metadata tree, atomic commits, field-ID schema evolution, hidden partitioning, time travel, and Parquet/Avro/ORC files. The one thing V1 <b>cannot</b> do: row-level deletes — every update/delete is copy-on-write (rewrite whole files).</p>
+    <p class="pretitle">Example 1 — create a V1 table</p>
+    <div class="baop"><span class="c">-- format-version defaults could be 1 on older engines; be explicit</span>
+CREATE TABLE bronze.customers (customer_id BIGINT, city STRING, txn_amount DOUBLE, ingested_at TIMESTAMP)
+USING iceberg TBLPROPERTIES ('format-version'='1');</div>
+    <p class="pretitle">Example 2 — a DELETE rewrites whole files (copy-on-write)</p>
+    <div class="bacap">Before — one 512 MB file holds the row to delete</div>
+    <table class="dtable" style="max-width:520px"><tr><th>file</th><th>size</th><th>rows</th></tr><tr><td>data-0.parquet</td><td>512 MB</td><td>1,000,000 (incl. 1002)</td></tr></table>
+    <div class="baop">DELETE FROM bronze.customers WHERE customer_id = 1002;</div>
+    <div class="bacap aft">After — the entire file is rewritten without that row</div>
+    <table class="dtable" style="max-width:520px"><tr><th>file</th><th>size</th><th>rows</th></tr><tr><td class="del">data-0.parquet</td><td class="del">512 MB</td><td class="del">removed</td></tr><tr><td class="add">data-1.parquet</td><td class="add">512 MB</td><td class="add">999,999 (rewritten)</td></tr></table>
+    <div class="note">Impact: deleting one row rewrote 512 MB. That cost is exactly what V2 set out to fix. In 2026 V1 stays readable and upgrades to V2/V3 are metadata-only — but you rarely create V1 tables.</div>
+
+    <!-- V2 -->
+    <div class="eyebrow" style="margin-top:24px">V2 · 2021+ · row-level deletes</div>
+    <h3 style="font-family:var(--display);font-size:1.08rem;margin:0 0 4px">Merge-on-read via delete files</h3>
+    <p style="color:var(--glacier);font-size:.86rem;margin:0 0 6px">V2 adds <b>delete files</b> — <b>position deletes</b> (file + row position) and <b>equality deletes</b> (column = value) — plus <b>sequence numbers</b> to apply them in order. Now MERGE/UPDATE/DELETE are efficient (merge-on-read), powering CDC upserts and GDPR deletes without rewriting whole files.</p>
+    <p class="pretitle">Example 1 — upgrade to V2 and switch to merge-on-read</p>
+    <div class="baop">ALTER TABLE bronze.customers SET TBLPROPERTIES ('format-version'='2');
+ALTER TABLE bronze.customers SET TBLPROPERTIES (
+  'write.delete.mode'='merge-on-read', 'write.update.mode'='merge-on-read', 'write.merge.mode'='merge-on-read');</div>
+    <p class="pretitle">Example 2 — a MERGE writes a small delete file, not a rewrite</p>
+    <div class="bacap">Before</div>
+    <table class="dtable" style="max-width:520px"><tr><th>customer_id</th><th>city</th><th>txn_amount</th></tr><tr><td>1002</td><td>Pune</td><td>540.50</td></tr></table>
+    <div class="baop">MERGE INTO bronze.customers t USING updates s ON t.customer_id = s.customer_id
+WHEN MATCHED THEN UPDATE SET *;</div>
+    <div class="bacap aft">After — old row masked by a position-delete file + a new row appended</div>
+    <table class="dtable" style="max-width:620px"><tr><th>artifact</th><th>content</th></tr>
+      <tr><td>data-0.parquet</td><td>original 1002 row (still physically present)</td></tr>
+      <tr><td class="del">delete-0.parquet (position delete)</td><td class="del">"data-0.parquet, row 41" → hidden on read</td></tr>
+      <tr><td class="add">data-1.parquet</td><td class="add">1002 · Mumbai · 880.00 (new value)</td></tr></table>
+    <p class="pretitle">Example 3 — an equality delete (delete by value, no file scan)</p>
+    <div class="baop"><span class="c">-- writes an equality-delete file: {customer_id = 1002}</span>
+DELETE FROM bronze.customers WHERE customer_id = 1002;</div>
+    <div class="note warn"><b>The V2 limitation that led to V3:</b> in high-churn tables, position-delete files pile up (one or more per data file), and every read must merge them — "delete-file sprawl." V3's deletion vectors solve exactly this.</div>
+
+    <!-- V3 -->
+    <div class="eyebrow" style="margin-top:24px">V3 · ratified Jun 2025 · GA in library 1.10.0 (Sep 11 2025) · matured in 1.11.0 (May 19 2026)</div>
+    <h3 style="font-family:var(--display);font-size:1.08rem;margin:0 0 4px">Deletion vectors, new types, defaults &amp; row lineage</h3>
+    <p style="color:var(--glacier);font-size:.86rem;margin:0 0 6px">The biggest jump since V2. Headlines: <b>deletion vectors</b> (Roaring bitmap in a Puffin file, at most one per data file — Databricks reports up to ~10× faster DML; binary-compatible with Delta Lake), <b>default column values</b>, new types (<b>VARIANT</b>, <b>geometry/geography</b>, <b>nanosecond timestamps</b>), mandatory <b>row lineage</b>, more type promotions, and table encryption.</p>
+    <p class="pretitle">Example 1 — upgrade to V3 (metadata-only, one-way)</p>
+    <div class="baop">ALTER TABLE bronze.customers SET TBLPROPERTIES ('format-version'='3');</div>
+    <p class="pretitle">Example 2 — DELETE now writes a deletion vector (no file rewrite)</p>
+    <div class="bacap">Before — 512 MB file, one row to remove</div>
+    <table class="dtable" style="max-width:520px"><tr><th>file</th><th>delete marker</th></tr><tr><td>data-0.parquet (512 MB)</td><td>—</td></tr></table>
+    <div class="baop">DELETE FROM bronze.customers WHERE customer_id = 1002;</div>
+    <div class="bacap aft">After — a ~2 KB Puffin bitmap marks row 41; the 512 MB file is untouched</div>
+    <table class="dtable" style="max-width:560px"><tr><th>file</th><th>deletion vector</th></tr><tr><td>data-0.parquet (512 MB)</td><td class="add">dv-0.puffin · Roaring bitmap {41} · ~2 KB</td></tr></table>
+    <p style="color:var(--muted);font-size:.78rem;margin:5px 0 0">AWS's EMR benchmark: the delete file shrank from ~1,801 bytes (V2 Parquet) to ~475 bytes (V3 Puffin) and the delete ran 55% faster.</p>
+    <p class="pretitle" style="margin-top:14px">Example 3 — ADD COLUMN with a DEFAULT (old + new rows, no backfill)</p>
+    <div class="bacap">Before</div>
+    <table class="dtable" style="max-width:360px"><tr><th>customer_id</th><th>city</th></tr><tr><td>1001</td><td>Mumbai</td></tr></table>
+    <div class="baop">ALTER TABLE bronze.customers ADD COLUMN region STRING DEFAULT 'APAC';</div>
+    <div class="bacap aft">After — existing row reads the default instantly</div>
+    <table class="dtable" style="max-width:420px"><tr><th>customer_id</th><th>city</th><th class="add">region</th></tr><tr><td>1001</td><td>Mumbai</td><td class="add">APAC</td></tr></table>
+    <p class="pretitle" style="margin-top:14px">Example 4 — VARIANT (retire the "JSON-as-STRING" workaround)</p>
+    <div class="baop"><span class="c">-- Spark 4.0 + Iceberg 1.11; syntax varies by engine</span>
+ALTER TABLE bronze.customers ADD COLUMN event_props VARIANT;
+INSERT INTO bronze.customers (customer_id, event_props)
+  VALUES (1001, PARSE_JSON('{"channel":"app","utm":"promo42"}'));
+SELECT customer_id, variant_get(event_props, '$.channel') AS channel FROM bronze.customers;</div>
+    <div class="bacap aft">Result — semi-structured, queried without a rigid schema</div>
+    <table class="dtable" style="max-width:320px"><tr><th>customer_id</th><th>channel</th></tr><tr><td>1001</td><td>app</td></tr></table>
+    <p class="pretitle" style="margin-top:14px">Example 5 — nanosecond timestamp &amp; geospatial columns</p>
+    <div class="baop">ALTER TABLE bronze.customers ADD COLUMN event_ts TIMESTAMP_NS;   <span class="c">-- nanosecond precision</span>
+ALTER TABLE bronze.customers ADD COLUMN geo GEOGRAPHY;          <span class="c">-- OGC:CRS84 by default</span></div>
+    <p class="pretitle" style="margin-top:14px">Example 6 — row lineage (native change tracking)</p>
+    <div class="baop">SELECT customer_id, _row_id, _last_updated_sequence_number
+FROM bronze.customers WHERE _last_updated_sequence_number &gt; 47;</div>
+    <div class="bacap aft">Result — every row carries its identity &amp; last-changed commit, for free</div>
+    <table class="dtable" style="max-width:560px"><tr><th>customer_id</th><th>_row_id</th><th>_last_updated_sequence_number</th></tr>
+      <tr><td>1002</td><td>81124</td><td>48</td></tr>
+      <tr><td>1005</td><td>81125</td><td>48</td></tr></table>
+    <div class="note"><b>Coexistence rule on upgrade:</b> existing V2 position-delete files stay valid and are still applied; <i>new</i> deletes are written as deletion vectors; position-delete files must not be <i>added</i> to a V3 table. Run <code>rewrite_data_files</code> to consolidate old V2 deletes into DVs. Equality deletes remain supported. <button class="btn" style="margin-top:8px" data-drawer="v3-dv">Deletion vectors ↗</button> <button class="btn" data-drawer="v3-default">Defaults ↗</button></div>
+
+    <!-- V4 -->
+    <div class="eyebrow" style="margin-top:24px">V4 · in progress (2026) · proposal, NOT adopted</div>
+    <h3 style="font-family:var(--display);font-size:1.08rem;margin:0 0 4px">Metadata restructured for scale &amp; streaming</h3>
+    <p style="color:var(--glacier);font-size:.86rem;margin:0 0 6px">Under discussion (no ratified spec, no production engine as of mid-2026): an <b>adaptive/root-manifest</b> metadata tree enabling single-file commits for low-latency streaming; <b>columnar (Parquet) metadata</b> replacing Avro manifests for column-pruned planning; a typed <b>content-stats</b> model; and <b>relative paths</b> in metadata so tables can be relocated/DR'd without rewriting metadata.</p>
+    <div class="note warn"><b>Do not build on V4.</b> It's a proposal — treat anything about it as subject to change, and don't design around features no engine ships yet. Revisit once the community ratifies a spec and an engine ships production support.</div>
+
+    <!-- Library timeline -->
+    <div class="eyebrow" style="margin-top:24px">The library timeline (distinct from spec versions)</div>
+    <h3 style="font-family:var(--display);font-size:1.08rem;margin:0 0 6px">Key Apache Iceberg releases &amp; headline features</h3>
+    <table class="dtable">
+      <tr><th>Release</th><th>Date</th><th>Headline</th></tr>
+      <tr><td>0.12.0</td><td>Aug 2021</td><td>can create <code>format-version=2</code> tables</td></tr>
+      <tr><td>0.14.0</td><td>Jul 2022</td><td>SQL time-travel <code>AS OF</code>; MoR for MERGE/UPDATE; Puffin</td></tr>
+      <tr><td>1.0.0</td><td>Nov 2022</td><td>API stability guarantee (semver)</td></tr>
+      <tr><td>1.4.0</td><td>Oct 2023</td><td>DML moved into Spark; <code>WHEN NOT MATCHED BY SOURCE</code></td></tr>
+      <tr><td>1.5.0</td><td>Mar 2024</td><td>Iceberg <b>Views</b>; encryption managers</td></tr>
+      <tr><td>1.7.0</td><td>Nov 2024</td><td>Java 8 dropped; ns-timestamp types; default-value APIs</td></tr>
+      <tr><td>1.8.0</td><td>Feb 2025</td><td class="chg">first V3 wave: variant encoding, row-lineage fields, <b>DV write</b></td></tr>
+      <tr><td class="add">1.10.0</td><td class="add">Sep 11 2025</td><td class="add"><b>Format V3 GA</b>; DVs, defaults, lineage, variant, geo; Spark 4.0 / Flink 2.0</td></tr>
+      <tr><td class="add">1.11.0</td><td class="add">May 19 2026</td><td class="add">V3 production-mature; built-in table encryption (KMS); server-side scan planning; File Format API; JDK 17 baseline; drops Spark 3.4</td></tr>
+    </table>
+
+    <p class="pretitle" style="margin-top:14px">Upgrade mechanics — check, upgrade, and who should use what</p>
+    <div class="baop"><span class="c">-- inspect current version, then upgrade (one-way: V1→V2→V3)</span>
+SHOW TBLPROPERTIES bronze.customers ('format-version');
+ALTER TABLE bronze.customers SET TBLPROPERTIES ('format-version'='3');</div>
+    <div class="note"><b>What to actually do:</b> default new tables to <b>V2</b> unless you have a concrete V3 need and V3-capable readers end to end. Adopt <b>V3</b> when your write engine is Spark 4.0+/Flink (or Snowflake/Databricks/EMR/Starburst) <i>and</i> every downstream reader supports V3 — biggest wins for delete-heavy/CDC, semi-structured (VARIANT), or geospatial. As of mid-2026, verify readers first: <b>AWS Athena</b> and open-source <b>Trino</b> lagged on V3, and <b>BigQuery's</b> V3 support is in <b>Preview</b>. On GCP, BigQuery + the Lakehouse runtime catalog center on Iceberg. <span style="color:var(--muted)">(Facts current to mid-2026; verify vendor docs for the latest.)</span></div>
+  </div>
+
   <div class="section">
     <div class="eyebrow">07 · Pro tier · current as of June 2026</div>
     <h2 class="section-title">What changed, and the best approach now</h2>
