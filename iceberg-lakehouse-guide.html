@@ -767,6 +767,42 @@ ALTER TABLE bronze.customers ADD COLUMN region STRING DEFAULT 'APAC';</div>
       </div>
     </div>
     <div class="note"><b>How Apache Iceberg overcame the rest:</b> it kept Hudi's transactional promise but added what Hive lacked and Hudi didn't — a true <b>metadata layer</b> that makes planning instant, schema &amp; partition changes free, and the format readable by <i>every</i> engine instead of mostly Spark. Format <b>V3</b> (2025–2026) even folded in Hudi/Delta-style deletion vectors, so the three formats are converging. <button class="btn" style="margin-top:10px" data-goto="formats">Compare Iceberg vs Hive vs Hudi vs Delta ↗</button></div>
+
+    <p class="pretitle" style="margin-top:26px">Capabilities &amp; features — what you get, in one view</p>
+    <div class="grid g4">
+      <div class="card"><div class="kicker">Reliability</div><h3>ACID transactions</h3><p>All-or-nothing commits via one atomic pointer swap; safe concurrent writers with optimistic retry.</p></div>
+      <div class="card"><div class="kicker">Agility</div><h3>Schema evolution</h3><p>Add / drop / rename / reorder / widen columns as millisecond metadata edits — field-IDs make it corruption-proof.</p></div>
+      <div class="card"><div class="kicker">Layout</div><h3>Hidden partitioning + evolution</h3><p>Partition by transforms of real columns; change the layout later with zero rewrites.</p></div>
+      <div class="card"><div class="kicker">History</div><h3>Time travel &amp; rollback</h3><p>Every commit is an immutable snapshot — query the past, undo a bad load in seconds.</p></div>
+      <div class="card"><div class="kicker">Openness</div><h3>One copy, every engine</h3><p>BigQuery, Spark, Trino, Flink, Snowflake read/write the same files through one catalog.</p></div>
+      <div class="card"><div class="kicker">Freshness</div><h3>Streaming &amp; CDC</h3><p>Merge-on-read + V3 deletion vectors make upserts/deletes cheap; row lineage tracks changes natively.</p></div>
+      <div class="card"><div class="kicker">Types</div><h3>Rich data types (V3)</h3><p>VARIANT for semi-structured, geometry/geography, nanosecond timestamps, default values.</p></div>
+      <div class="card"><div class="kicker">Governance</div><h3>Catalog-enforced security</h3><p>Policy tags, masking and credential vending live at the catalog — the same rules for every engine.</p></div>
+    </div>
+
+    <p class="pretitle" style="margin-top:20px">Advantage over the alternatives</p>
+    <table class="dtable">
+      <tr><th>Compared to…</th><th>Their gap</th><th>Iceberg's edge</th></tr>
+      <tr><td>Hive tables</td><td>directory listing, no atomic commits, rebuild to repartition</td><td class="yes">O(1) metadata planning, atomic commits, free evolution</td></tr>
+      <tr><td>Plain Parquet on GCS</td><td>just files — no transactions, schema, or history</td><td class="yes">turns the same files into a real, governed table</td></tr>
+      <tr><td>Delta Lake</td><td>deepest only in Databricks/Spark; no partition evolution</td><td class="yes">vendor-neutral breadth + partition evolution</td></tr>
+      <tr><td>Apache Hudi</td><td>Spark-centric; Hive-style partitioning; more ops overhead</td><td class="yes">broader engines, hidden partitioning, simpler model</td></tr>
+      <tr><td>Proprietary warehouse</td><td>lock-in, per-warehouse storage cost, closed format</td><td class="yes">warehouse guarantees on open files at object-storage prices</td></tr>
+    </table>
+
+    <p class="pretitle" style="margin-top:20px">Honest limitations — know these before you commit</p>
+    <table class="dtable">
+      <tr><th>Limitation</th><th>What it means</th><th>Mitigation</th></tr>
+      <tr><td>Needs a catalog</td><td>the pointer must live somewhere trusted</td><td>Lakehouse runtime catalog (managed, serverless) on GCP</td></tr>
+      <tr><td>Needs maintenance</td><td>self-managed tables want compaction + snapshot expiry</td><td>schedule the 4 CALLs — or use BigQuery-managed tables (automatic)</td></tr>
+      <tr><td>Small-files sensitivity</td><td>frequent streaming commits create tiny files</td><td>micro-batch sensibly + regular <code>rewrite_data_files</code></td></tr>
+      <tr><td>Not an OLTP database</td><td>no point lookups/ms-latency single-row updates</td><td>keep OLTP in a database; Iceberg is the analytics tier</td></tr>
+      <tr><td>V3 engine unevenness (mid-2026)</td><td>Athena/OSS-Trino lag; BigQuery V3 in Preview</td><td>default to V2 for shared tables until all readers are V3-ready</td></tr>
+      <tr><td>Renames need coordination</td><td>dropping/renaming a column a job selects breaks that job</td><td>add → migrate readers → drop; never <code>SELECT *</code> into positional logic</td></tr>
+    </table>
+
+    <p class="pretitle" style="margin-top:20px">Why you should use it — the convincing points</p>
+    <div class="note"><b>1 · No lock-in, ever:</b> an open ASF spec that every major engine and all three clouds support — your data outlives any vendor choice. <b>2 · One governed copy:</b> no warehouse duplicate, no drift, no double storage bill. <b>3 · Warehouse guarantees at lake prices:</b> ACID, history and governance on plain GCS objects. <b>4 · The safest change story in the industry:</b> schema <i>and</i> partition evolution with zero rewrites — this guide demonstrates both live. <b>5 · It's the GCP default:</b> BigQuery managed Iceberg tables and the Lakehouse runtime catalog are built around it. <b>6 · The industry converged here:</b> born at Netflix, Apache top-level, its creators acquired for ~$1–2B, and V3 is absorbing the best of Delta and Hudi. <button class="btn" style="margin-top:10px" data-goto="schema">See evolution live ↗</button> <button class="btn" data-goto="part">See partitioning live ↗</button></div>
   </div>
 
   <div class="section">
@@ -1636,6 +1672,20 @@ WHERE ingested_at &gt;= '2026-06-02' GROUP BY city;</div>
       <tr><td>Source &amp; partition drift apart?</td><td class="no">yes (must keep them in sync)</td><td class="yes">never — one is computed from the other</td></tr>
     </table>
 
+    <p class="pretitle" style="margin-top:18px">Partitioning vs hidden partitioning — the full difference table</p>
+    <table class="dtable">
+      <tr><th>Question</th><th>Regular (explicit / Hive-style) partitioning</th><th>Hidden partitioning (Iceberg)</th></tr>
+      <tr><td>What the partition "column" is</td><td class="no">a real stored column you must add &amp; populate (e.g. <code>event_date STRING</code>)</td><td class="yes">none — a <b>transform</b> of an existing column (<code>days(ingested_at)</code>)</td></tr>
+      <tr><td>Where the value lives</td><td>inside every row + the folder path <code>/event_date=2026-06-25/</code></td><td class="yes">only in metadata — the file's partition tuple in the manifest</td></tr>
+      <tr><td>DDL</td><td><code>PARTITIONED BY (event_date STRING)</code> — the writer must supply it</td><td class="yes"><code>PARTITIONED BY (days(ingested_at))</code> — Iceberg computes it</td></tr>
+      <tr><td>Query contract</td><td class="no">must filter <code>event_date</code> explicitly to prune</td><td class="yes">just filter the natural column (<code>ingested_at</code>)</td></tr>
+      <tr><td>Forgot the filter?</td><td class="no">silent full-table scan</td><td class="yes">impossible — pruning is automatic</td></tr>
+      <tr><td>Value drift</td><td class="no"><code>event_date</code> can disagree with <code>event_ts</code></td><td class="yes">never — always derived from the source column</td></tr>
+      <tr><td>Change granularity later</td><td class="no">new table + migrate all data</td><td class="yes"><code>ALTER TABLE</code> — metadata-only evolution</td></tr>
+      <tr><td>Schema pollution</td><td class="no">an extra column in every row forever</td><td class="yes">zero extra columns</td></tr>
+      <tr><td>Layout coupling</td><td>directories <i>are</i> the partitions</td><td class="yes">files are just grouped; manifests carry the tuple</td></tr>
+    </table>
+
     <div class="eyebrow" style="margin-top:20px">Complex partitioning — multiple &amp; multi-arg transforms</div>
     <h3 style="font-family:var(--display);font-size:1.08rem;margin:0 0 4px">Combine transforms; each row gets a partition <i>tuple</i></h3>
     <div class="baop"><span class="c">-- time bin + hash bucket of city (good for date scans AND city joins)</span>
@@ -1671,6 +1721,90 @@ ALTER TABLE bronze.customers ADD  PARTITION FIELD days(ingested_at);</div></div>
       <tr><td><code>void</code></td><td><code>void(city)</code></td><td>retire a field from the spec</td></tr>
     </table>
 
+    <div class="eyebrow" style="margin-top:22px">The default transforms · one by one</div>
+    <h3 style="font-family:var(--display);font-size:1.08rem;margin:0 0 4px">What each function computes, and when to reach for it</h3>
+    <p style="color:var(--glacier);font-size:.86rem;margin:0 0 10px">A transform is a pure function Iceberg applies to a source column at write time; the result becomes the file's partition value in metadata. All examples below run on the same four <code>bronze.customers</code> rows.</p>
+
+    <p class="pretitle">year(ingested_at) — coarsest time bin</p>
+    <p style="color:var(--glacier);font-size:.84rem;margin:0 0 4px">Stores the number of years since 1970 (displayed as the calendar year). Best for multi-year archives where queries say "in 2025 vs 2026"; too coarse for hot data.</p>
+    <table class="dtable" style="max-width:480px"><tr><th>ingested_at</th><th class="chg">year(·)</th></tr>
+      <tr><td>2026-06-01 09:14</td><td class="chg">2026</td></tr><tr><td>2026-06-02 18:45</td><td class="chg">2026</td></tr></table>
+
+    <p class="pretitle" style="margin-top:12px">month(ingested_at) — monthly reporting bins</p>
+    <p style="color:var(--glacier);font-size:.84rem;margin:0 0 4px">Months since epoch, shown as <code>YYYY-MM</code>. The sweet spot for medium tables and month-over-month analytics.</p>
+    <table class="dtable" style="max-width:480px"><tr><th>ingested_at</th><th class="chg">month(·)</th></tr>
+      <tr><td>2026-06-01 09:14</td><td class="chg">2026-06</td></tr><tr><td>2026-06-02 18:45</td><td class="chg">2026-06</td></tr></table>
+
+    <p class="pretitle" style="margin-top:12px">day(ingested_at) — the workhorse</p>
+    <p style="color:var(--glacier);font-size:.84rem;margin:0 0 4px">Days since epoch, shown as a date. The default choice for event/fact tables: date-range filters prune cleanly, partitions stay a healthy size.</p>
+    <table class="dtable" style="max-width:520px"><tr><th>row</th><th>ingested_at</th><th class="chg">day(·)</th></tr>
+      <tr><td>1001, 1002</td><td>2026-06-01 …</td><td class="chg">2026-06-01</td></tr>
+      <tr><td>1003, 1004</td><td>2026-06-02 …</td><td class="chg">2026-06-02</td></tr></table>
+
+    <p class="pretitle" style="margin-top:12px">hour(ingested_at) — for streaming-hot tables</p>
+    <p style="color:var(--glacier);font-size:.84rem;margin:0 0 4px">Hours since epoch, shown as <code>YYYY-MM-DD-HH</code>. Use only when queries genuinely filter by hour and volume justifies it — otherwise it's the fastest route to the tiny-files trap.</p>
+    <table class="dtable" style="max-width:520px"><tr><th>ingested_at</th><th class="chg">hour(·)</th></tr>
+      <tr><td>2026-06-01 09:14</td><td class="chg">2026-06-01-09</td></tr>
+      <tr><td>2026-06-02 18:45</td><td class="chg">2026-06-02-18</td></tr></table>
+    <div class="note"><b>Temporal transforms nest:</b> a <code>day()</code>-partitioned table automatically answers month- and year-range queries with correct pruning — you never need to stack <code>year + month + day</code> like Hive's <code>/year=/month=/day=/</code> folders.</div>
+
+    <p class="pretitle" style="margin-top:12px">truncate(W, col) — prefix / range bins</p>
+    <p style="color:var(--glacier);font-size:.84rem;margin:0 0 4px">For <b>strings</b>: keep the first W characters. For <b>numbers</b>: floor to the nearest multiple of W. Ordered, so range filters still prune — unlike bucket.</p>
+    <table class="dtable" style="max-width:620px"><tr><th>row</th><th>pan → truncate(2, pan)</th><th>txn_amount → truncate(1000, ·)</th></tr>
+      <tr><td>1001</td><td class="chg">AB</td><td class="chg">2000</td></tr>
+      <tr><td>1002</td><td class="chg">XY</td><td class="chg">0</td></tr>
+      <tr><td>1003</td><td class="chg">LM</td><td class="chg">12000</td></tr>
+      <tr><td>1004</td><td class="chg">PQ</td><td class="chg">0</td></tr></table>
+
+    <p class="pretitle" style="margin-top:12px">bucket(N, col) — hash spread for high-cardinality keys</p>
+    <p style="color:var(--glacier);font-size:.84rem;margin:0 0 4px">Computes a 32-bit Murmur3 hash of the value, mod N. The hash is defined in the spec, so <b>every engine and every table computes the same bucket</b> — that determinism is what enables shuffle-free joins. Prunes equality filters (<code>customer_id = 1001</code>) but not ranges.</p>
+    <table class="dtable" style="max-width:480px"><tr><th>customer_id</th><th class="chg">bucket(16, ·)</th></tr>
+      <tr><td>1001</td><td class="chg">5</td></tr><tr><td>1002</td><td class="chg">12</td></tr>
+      <tr><td>1003</td><td class="chg">9</td></tr><tr><td>1004</td><td class="chg">3</td></tr></table>
+    <div class="note">Rounding out the set: <code>identity(col)</code> is "no transform" (one partition per distinct value — low-cardinality columns only), and <code>void(col)</code> always yields null (the retirement switch shown below). Choose N in <code>bucket(N, ·)</code> so each bucket lands near the 128 MB–1 GB file target.</div>
+
+    <div class="eyebrow" style="margin-top:24px">Pruning · a worked gallery</div>
+    <h3 style="font-family:var(--display);font-size:1.08rem;margin:0 0 4px">Five pruning examples — what gets skipped, and by which layer</h3>
+    <p style="color:var(--glacier);font-size:.86rem;margin:0 0 10px">Pruning = eliminating data <i>before</i> reading it. Iceberg prunes at three layers — manifest-list partition summaries, per-file column stats in manifests, and Parquet row-group stats — all on <code>bronze.customers</code> below.</p>
+
+    <p class="pretitle">① Temporal range prune (partition layer)</p>
+    <p style="color:var(--glacier);font-size:.84rem;margin:0 0 4px">A date-range filter on the source column maps straight onto <code>days(ingested_at)</code> partitions; whole manifests whose day-range can't match are skipped before any file is listed.</p>
+    <div class="baop">SELECT * FROM bronze.customers WHERE ingested_at BETWEEN '2026-06-02' AND '2026-06-03';</div>
+    <table class="dtable" style="max-width:520px"><tr><th>layer</th><th>kept</th></tr>
+      <tr><td>manifests (partition summaries)</td><td class="add">1 of 4</td></tr>
+      <tr><td>day partitions</td><td class="add">1 of 2</td></tr>
+      <tr><td>rows scanned</td><td class="add">2 of 4 (1003, 1004)</td></tr></table>
+
+    <p class="pretitle" style="margin-top:14px">② Equality prune on a bucket (partition layer)</p>
+    <p style="color:var(--glacier);font-size:.84rem;margin:0 0 4px">With <code>bucket(16, customer_id)</code>, an equality filter hashes the constant and reads exactly one bucket. Note: <i>range</i> filters (<code>customer_id &gt; 1000</code>) cannot prune buckets — hashes destroy order.</p>
+    <div class="baop">SELECT * FROM bronze.customers WHERE customer_id = 1003;   -- hash(1003) mod 16 = 9</div>
+    <table class="dtable" style="max-width:440px"><tr><th>bucket</th><th>read?</th></tr>
+      <tr><td class="add">b9</td><td class="add">&#10003; (~6% of files)</td></tr>
+      <tr><td class="del">the other 15</td><td class="del">&#10007; pruned</td></tr></table>
+
+    <p class="pretitle" style="margin-top:14px">③ Prefix prune via truncate (partition layer)</p>
+    <p style="color:var(--glacier);font-size:.84rem;margin:0 0 4px"><code>truncate</code> preserves order, so prefix and range filters both prune — the advantage over <code>bucket</code> when locality matters.</p>
+    <div class="baop">SELECT * FROM bronze.customers WHERE pan LIKE 'AB%';   -- spec includes truncate(2, pan)</div>
+    <table class="dtable" style="max-width:440px"><tr><th>band</th><th>read?</th></tr>
+      <tr><td class="add">AB</td><td class="add">&#10003; row 1001</td></tr>
+      <tr><td class="del">XY · LM · PQ</td><td class="del">&#10007; pruned</td></tr></table>
+
+    <p class="pretitle" style="margin-top:14px">④ Column-stats prune on a NON-partition column (manifest layer)</p>
+    <p style="color:var(--glacier);font-size:.84rem;margin:0 0 4px">Pruning isn't only about partitions: manifests carry per-file min/max for <i>every</i> column, so even unpartitioned columns skip files.</p>
+    <div class="baop">SELECT * FROM bronze.customers WHERE txn_amount &gt; 10000;</div>
+    <table class="dtable" style="max-width:520px"><tr><th>file (within the kept day)</th><th>max(txn_amount)</th><th>read?</th></tr>
+      <tr><td class="del">data-0.parquet</td><td class="del">600</td><td class="del">&#10007; skipped by stats</td></tr>
+      <tr><td class="add">data-1.parquet</td><td class="add">12,999</td><td class="add">&#10003; scanned</td></tr></table>
+
+    <p class="pretitle" style="margin-top:14px">⑤ The full funnel — all three layers in one query</p>
+    <p style="color:var(--glacier);font-size:.84rem;margin:0 0 4px">A well-laid-out table prunes at every level; each layer works on smaller metadata than the last, so ~99% of data is eliminated before any real I/O.</p>
+    <div class="baop">SELECT city, SUM(txn_amount) FROM bronze.customers
+WHERE ingested_at &gt;= '2026-06-02' AND txn_amount &gt; 500 GROUP BY city;</div>
+    <table class="dtable"><tr><th>pruning layer</th><th>mechanism</th><th>kept</th></tr>
+      <tr><td>1 · manifest list</td><td>partition-range summaries</td><td class="add">1 of 12 manifests</td></tr>
+      <tr><td>2 · manifests</td><td>per-file partition tuple + column min/max</td><td class="add">2 of 40 files</td></tr>
+      <tr><td>3 · Parquet footers</td><td>row-group min/max inside surviving files</td><td class="add">3 of 16 row groups</td></tr></table>
+
     <p class="pretitle">Inspect the layout via metadata tables</p>
     <div style="font-family:var(--mono);font-size:.76rem;white-space:pre-wrap;color:var(--glacier);background:rgba(4,18,30,.6);border:1px solid var(--line);border-radius:10px;padding:12px 14px;line-height:1.55;overflow-x:auto;margin:0 0 14px"><span style="color:#5f8aa0">-- per-partition file counts (spot skew &amp; over-partitioning)</span>
 SELECT partition, record_count, file_count, spec_id
@@ -1697,6 +1831,64 @@ ALTER TABLE bronze.customers ADD  PARTITION FIELD days(ingested_at);</div>
       <tr><td class="add">ingested_at_day=2026-07-01</td><td class="add">1</td><td class="add">2</td><td class="add">new data · new layout</td></tr>
       <tr><td class="add">ingested_at_day=2026-07-02</td><td class="add">1</td><td class="add">2</td><td class="add">new data · new layout</td></tr></table>
     <div class="note">A query for <code>2026-05 … 2026-07</code> prunes across <i>both</i> specs in one plan — each manifest carries the spec that was active when it was written. Want the old data in the new layout too? Run <code>rewrite_data_files</code> to recompact it into daily partitions — still without changing any query.</div>
+
+    <div class="eyebrow" style="margin-top:26px">Partition evolution · in depth</div>
+    <h3 style="font-family:var(--display);font-size:1.08rem;margin:0 0 4px">Five evolutions, one table — every one metadata-only</h3>
+    <p style="color:var(--glacier);font-size:.86rem;margin:0 0 10px">Each manifest is stamped with the <code>spec_id</code> it was written under, so any mix of the layouts below plans correctly in a single query. Watch the spec history grow 0 → 1 → 2 → 3 → 4 with zero rewrites and zero query changes.</p>
+
+    <p class="pretitle">Evolution 1 — start unpartitioned, add <code>days()</code> later</p>
+    <div class="bacap">Before — <code>bronze.customers.partitions</code> (spec 0 · unpartitioned)</div>
+    <table class="dtable" style="max-width:520px"><tr><th>partition</th><th>spec_id</th><th>files</th></tr><tr><td>( )</td><td>0</td><td>6</td></tr></table>
+    <div class="baop">ALTER TABLE bronze.customers ADD PARTITION FIELD days(ingested_at);   <span class="c">-- spec 1</span></div>
+    <div class="bacap aft">After — old files stay unpartitioned; new writes land in day partitions</div>
+    <table class="dtable" style="max-width:560px"><tr><th>partition</th><th>spec_id</th><th>files</th></tr>
+      <tr><td>( )</td><td>0</td><td>6 (untouched)</td></tr>
+      <tr><td class="add">day=2026-06-01</td><td class="add">1</td><td class="add">2</td></tr>
+      <tr><td class="add">day=2026-06-02</td><td class="add">1</td><td class="add">2</td></tr></table>
+    <div class="note">Impact: you can adopt partitioning <i>after</i> the table already has data — impossible in Hive without a rebuild.</div>
+
+    <p class="pretitle" style="margin-top:16px">Evolution 2 — too fine: coarsen <code>days()</code> → <code>months()</code></p>
+    <div class="bacap">Before — a small table drowning in tiny day partitions</div>
+    <table class="dtable" style="max-width:560px"><tr><th>partition</th><th>spec_id</th><th>avg file</th></tr>
+      <tr><td class="del">day=2026-06-01 … day=2026-06-30</td><td class="del">1</td><td class="del">3 MB (30 tiny partitions)</td></tr></table>
+    <div class="baop">ALTER TABLE bronze.customers DROP PARTITION FIELD days(ingested_at);
+ALTER TABLE bronze.customers ADD  PARTITION FIELD months(ingested_at);   <span class="c">-- spec 2</span></div>
+    <div class="bacap aft">After — new writes are monthly; compaction can fold old days into months</div>
+    <table class="dtable" style="max-width:560px"><tr><th>partition</th><th>spec_id</th><th>files</th></tr>
+      <tr><td>day=… (June history)</td><td>1</td><td>30 (until recompacted)</td></tr>
+      <tr><td class="add">month=2026-07</td><td class="add">2</td><td class="add">2 (healthy size)</td></tr></table>
+    <div class="note">Impact: evolution goes <i>both</i> directions — finer when data grows, coarser when a layout over-shot.</div>
+
+    <p class="pretitle" style="margin-top:16px">Evolution 3 — add a second dimension: <code>bucket(16, customer_id)</code></p>
+    <div class="baop">ALTER TABLE bronze.customers ADD PARTITION FIELD bucket(16, customer_id) AS cust_bucket;   <span class="c">-- spec 3</span></div>
+    <div class="bacap aft">After — new rows carry a partition <i>tuple</i></div>
+    <table class="dtable" style="max-width:560px"><tr><th>customer_id</th><th>ingested_at</th><th class="add">tuple (month, bucket)</th></tr>
+      <tr><td>1001</td><td>2026-07-03 10:11</td><td class="add">(2026-07, 5)</td></tr>
+      <tr><td>1004</td><td>2026-07-03 18:02</td><td class="add">(2026-07, 3)</td></tr></table>
+    <div class="note">Impact: this unlocks the shuffle-free join with <code>bronze.transactions</code> (bucketed the same way) — added live, months after creation.</div>
+
+    <p class="pretitle" style="margin-top:16px">Evolution 4 — drop a field you no longer need</p>
+    <div class="baop">ALTER TABLE bronze.customers DROP PARTITION FIELD cust_bucket;   <span class="c">-- spec 4</span></div>
+    <div class="bacap aft">After — new tuples are month-only; old bucketed files still prune by both fields</div>
+    <table class="dtable" style="max-width:560px"><tr><th>data written under</th><th>pruned by</th></tr>
+      <tr><td>spec 3 (month, bucket)</td><td>month <b>and</b> bucket — unchanged</td></tr>
+      <tr><td class="add">spec 4 (month)</td><td class="add">month</td></tr></table>
+    <div class="note">Impact: dropping a field never touches or re-reads old files — their manifests keep the old spec and stay fully prunable.</div>
+
+    <p class="pretitle" style="margin-top:16px">Evolution 5 — one-step <code>REPLACE</code> (atomic drop + add)</p>
+    <div class="baop"><span class="c">-- hot table now: swap monthly for daily in ONE commit instead of DROP + ADD</span>
+ALTER TABLE bronze.customers REPLACE PARTITION FIELD months(ingested_at) WITH days(ingested_at);   <span class="c">-- spec 5</span></div>
+    <div class="bacap aft">After — single atomic spec change; no window where the table is "between" layouts</div>
+    <table class="dtable" style="max-width:520px"><tr><th>partition</th><th>spec_id</th></tr><tr><td class="add">day=2026-07-04</td><td class="add">5</td></tr></table>
+
+    <p class="pretitle" style="margin-top:16px">The capstone — one query planning across every spec at once</p>
+    <div class="baop">SELECT city, SUM(txn_amount) FROM bronze.customers
+WHERE ingested_at BETWEEN '2026-05-15' AND '2026-07-04' GROUP BY city;</div>
+    <table class="dtable"><tr><th>data written under</th><th>how it's pruned in this one plan</th></tr>
+      <tr><td>spec 0 · unpartitioned</td><td>per-file min/max stats on <code>ingested_at</code></td></tr>
+      <tr><td>spec 1/5 · daily</td><td>day-range partition pruning</td></tr>
+      <tr><td>spec 2/3/4 · monthly (± bucket)</td><td>month-range partition pruning</td></tr></table>
+    <div class="note"><b>The whole point:</b> five layouts, one table, one unchanged query. In Hive every one of those five changes meant a new table and a full data migration; here the total data rewritten was <b>zero bytes</b>.</div>
 
     <div class="grid g2">
       <div class="card clickable hover" data-drawer="p-hidden">
@@ -3420,7 +3612,7 @@ WHERE event_ts &gt;= TIMESTAMP '2026-06-25 00:00:00';
 
 <span class="c">-- multiple partition fields are fine</span>
 ALTER TABLE lake.bronze.events
-  ADD PARTITION FIELD bucket(8, id);</div></div>`},
+  ADD PARTITION FIELD bucket(8, id);</div></div><div class="bacap">Where rows land — <code>lake.bronze.events</code></div><table class="dtable" style="max-width:480px"><tr><th>id</th><th>event_ts</th><th class="chg">day(event_ts)</th></tr><tr><td>1</td><td>2026-06-24 08:10</td><td class="chg">2026-06-24</td></tr><tr><td>2</td><td>2026-06-25 09:30</td><td class="chg">2026-06-25</td></tr><tr><td>3</td><td>2026-06-26 11:05</td><td class="chg">2026-06-26</td></tr></table><div class="bacap aft">What the SELECT reads (event_ts &ge; 2026-06-25)</div><table class="dtable" style="max-width:360px"><tr><th>partition</th><th>read?</th></tr><tr><td class="del">2026-06-24</td><td class="del">&#10007; pruned</td></tr><tr><td class="add">2026-06-25</td><td class="add">&#10003; id 2</td></tr><tr><td class="add">2026-06-26</td><td class="add">&#10003; id 3</td></tr></table>`},
     {t:'All transforms',h:`<table class="dtable"><tr><th>Transform</th><th>On</th><th>Buckets into</th></tr>
       <tr><td><code>identity</code></td><td>any</td><td>one partition per distinct value</td></tr>
       <tr><td><code>years(ts)</code></td><td>date/ts</td><td>calendar year</td></tr>
@@ -3441,7 +3633,7 @@ ALTER TABLE lake.bronze.events
       <div class="pretitle">DataFrame write into the partitioned table</div>
       <div class="precard"><button class="dcopy">copy</button><div class="pre">(df.writeTo("lake.bronze.events")
    .option("write.distribution-mode", "hash")  <span class="c"># cluster by partition</span>
-   .append())</div></div>`},
+   .append())</div></div><div class="bacap aft">After the append — each row lands in its (day, bucket) tuple</div><table class="dtable" style="max-width:480px"><tr><th>id</th><th>event_ts</th><th class="add">tuple</th></tr><tr><td>1</td><td>2026-06-24 08:10</td><td class="add">(2026-06-24, b3)</td></tr><tr><td>2</td><td>2026-06-25 09:30</td><td class="add">(2026-06-25, b6)</td></tr><tr><td>3</td><td>2026-06-26 11:05</td><td class="add">(2026-06-26, b1)</td></tr></table>`},
     {t:'Inspect',h:`<p>Iceberg exposes its partition bookkeeping as queryable metadata tables:</p>
       <div class="precard"><button class="dcopy">copy</button><div class="pre"><span class="c">-- partitions + per-partition file counts and sizes</span>
 SELECT partition, record_count, file_count
@@ -3494,7 +3686,7 @@ spark.sql("""
 PARTITIONED BY (bucket(16, account_id));
 
 <span class="c">-- queries that filter or join on account_id prune to one bucket</span>
-SELECT * FROM lake.silver.accounts WHERE account_id = 90210;</div></div>`},
+SELECT * FROM lake.silver.accounts WHERE account_id = 90210;</div></div><div class="bacap"><code>lake.silver.accounts</code> — where each row lives</div><table class="dtable" style="max-width:300px"><tr><th>account_id</th><th class="chg">bucket(16, &middot;)</th></tr><tr><td>90210</td><td class="chg">7</td></tr><tr><td>90211</td><td class="chg">12</td></tr><tr><td>90212</td><td class="chg">7</td></tr></table><div class="bacap aft">The WHERE prunes to one bucket of 16</div><table class="dtable" style="max-width:440px"><tr><th>bucket</th><th>read?</th></tr><tr><td class="add">b7</td><td class="add">&#10003; scanned &rarr; row 90210 returned</td></tr><tr><td class="del">the other 15 buckets</td><td class="del">&#10007; pruned</td></tr></table>`},
     {t:'Choosing N',h:`<div class="steps">
       <li><b>Estimate total key-partition data size</b> = rows × avg row bytes for the table.</li>
       <li><b>Target ~128MB–1GB per bucket-file.</b> Set <code>N ≈ total_size / target_file_size</code>.</li>
@@ -3506,7 +3698,7 @@ SELECT * FROM lake.silver.accounts WHERE account_id = 90210;</div></div>`},
       <div class="precard"><button class="dcopy">copy</button><div class="pre"><span class="c"># both bucket(16, account_id) -> Spark can avoid a shuffle</span>
 SELECT a.*, t.amount
 FROM accounts a JOIN txns t
-  ON a.account_id = t.account_id;</div></div>`}
+  ON a.account_id = t.account_id;</div></div><div class="bacap aft">Result — buckets join pairwise (b0&#8904;b0 &hellip; b15&#8904;b15), zero shuffle</div><table class="dtable" style="max-width:380px"><tr><th>account_id</th><th>pan_token</th><th>amount</th></tr><tr><td>90210</td><td>tok_8f3&hellip;</td><td>1,250.00</td></tr><tr><td>90212</td><td>tok_2ab&hellip;</td><td>88.40</td></tr></table>`}
   ,
     {t:'Table & result',h:`<p>Hash assignment on <code>bronze.customers</code> — deterministic per value:</p><table class="dtable" style="max-width:280px"><tr><th>customer_id</th><th>bucket(16, customer_id)</th></tr><tr><td>1001</td><td>5</td></tr><tr><td>1002</td><td>12</td></tr><tr><td>1004</td><td>3</td></tr></table><p>The same id lands in the same bucket in <i>every</i> table bucketed (16, customer_id) — the basis of shuffle-free joins.</p>`}
   ]],
@@ -3519,7 +3711,7 @@ FROM accounts a JOIN txns t
       <div class="precard"><button class="dcopy">copy</button><div class="pre">CREATE TABLE lake.gold.sales (
   zip STRING, amount DECIMAL(12,2), d DATE
 ) USING iceberg
-PARTITIONED BY (days(d), truncate(3, zip));</div></div>`},
+PARTITIONED BY (days(d), truncate(3, zip));</div></div><div class="bacap">Where rows land — <code>lake.gold.sales</code></div><table class="dtable" style="max-width:480px"><tr><th>zip</th><th>d</th><th class="chg">tuple (day, zip3)</th></tr><tr><td>400001</td><td>2026-06-25</td><td class="chg">(2026-06-25, 400)</td></tr><tr><td>400058</td><td>2026-06-25</td><td class="chg">(2026-06-25, 400)</td></tr><tr><td>110001</td><td>2026-06-25</td><td class="chg">(2026-06-25, 110)</td></tr></table><div class="bacap aft">WHERE zip LIKE '400%' reads only the 400 band</div><table class="dtable" style="max-width:300px"><tr><th>band</th><th>read?</th></tr><tr><td class="add">400</td><td class="add">&#10003; 2 rows</td></tr><tr><td class="del">110</td><td class="del">&#10007; pruned</td></tr></table>`},
     {t:'When to use',h:`<p>Reach for <code>truncate</code> when identity partitioning would create too many partitions but you still want <b>value-locality</b> (e.g. queries that filter by zip-prefix or amount-band benefit from pruning). When you only need even spread with no locality, prefer <code>bucket</code>.</p>`}
   ]],
   'p-pitfall':['Pitfall','Over-partitioning',[
@@ -3537,7 +3729,7 @@ LIMIT 20;
 <span class="c">-- overall data-file size distribution</span>
 SELECT min(file_size_in_bytes), avg(file_size_in_bytes),
        max(file_size_in_bytes), count(*)
-FROM lake.bronze.events.files;</div></div>`},
+FROM lake.bronze.events.files;</div></div><div class="bacap aft">Example output — the smoking gun</div><table class="dtable" style="max-width:440px"><tr><th>partition</th><th>file_count</th><th>avg file size</th></tr><tr><td class="del">hour=2026-06-25-09</td><td class="del">1,240</td><td class="del">38 KB</td></tr><tr><td class="del">hour=2026-06-25-10</td><td class="del">1,101</td><td class="del">41 KB</td></tr></table><p>Thousands of KB-sized files per hour = over-partitioned. Healthy is a handful of 128 MB&ndash;1 GB files per partition.</p>`},
     {t:'Fix',h:`<div class="steps">
       <li><b>Coarsen the spec</b> via partition evolution (<code>hours → days</code>, identity → <code>bucket</code>/<code>truncate</code>).</li>
       <li><b>Compact</b> existing small files into right-sized ones.</li>
@@ -3548,7 +3740,7 @@ FROM lake.bronze.events.files;</div></div>`},
   options =&gt; map('target-file-size-bytes','536870912'));  <span class="c">-- 512MB</span>
 
 CALL lake.system.rewrite_manifests('bronze.events');
-CALL lake.system.expire_snapshots('bronze.events', TIMESTAMP '2026-06-20 00:00:00');</div></div>`},
+CALL lake.system.expire_snapshots('bronze.events', TIMESTAMP '2026-06-20 00:00:00');</div></div><div class="bacap">Before</div><table class="dtable" style="max-width:320px"><tr><th>metric</th><th>value</th></tr><tr><td>data files</td><td>38,400 (avg 40 KB)</td></tr><tr><td>query planning</td><td>9 s</td></tr></table><div class="bacap aft">After coarsening the spec + compaction</div><table class="dtable" style="max-width:320px"><tr><th>metric</th><th>value</th></tr><tr><td class="add">data files</td><td class="add">96 (avg 480 MB)</td></tr><tr><td class="add">query planning</td><td class="add">0.3 s</td></tr></table>`},
     {t:'Tuning knobs',h:`<table class="dtable"><tr><th>Property</th><th>Purpose</th></tr>
       <tr><td><code>write.target-file-size-bytes</code></td><td>aim point for new files (often 256–512MB)</td></tr>
       <tr><td><code>write.distribution-mode</code></td><td><code>hash</code>/<code>range</code> to cluster by partition and avoid tiny files</td></tr>
