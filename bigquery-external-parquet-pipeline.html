@@ -3,142 +3,145 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Raw Zone → BigQuery · Parquet External &amp; BigLake Tables</title>
+<title>BigQuery External Tables over GCS Parquet · Guide, Code &amp; Official Docs</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#F6F7F9;
-    --paper:#FFFFFF;
-    --ink:#0E1726;
-    --ink-soft:#26324A;
-    --muted:#5B6472;
-    --muted-2:#8A93A3;
-    --line:#E5E8EE;
-    --line-2:#D6DBE4;
-    --lake:#0E7490;      /* teal — parquet / lake */
-    --lake-soft:#E0F2F7;
-    --bq:#B45309;        /* amber — bigquery */
-    --bq-soft:#FBEAD7;
-    --src:#4F46E5;       /* indigo — on-prem source */
-    --src-soft:#E7E6FB;
-    --code:#0E1726;
-    --code-line:#26324A;
-    --ok:#0E7490;
+    --bg:#F6F7F9; --paper:#FFFFFF;
+    --ink:#0E1726; --muted:#5B6472; --muted-2:#8A93A3;
+    --line:#E5E8EE; --line-2:#D6DBE4;
+    --lake:#0E7490; --lake-soft:#E0F2F7;
+    --bq:#B45309;   --bq-soft:#FBEAD7;
+    --src:#4F46E5;  --src-soft:#E7E6FB;
+    --ice:#0369A1;  --ice-soft:#E0F0FA;
+    --no:#9CA3AF;
+    --code:#0E1726; --code-line:#26324A;
     --sh-sm:0 1px 2px rgba(14,23,38,.06);
     --sh-md:0 6px 24px rgba(14,23,38,.08);
-    --sh-lg:0 18px 48px rgba(14,23,38,.12);
-    --r:14px;
-    --maxw:1080px;
+    --r:14px; --maxw:1080px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{
-    margin:0;background:var(--bg);color:var(--ink);
-    font-family:"Inter",system-ui,sans-serif;line-height:1.62;-webkit-font-smoothing:antialiased;
-    font-size:16px;
-  }
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Inter",system-ui,sans-serif;line-height:1.62;-webkit-font-smoothing:antialiased;font-size:16px}
   h1,h2,h3,h4{font-family:"Archivo",sans-serif;margin:0;line-height:1.08;letter-spacing:-.02em}
   a{color:var(--lake);text-decoration:none}
   .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
   .mono{font-family:"JetBrains Mono",monospace}
 
-  /* ---------- header ---------- */
-  header.bar{position:sticky;top:0;z-index:60;background:rgba(246,247,249,.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
-  .bar-in{display:flex;align-items:center;gap:20px;height:60px}
-  .brand{font-family:"Archivo";font-weight:800;font-size:14px;letter-spacing:-.02em;display:flex;align-items:center;gap:9px;color:var(--ink)}
+  /* header */
+  header.bar{position:sticky;top:0;z-index:60;background:rgba(246,247,249,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .bar-in{display:flex;align-items:center;gap:18px;height:60px}
+  .brand{font-family:"Archivo";font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:8px}
   .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--lake)}
   .brand .dot.b{background:var(--bq);margin-left:-4px}
-  nav.links{margin-left:auto;display:flex;gap:24px}
-  nav.links a{color:var(--muted);font-size:13.5px;font-weight:500}
+  nav.links{margin-left:auto;display:flex;gap:20px}
+  nav.links a{color:var(--muted);font-size:13px;font-weight:500}
   nav.links a:hover{color:var(--ink)}
-  @media(max-width:860px){nav.links{display:none}}
-
-  .termswitch{display:flex;align-items:center;gap:9px;font-family:"JetBrains Mono";font-size:10.5px;letter-spacing:.4px}
-  .termswitch .lbl{color:var(--muted-2);text-transform:uppercase;transition:color .3s;font-weight:600}
+  @media(max-width:1000px){nav.links{display:none}}
+  .termswitch{display:flex;align-items:center;gap:9px;font-family:"JetBrains Mono";font-size:10.5px}
+  .termswitch .lbl{color:var(--muted-2);text-transform:uppercase;font-weight:600;transition:color .3s}
   .termswitch .lbl.active{color:var(--ink)}
   .toggle{width:48px;height:25px;border-radius:20px;border:1px solid var(--line-2);background:var(--paper);position:relative;cursor:pointer;padding:0;flex:0 0 auto;box-shadow:var(--sh-sm)}
   .toggle .knob{position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:var(--lake);transition:transform .32s cubic-bezier(.6,.1,.2,1),background .3s}
   .toggle[data-on="new"] .knob{transform:translateX(23px);background:var(--bq)}
 
-  /* ---------- hero ---------- */
-  .hero{padding:70px 0 34px}
-  .eyebrow{font-family:"JetBrains Mono";font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--lake);font-weight:600;margin-bottom:20px}
-  .hero h1{font-size:clamp(32px,5.6vw,60px);font-weight:900}
+  /* hero */
+  .hero{padding:66px 0 30px}
+  .eyebrow{font-family:"JetBrains Mono";font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:var(--lake);font-weight:600;margin-bottom:20px}
+  .hero h1{font-size:clamp(31px,5.4vw,58px);font-weight:900}
   .hero h1 .g{color:var(--bq)}
-  .hero p.lede{max-width:620px;margin:22px 0 0;color:var(--muted);font-size:18px}
-  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:28px}
+  .hero p.lede{max-width:625px;margin:22px 0 0;color:var(--muted);font-size:18px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px}
   .chip{font-family:"JetBrains Mono";font-size:11px;padding:6px 12px;border:1px solid var(--line);border-radius:30px;color:var(--muted);background:var(--paper);box-shadow:var(--sh-sm)}
   .chip b{color:var(--ink);font-weight:600}
 
-  /* ---------- section scaffold ---------- */
-  section.block{padding:60px 0}
-  .sec-eyebrow{font-family:"JetBrains Mono";font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2);font-weight:600}
+  /* sections */
+  section.block{padding:58px 0}
+  .sec-eyebrow{font-family:"JetBrains Mono";font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted-2);font-weight:600}
   .sec-num{color:var(--lake)}
-  h2.sec-title{font-size:clamp(26px,4vw,38px);font-weight:800;margin:10px 0 10px}
-  .sec-intro{color:var(--muted);max-width:660px;margin-bottom:32px;font-size:16.5px}
-
+  h2.sec-title{font-size:clamp(25px,3.8vw,36px);font-weight:800;margin:10px 0 10px}
+  .sec-intro{color:var(--muted);max-width:670px;margin-bottom:30px;font-size:16.5px}
   .panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh-md)}
 
-  /* ---------- flow diagram ---------- */
-  .flow-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px;padding:22px 24px 0}
+  /* flow */
+  .flow-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:22px 24px 0}
   .flow-head h3{font-size:20px;font-weight:800}
   .flow-head .hint{color:var(--muted-2);font-size:12.5px;font-family:"JetBrains Mono"}
-  .diagram{padding:14px 18px 6px}
+  .diagram{padding:12px 18px 4px}
   svg.pipe{width:100%;height:auto;display:block}
   .stage-card{cursor:pointer}
-  .stage-box{transition:transform .2s ease, filter .2s ease}
+  .stage-box{transition:transform .2s ease}
   .stage-card:hover .stage-box{transform:translateY(-4px)}
-  .stage-label{font-family:"Archivo";font-weight:800;font-size:15px;fill:var(--ink)}
+  .stage-label{font-family:"Archivo";font-weight:800;font-size:14.5px;fill:var(--ink)}
   .stage-sub{font-family:"JetBrains Mono";font-size:10px;fill:var(--muted)}
-  .flow-detail-wrap{padding:6px 24px 22px}
+  .flow-detail-wrap{padding:4px 24px 20px}
   .flow-detail{display:none;font-size:14.5px;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:15px 18px}
   .flow-detail.show{display:block;animation:fade .32s ease}
   .flow-detail b{color:var(--ink)}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-  .legend{display:flex;gap:20px;flex-wrap:wrap;padding:0 24px 22px;font-family:"JetBrains Mono";font-size:11px;color:var(--muted)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;padding:0 24px 22px;font-family:"JetBrains Mono";font-size:11px;color:var(--muted)}
   .legend span{display:flex;align-items:center;gap:7px}
   .legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
 
-  /* ---------- concept cards ---------- */
+  /* cards */
   .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
   .card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:20px;box-shadow:var(--sh-sm)}
-  .card .k{font-family:"JetBrains Mono";font-size:11px;letter-spacing:.08em;font-weight:600}
+  .card .k{font-family:"JetBrains Mono";font-size:11px;letter-spacing:.07em;font-weight:600}
   .card p{margin:9px 0 0;color:var(--muted);font-size:14px}
-  .k.lake{color:var(--lake)} .k.bq{color:var(--bq)} .k.src{color:var(--src)}
+  .k.lake{color:var(--lake)}.k.bq{color:var(--bq)}.k.src{color:var(--src)}.k.ice{color:var(--ice)}
 
-  /* ---------- terminology table ---------- */
-  .ttable{width:100%;border-collapse:separate;border-spacing:0;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-sm)}
-  .ttable th{font-family:"Archivo";font-size:12px;text-transform:uppercase;letter-spacing:.06em;text-align:left;padding:13px 18px;color:var(--muted);background:var(--bg);border-bottom:1px solid var(--line)}
-  .ttable td{padding:14px 18px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
-  .ttable tr:last-child td{border-bottom:none}
-  .ttable .cat{font-size:12.5px;color:var(--muted)}
-  .ttable .old{font-family:"JetBrains Mono";font-size:13px;color:var(--muted)}
-  .ttable .new{font-family:"JetBrains Mono";font-size:13px;color:var(--ink);font-weight:500}
-  .ttable .unchanged{color:var(--muted-2);font-weight:400}
-  .term-note{margin-top:16px;font-size:13.5px;color:var(--muted);border-left:3px solid var(--bq);padding-left:14px}
-  @media(max-width:680px){
-    .ttable thead{display:none}
-    .ttable,.ttable tbody,.ttable tr,.ttable td{display:block;width:100%}
-    .ttable tr{border-bottom:1px solid var(--line);padding:6px 0}
-    .ttable td{border:none;padding:5px 18px}
-    .ttable td.old::before{content:"classic — ";color:var(--muted-2);font-family:"Inter"}
-    .ttable td.new::before{content:"current — ";color:var(--muted-2);font-family:"Inter"}
-  }
+  /* GENERIC DATA TABLE */
+  .dt{width:100%;border-collapse:separate;border-spacing:0;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-md);font-size:14px}
+  .dt thead th{font-family:"Archivo";font-size:12px;text-transform:uppercase;letter-spacing:.06em;background:var(--ink);color:#C7D0E0;text-align:left;padding:13px 15px;font-weight:700}
+  .dt thead th.c{text-align:center}
+  .dt td{padding:12px 15px;border-bottom:1px solid var(--line);vertical-align:top}
+  .dt tbody tr:last-child td{border-bottom:none}
+  .dt tbody tr:hover{background:var(--bg)}
+  .dt td.c{text-align:center}
+  .dt td.op{font-family:"JetBrains Mono";font-size:12.5px;color:var(--ink);font-weight:500;white-space:nowrap}
+  .dt td.lbl{font-weight:600;color:var(--ink)}
+  .dt .sub{display:block;color:var(--muted);font-size:12.5px;margin-top:3px;font-family:"Inter";font-weight:400;white-space:normal}
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .scroll-hint{font-family:"JetBrains Mono";font-size:11px;color:var(--muted-2);margin-bottom:8px;display:none}
+  @media(max-width:760px){.scroll-hint{display:block}}
 
-  /* ---------- steps: pipeline spine ---------- */
+  /* yes / no / partial marks */
+  .mk{display:inline-flex;align-items:center;justify-content:center;font-family:"JetBrains Mono";font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .mk.y{background:var(--lake-soft);color:var(--lake)}
+  .mk.n{background:#F1F3F6;color:var(--no)}
+  .mk.p{background:var(--bq-soft);color:var(--bq)}
+  .mk.i{background:var(--ice-soft);color:var(--ice)}
+
+  /* category pills */
+  .pill{font-family:"JetBrains Mono";font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .pill.overview{background:#EEF1F6;color:#475569}
+  .pill.create{background:var(--lake-soft);color:var(--lake)}
+  .pill.biglake{background:var(--bq-soft);color:var(--bq)}
+  .pill.ref{background:var(--src-soft);color:var(--src)}
+  .pill.ice{background:var(--ice-soft);color:var(--ice)}
+
+  /* source link button */
+  .src-btn{display:inline-flex;align-items:center;gap:4px;font-family:"JetBrains Mono";font-size:10.5px;font-weight:600;color:var(--lake);border:1px solid var(--line-2);border-radius:7px;padding:4px 9px;transition:all .18s;white-space:nowrap}
+  .src-btn:hover{background:var(--lake);color:#fff;border-color:var(--lake);text-decoration:none}
+
+  /* terminology note */
+  .note{margin-top:15px;font-size:13.5px;color:var(--muted);border-left:3px solid var(--bq);padding-left:14px}
+  .note.lake{border-left-color:var(--lake)}
+
+  /* steps spine */
   .spine{position:relative;margin-top:6px}
   .spine::before{content:"";position:absolute;left:19px;top:8px;bottom:8px;width:2px;background:linear-gradient(180deg,var(--src),var(--lake) 45%,var(--bq));border-radius:2px}
   .step{position:relative;padding-left:56px;margin-bottom:16px}
   .node{position:absolute;left:0;top:2px;width:40px;height:40px;border-radius:11px;background:var(--paper);border:2px solid var(--line-2);display:grid;place-items:center;font-family:"Archivo";font-weight:800;font-size:16px;color:var(--muted);z-index:2;box-shadow:var(--sh-sm);transition:all .25s}
   .step.open .node{background:var(--ink);color:#fff;border-color:var(--ink)}
   .step-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh-sm);overflow:hidden}
-  .step-head{display:flex;align-items:center;gap:14px;padding:16px 20px;cursor:pointer;user-select:none}
+  .step-head{display:flex;align-items:center;gap:13px;padding:16px 20px;cursor:pointer;user-select:none}
   .step-head:hover{background:var(--bg)}
-  .step-title{font-family:"Archivo";font-weight:700;font-size:16.5px;flex:1;color:var(--ink)}
-  .step-title small{display:block;font-family:"JetBrains Mono";font-weight:500;font-size:10.5px;color:var(--muted-2);letter-spacing:.03em;margin-top:4px;text-transform:uppercase}
-  .tag{font-family:"JetBrains Mono";font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px;letter-spacing:.03em;flex:0 0 auto}
+  .step-title{font-family:"Archivo";font-weight:700;font-size:16.5px;flex:1}
+  .step-title small{display:block;font-family:"JetBrains Mono";font-weight:500;font-size:10.5px;color:var(--muted-2);margin-top:4px;text-transform:uppercase}
+  .tag{font-family:"JetBrains Mono";font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px;flex:0 0 auto}
   .tag.ctx{background:var(--src-soft);color:var(--src)}
   .tag.core{background:var(--lake-soft);color:var(--lake)}
   .tag.up{background:var(--bq-soft);color:var(--bq)}
@@ -149,7 +152,7 @@
   .step-body-in p{margin:0 0 12px}
   .step-body-in b{color:var(--ink)}
 
-  /* ---------- code blocks ---------- */
+  /* code */
   .codewrap{position:relative;margin:12px 0 0;border-radius:11px;overflow:hidden;border:1px solid var(--code-line);background:var(--code)}
   .code-top{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#0A121F;border-bottom:1px solid var(--code-line)}
   .win-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
@@ -158,55 +161,14 @@
   .code-tabs{display:flex;gap:6px;margin-left:auto}
   .code-tab{font-family:"JetBrains Mono";font-size:11px;padding:4px 10px;border-radius:6px;background:transparent;color:#7E8AA0;border:1px solid transparent;cursor:pointer}
   .code-tab.active{background:#1A2536;color:#8FE3F2;border-color:var(--code-line)}
-  .copy{font-family:"JetBrains Mono";font-size:10.5px;letter-spacing:.03em;background:#1A2536;border:1px solid var(--code-line);color:#9AA6BC;padding:4px 10px;border-radius:6px;cursor:pointer;transition:all .2s;margin-left:6px}
+  .copy{font-family:"JetBrains Mono";font-size:10.5px;background:#1A2536;border:1px solid var(--code-line);color:#9AA6BC;padding:4px 10px;border-radius:6px;cursor:pointer;transition:all .2s;margin-left:6px}
   .copy:hover{color:#fff}
   .copy.done{color:#0A121F;background:#28C840;border-color:#28C840}
   pre{margin:0;padding:16px 18px;overflow-x:auto;font-family:"JetBrains Mono";font-size:13px;line-height:1.72;color:#D6DEEC}
-  code{font-family:"JetBrains Mono"}
-  .cmt{color:#5C6B85}
-  .kw{color:#F6A94A}
-  .str{color:#5FD3BF}
-  .fn{color:#A99CFF}
-  .num{color:#FF8A8A}
-
-  /* ---------- comparison ---------- */
-  .cmp{width:100%;border-collapse:separate;border-spacing:0;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-sm);font-size:14px}
-  .cmp th,.cmp td{padding:13px 16px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
-  .cmp thead th{font-family:"Archivo";font-size:13px;background:var(--bg)}
-  .cmp thead th.big{color:var(--lake)}
-  .cmp tbody tr:last-child td{border-bottom:none}
-  .cmp td:first-child{font-family:"JetBrains Mono";font-size:12.5px;color:var(--muted)}
-  .cmp tbody tr:hover{background:var(--bg)}
-  .yes{color:var(--lake);font-weight:600}.no{color:var(--muted-2)}
-  .scroll{overflow-x:auto}
-
-  /* ---------- DOCS TABLE ---------- */
-  .doctable{width:100%;border-collapse:separate;border-spacing:0;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-md)}
-  .doctable thead th{font-family:"Archivo";font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--ink);color:#C7D0E0;text-align:left;padding:13px 16px}
-  .doctable thead th.num{width:44px;text-align:center}
-  .doctable thead th.lnk{width:96px;text-align:center}
-  .doctable td{padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
-  .doctable tbody tr:last-child td{border-bottom:none}
-  .doctable tbody tr:hover{background:var(--bg)}
-  .doctable td.num{text-align:center;font-family:"JetBrains Mono";font-size:12px;color:var(--muted-2)}
-  .doctable .dtitle{font-weight:600;color:var(--ink);font-size:14px;display:block}
-  .doctable .ddesc{color:var(--muted);font-size:12.5px;margin-top:2px;display:block}
-  .catpill{font-family:"JetBrains Mono";font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap}
-  .catpill.overview{background:#EEF1F6;color:#475569}
-  .catpill.create{background:var(--lake-soft);color:var(--lake)}
-  .catpill.biglake{background:var(--bq-soft);color:var(--bq)}
-  .catpill.ref{background:var(--src-soft);color:var(--src)}
-  .doctable td.lnk{text-align:center}
-  .openbtn{display:inline-flex;align-items:center;gap:5px;font-family:"JetBrains Mono";font-size:11px;font-weight:600;color:var(--lake);border:1px solid var(--line-2);border-radius:7px;padding:5px 10px;transition:all .18s;white-space:nowrap}
-  .openbtn:hover{background:var(--lake);color:#fff;border-color:var(--lake);text-decoration:none}
-  @media(max-width:720px){
-    .doctable .ddesc{display:none}
-    .doctable thead th:nth-child(3){display:none}
-    .doctable td:nth-child(3){display:none}
-  }
+  .cmt{color:#5C6B85}.kw{color:#F6A94A}.str{color:#5FD3BF}.fn{color:#A99CFF}.num{color:#FF8A8A}
 
   footer{border-top:1px solid var(--line);padding:34px 0 60px;color:var(--muted);font-size:13.5px;margin-top:20px}
-  footer .mono{font-size:11px;letter-spacing:.04em;color:var(--muted-2);margin-top:10px}
+  footer .mono{font-size:11px;color:var(--muted-2);margin-top:10px}
 
   @media (prefers-reduced-motion: reduce){
     *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
@@ -221,10 +183,12 @@
     <div class="brand"><span class="dot"></span><span class="dot b"></span>&nbsp;RAW&nbsp;ZONE&nbsp;→&nbsp;BIGQUERY</div>
     <nav class="links">
       <a href="#flow">Flow</a>
-      <a href="#terms">Terminology</a>
-      <a href="#steps">Steps &amp; code</a>
-      <a href="#compare">Compare</a>
-      <a href="#docs">Docs table</a>
+      <a href="#what">What is it</a>
+      <a href="#vs-native">vs Native</a>
+      <a href="#ops">Query ops</a>
+      <a href="#iceberg">vs Iceberg</a>
+      <a href="#steps">Code</a>
+      <a href="#docs">Docs</a>
     </nav>
     <div class="termswitch" title="Switch labels between classic and current Google Cloud terms">
       <span class="lbl active" id="lblOld">Classic</span>
@@ -238,22 +202,22 @@
 <section class="hero">
   <div class="wrap">
     <div class="eyebrow">On-prem · Parquet · Cloud Storage · BigQuery</div>
-    <h1>Query your Parquet <span class="g">raw zone</span><br>without moving a byte.</h1>
-    <p class="lede">Your PySpark job already lands on-prem data as Parquet in a Cloud Storage raw zone. A BigQuery
+    <h1>Expose your Parquet <span class="g">raw zone</span><br>as a BigQuery table.</h1>
+    <p class="lede">Your PySpark job lands on-prem data as Parquet in a Cloud Storage raw zone. A BigQuery
       <span class="term" data-old="external table" data-new="external table">external table</span> reads those files
-      <b>in place</b> — no load, no copy. Here’s the flow, the exact DDL, the terminology that changed in 2026, and every official doc in one table.</p>
+      <b>in place</b> — no load, no copy — so you can analyse them with full GoogleSQL. Here’s what an external table is, how it differs from a normal table, exactly which query operations work, and every official doc.</p>
     <div class="chips">
-      <span class="chip"><b>Source:</b> on-prem</span>
       <span class="chip"><b>Format:</b> Parquet</span>
       <span class="chip"><b>Store:</b> gs:// raw zone</span>
-      <span class="chip"><b>Engine:</b> BigQuery GoogleSQL</span>
+      <span class="chip"><b>Engine:</b> GoogleSQL</span>
       <span class="chip"><b>Access:</b> read-in-place</span>
+      <span class="chip"><b>Mode:</b> read-only</span>
     </div>
   </div>
 </section>
 
 <!-- FLOW -->
-<section class="block" id="flow" style="padding-top:20px">
+<section class="block" id="flow" style="padding-top:18px">
   <div class="wrap">
     <div class="panel">
       <div class="flow-head">
@@ -262,23 +226,15 @@
       </div>
       <div class="diagram">
         <svg class="pipe" viewBox="0 0 1000 210" role="img" aria-label="Data flows from on-premises sources to a Cloud Storage raw zone of Parquet files, into a BigQuery external or BigLake table, then queried with GoogleSQL.">
-          <defs>
-            <marker id="arw" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9AA6BC"/></marker>
-          </defs>
-
-          <!-- connectors -->
+          <defs><marker id="arw" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9AA6BC"/></marker></defs>
           <line x1="196" y1="105" x2="292" y2="105" stroke="#C7CEDA" stroke-width="2" marker-end="url(#arw)"/>
           <line x1="452" y1="105" x2="548" y2="105" stroke="#C7CEDA" stroke-width="2" marker-end="url(#arw)"/>
           <line x1="708" y1="105" x2="804" y2="105" stroke="#C7CEDA" stroke-width="2" marker-end="url(#arw)"/>
-
-          <!-- flowing packets -->
           <g class="packets">
             <rect class="packet" x="-5" y="100" width="10" height="10" rx="2" fill="#4F46E5"><animateMotion dur="2.4s" repeatCount="indefinite" path="M196,105 H292"/></rect>
             <rect class="packet" x="-5" y="100" width="10" height="10" rx="2" fill="#0E7490"><animateMotion dur="2.4s" begin="0.3s" repeatCount="indefinite" path="M452,105 H548"/></rect>
             <rect class="packet" x="-5" y="100" width="10" height="10" rx="2" fill="#B45309"><animateMotion dur="2.4s" begin="0.6s" repeatCount="indefinite" path="M708,105 H804"/></rect>
           </g>
-
-          <!-- STAGE 1 on-prem -->
           <g class="stage-card" data-stage="s1">
             <g class="stage-box">
               <rect x="20" y="58" width="176" height="94" rx="14" fill="#fff" stroke="#4F46E5" stroke-width="1.6"/>
@@ -289,8 +245,6 @@
             <text class="stage-label" x="108" y="46" text-anchor="middle">On-prem sources</text>
             <text class="stage-sub" x="108" y="172" text-anchor="middle">databases · files · logs</text>
           </g>
-
-          <!-- STAGE 2 raw zone -->
           <g class="stage-card" data-stage="s2">
             <g class="stage-box">
               <rect x="292" y="58" width="160" height="94" rx="14" fill="#fff" stroke="#0E7490" stroke-width="1.6"/>
@@ -301,8 +255,6 @@
             <text class="stage-label" x="372" y="46" text-anchor="middle">Raw zone (GCS)</text>
             <text class="stage-sub" x="372" y="172" text-anchor="middle">gs:// · *.parquet</text>
           </g>
-
-          <!-- STAGE 3 table -->
           <g class="stage-card" data-stage="s3">
             <g class="stage-box">
               <rect x="548" y="58" width="160" height="94" rx="14" fill="#fff" stroke="#B45309" stroke-width="1.6"/>
@@ -314,8 +266,6 @@
             <text class="stage-label term" x="628" y="46" text-anchor="middle" data-old="External / BigLake table" data-new="External / Lakehouse table">External / BigLake table</text>
             <text class="stage-sub" x="628" y="172" text-anchor="middle">metadata only · reads in place</text>
           </g>
-
-          <!-- STAGE 4 query -->
           <g class="stage-card" data-stage="s4">
             <g class="stage-box">
               <rect x="804" y="58" width="176" height="94" rx="14" fill="#fff" stroke="#0E1726" stroke-width="1.6"/>
@@ -326,14 +276,12 @@
           </g>
         </svg>
       </div>
-
       <div class="flow-detail-wrap">
         <div class="flow-detail" id="d-s1"><b>On-premises sources.</b> Databases, flat files and logs are extracted and moved to Google Cloud. Your PySpark job is the mover — it reads the source and writes partitioned Parquet.</div>
-        <div class="flow-detail" id="d-s2"><b>Raw zone (Cloud Storage).</b> A <span class="mono">gs://</span> bucket holds the landed Parquet as ingested. Parquet is columnar and <b>self-describing</b>, so BigQuery reads its schema directly — no hand-written types. Use Hive-style paths like <span class="mono">dt=2026-01-01/</span> for partition pruning.</div>
+        <div class="flow-detail" id="d-s2"><b>Raw zone (Cloud Storage).</b> A <span class="mono">gs://</span> bucket holds the landed Parquet as ingested. Parquet is columnar and <b>self-describing</b>, so BigQuery reads its schema directly. Use Hive-style paths like <span class="mono">dt=2026-01-01/</span> for partition pruning.</div>
         <div class="flow-detail" id="d-s3"><b>External / BigLake table.</b> A metadata-only object pointing at the Parquet URIs. Querying reads files in place — nothing is copied into BigQuery. Upgrade to a <span class="term" data-old="BigLake table" data-new="Lakehouse (BigLake) table">BigLake table</span> for access delegation, metadata caching and row/column security.</div>
         <div class="flow-detail" id="d-s4"><b>Query &amp; consume.</b> Analysts and BI tools use ordinary GoogleSQL. Read-only — no DML on external data; the raw files stay the source of truth.</div>
       </div>
-
       <div class="legend">
         <span><i style="background:var(--src)"></i> On-prem source</span>
         <span><i style="background:var(--lake)"></i> Parquet raw zone</span>
@@ -344,141 +292,364 @@
   </div>
 </section>
 
-<!-- CONCEPT -->
+<!-- 01 WHAT IS AN EXTERNAL TABLE -->
 <section class="block" id="what">
   <div class="wrap">
-    <div class="sec-eyebrow"><span class="sec-num">01</span> — Concept</div>
-    <h2 class="sec-title">What “external” actually means</h2>
-    <p class="sec-intro">A native BigQuery table stores its data inside BigQuery’s managed storage. An <b>external table</b> stores only the <i>definition</i> — format, schema hints and the list of Cloud Storage URIs. The bytes never leave your bucket; BigQuery reads them at query time.</p>
-    <div class="cards">
-      <div class="card"><div class="k lake">IN&nbsp;PLACE</div><p>Data stays as Parquet in <span class="mono">gs://</span>. No ingestion job, no duplication, no BigQuery storage cost.</p></div>
-      <div class="card"><div class="k lake">SCHEMA-ON-READ</div><p>Parquet carries its own schema, so columns and types are auto-detected. Override only if you must.</p></div>
-      <div class="card"><div class="k src">READ-ONLY</div><p>Query it like any table, but no DML. Files change → the table reflects them on the next read.</p></div>
-      <div class="card"><div class="k bq">TRADE-OFF</div><p>Slower and less consistent than native tables. Ideal for a raw/exploration zone; promote hot data later.</p></div>
+    <div class="sec-eyebrow"><span class="sec-num">01</span> — Definition</div>
+    <h2 class="sec-title">What is a BigQuery external table?</h2>
+    <p class="sec-intro">An <b>external table</b> is a BigQuery table object that contains <i>only a definition</i> — the file format, an optional schema, and a list of Cloud Storage URIs. The data itself stays where it is. When you query it, BigQuery reads the underlying files at query time. Google’s docs describe this as working with data stored <b>outside</b> of BigQuery.</p>
+    <div class="cards" style="margin-bottom:26px">
+      <div class="card"><div class="k lake">DEFINITION-ONLY</div><p>The table stores metadata (format + URIs), not bytes. Your Parquet never moves out of <span class="mono">gs://</span>.</p></div>
+      <div class="card"><div class="k lake">SCHEMA-ON-READ</div><p>Parquet is self-describing, so BigQuery auto-detects columns and types at query time.</p></div>
+      <div class="card"><div class="k src">READ-ONLY</div><p>BigQuery treats external data as read-only. No DML — the files remain the source of truth.</p></div>
+      <div class="card"><div class="k bq">PERMANENT OR TEMPORARY</div><p>Permanent tables live in a dataset and can be shared. Temporary (session) tables exist only for one query.</p></div>
+    </div>
+
+    <div class="scroll-hint">← scroll table →</div>
+    <div class="scroll">
+      <table class="dt">
+        <thead><tr><th style="width:24%">Flavour</th><th>What it is</th><th style="width:16%">Needs connection?</th><th style="width:11%" class="c">Source</th></tr></thead>
+        <tbody>
+          <tr><td class="lbl">Non-BigLake external table<span class="sub">The plain option</span></td><td>Permanent table in a dataset pointing at GCS files. Querying users need permissions on <b>both</b> the table and the underlying bucket.</td><td><span class="mk n">No</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Temporary / session external table<span class="sub">Ad-hoc &amp; ETL</span></td><td>Created inline with a query via a table definition file. Not stored in a dataset, so it cannot be shared.</td><td><span class="mk n">No</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl term" data-old="BigLake table" data-new="Lakehouse (BigLake) table">BigLake table<span class="sub">Recommended default</span></td><td>External table plus a Cloud resource connection. Adds <b>access delegation</b>, metadata caching and fine-grained security.</td><td><span class="mk y">Yes</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/biglake-intro" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Apache Iceberg external table<span class="sub">Open table format</span></td><td>Read-only table over a customer-managed Iceberg table. Reads Iceberg snapshot metadata rather than a raw file list.</td><td><span class="mk y">Yes</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/iceberg-external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Object table<span class="sub">Unstructured data</span></td><td>Read-only metadata index over unstructured files (images, PDFs, audio) for AI/ML inference in SQL.</td><td><span class="mk y">Yes</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/object-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </section>
 
-<!-- TERMINOLOGY -->
-<section class="block" id="terms">
+<!-- 02 EXTERNAL VS NATIVE -->
+<section class="block" id="vs-native">
   <div class="wrap">
-    <div class="sec-eyebrow"><span class="sec-num">02</span> — Old ⇄ new</div>
-    <h2 class="sec-title">Terminology, classic vs current</h2>
-    <p class="sec-intro">Google has been consolidating the lakehouse story under Iceberg and Dataplex. The switch in the top bar rewrites labels across the page; the full mapping is below.</p>
-    <table class="ttable">
-      <thead><tr><th style="width:38%">What it is</th><th>Classic term</th><th>Current term (2026)</th></tr></thead>
-      <tbody>
-        <tr><td class="cat">Read-in-place table over GCS files</td><td class="old">Federated / permanent external table</td><td class="new">External table</td></tr>
-        <tr><td class="cat">External table + governance &amp; caching</td><td class="old">BigLake table</td><td class="new">Lakehouse for Apache Iceberg (BigLake)</td></tr>
-        <tr><td class="cat">Managed, writable open-format table</td><td class="old">BigLake managed table</td><td class="new">BigQuery table for Apache Iceberg</td></tr>
-        <tr><td class="cat">Open-source metadata runtime</td><td class="old">BigLake Metastore (classic)</td><td class="new">BigLake metastore (unified)</td></tr>
-        <tr><td class="cat">Metadata &amp; governance catalog</td><td class="old">Data Catalog</td><td class="new">Dataplex Universal Catalog</td></tr>
-        <tr><td class="cat">Service account binding to read GCS</td><td class="old">Cloud resource connection</td><td class="new unchanged">Cloud resource connection (unchanged)</td></tr>
-      </tbody>
-    </table>
-    <p class="term-note">Terminology is still shifting. Some names — the connection resource, the <span class="mono">CREATE EXTERNAL TABLE</span> DDL — are unchanged, while the “BigLake” umbrella is folding into “Lakehouse for Apache Iceberg.” Confirm against the live docs in the table below before standardizing names in your runbooks.</p>
+    <div class="sec-eyebrow"><span class="sec-num">02</span> — Comparison</div>
+    <h2 class="sec-title">External table vs normal (native) BigQuery table</h2>
+    <p class="sec-intro">A normal — “native” or “standard” — BigQuery table stores its data inside BigQuery’s managed columnar storage. An external table stores nothing but the pointer. That single difference cascades into everything below.</p>
+    <div class="scroll-hint">← scroll table →</div>
+    <div class="scroll">
+      <table class="dt">
+        <thead><tr><th style="width:20%">Aspect</th><th style="width:33%">External table</th><th style="width:33%">Normal / native table</th><th style="width:11%" class="c">Source</th></tr></thead>
+        <tbody>
+          <tr><td class="lbl">Where data lives</td><td>Stays in Cloud Storage as your Parquet files</td><td>Inside BigQuery managed storage (columnar)</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Ingestion step</td><td>None — define and query</td><td>Load job required (<span class="mono">bq load</span> / <span class="mono">LOAD DATA</span>)</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">BigQuery storage cost</td><td>None (you pay GCS storage)</td><td>BigQuery storage billed per GB</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/best-practices-costs" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Query performance</td><td>Slower — files read at query time</td><td>Fastest — optimised internal format</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Write / DML</td><td><span class="mk n">Read-only</span> No INSERT/UPDATE/DELETE/MERGE</td><td><span class="mk y">Full DML</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Data consistency</td><td>Not guaranteed — files changing mid-query can give unexpected results</td><td>Guaranteed / transactional</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Clustering</td><td><span class="mk n">Not supported</span></td><td><span class="mk y">CLUSTER BY</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/clustered-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Partitioning</td><td><span class="mk p">Limited</span> Hive-style path partitions only</td><td><span class="mk y">Native</span> PARTITION BY date/int/ingestion</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/hive-partitioned-queries" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Time travel</td><td><span class="mk n">No</span> (Iceberg external: via snapshots)</td><td><span class="mk y">Yes</span> 2–7 day window</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/time-travel" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Export / copy / snapshot</td><td><span class="mk n">No</span> — save results to a table first</td><td><span class="mk y">Yes</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/exporting-data" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">BI Engine acceleration</td><td><span class="mk n">Not accelerated</span></td><td><span class="mk y">Yes</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/bi-engine-intro" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Multi-engine access</td><td><span class="mk y">Yes</span> — Spark/Trino/Flink read the same files</td><td>BigQuery-native (Storage Read API for Spark)</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/biglake-intro" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Best for</td><td>Raw zone, exploration, infrequent access, single copy of data</td><td>Curated/mart layer, dashboards, frequent queries</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-data-sources" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Practical pattern: keep the raw zone external, then promote hot data into native partitioned + clustered tables with <span class="mono">CREATE TABLE ... AS SELECT</span>. You get zero-copy exploration <i>and</i> fast dashboards.</p>
   </div>
 </section>
 
-<!-- STEPS -->
+<!-- 03 ADVANTAGES -->
+<section class="block" id="advantages">
+  <div class="wrap">
+    <div class="sec-eyebrow"><span class="sec-num">03</span> — Why use one</div>
+    <h2 class="sec-title">Advantages of external tables</h2>
+    <p class="sec-intro">Each advantage comes with the trade-off it implies — worth reading both columns before you standardise on external tables.</p>
+    <div class="scroll-hint">← scroll table →</div>
+    <div class="scroll">
+      <table class="dt">
+        <thead><tr><th style="width:22%">Advantage</th><th style="width:34%">Why it matters</th><th style="width:32%">Trade-off to know</th><th style="width:11%" class="c">Source</th></tr></thead>
+        <tbody>
+          <tr><td class="lbl">No data movement</td><td>Query Parquet immediately after your PySpark job lands it. No load job, no pipeline step, no duplication.</td><td>Read performance depends on the files and their count.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Single copy of data</td><td>One physical dataset serves BigQuery, Spark, Trino and Flink — no drift between copies.</td><td>You own file layout, compaction and small-file cleanup.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/biglake-intro" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Lower storage cost</td><td>No BigQuery storage charge; GCS (including Nearline/Coldline tiers) is cheaper for cold raw data.</td><td>Query cost still applies per bytes processed.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/best-practices-costs" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Always current</td><td>New files appearing under the URI pattern are picked up on the next query — no reload.</td><td>No consistency guarantee if files change mid-query.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Full GoogleSQL</td><td>Joins, window functions, CTEs, BigQuery ML — the same SQL surface as a native table.</td><td>Read-only: no DML on the external table itself.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/query-cloud-storage-data" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Schema auto-detection</td><td>Parquet carries its own schema — no manual column definitions to maintain.</td><td>Schema drift needs a <span class="mono">CREATE OR REPLACE</span> or explicit handling.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/schema-detect" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Access delegation <span class="mono">(BigLake)</span></td><td>Analysts get table-level grants only — they never need bucket permissions.</td><td>Requires creating and maintaining a Cloud resource connection.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/create-cloud-resource-connection" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Metadata caching <span class="mono">(BigLake)</span></td><td>Caches file listings and statistics so planning doesn’t re-list thousands of objects.</td><td>Staleness window of 30 min – 7 days must be tuned to your load cadence.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/metadata-caching-external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Fine-grained security <span class="mono">(BigLake)</span></td><td>Row-level security, column-level access control and dynamic masking over lake data.</td><td>Not available on plain non-BigLake external tables.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/row-level-security-intro" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 04 QUERY OPERATIONS -->
+<section class="block" id="ops">
+  <div class="wrap">
+    <div class="sec-eyebrow"><span class="sec-num">04</span> — Capability matrix</div>
+    <h2 class="sec-title">What query operations can you run on an external table?</h2>
+    <p class="sec-intro">The short answer: <b>everything read-shaped works, nothing write-shaped does.</b> Google’s docs put it plainly — external tables are read-only for BigQuery. Below, every operation with its status and the doc that states it.</p>
+
+    <h3 style="font-size:17px;margin:0 0 12px;color:var(--lake)">Supported — read operations</h3>
+    <div class="scroll-hint">← scroll table →</div>
+    <div class="scroll" style="margin-bottom:30px">
+      <table class="dt">
+        <thead><tr><th style="width:26%">Operation</th><th style="width:14%" class="c">Status</th><th>Notes</th><th style="width:11%" class="c">Source</th></tr></thead>
+        <tbody>
+          <tr><td class="op">SELECT</td><td class="c"><span class="mk y">Yes</span></td><td>Query with GoogleSQL exactly as if it were a standard table.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/query-cloud-storage-data" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">WHERE / filters</td><td class="c"><span class="mk y">Yes</span></td><td>Predicates push down to Hive partitions for pruning.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/hive-partitioned-queries" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">GROUP BY / HAVING / aggregates</td><td class="c"><span class="mk y">Yes</span></td><td>SUM, COUNT, AVG, APPROX_* — full aggregate surface.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">JOIN (incl. to native tables)</td><td class="c"><span class="mk y">Yes</span></td><td>Join raw external data to curated native dimensions.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">Window / analytic functions</td><td class="c"><span class="mk y">Yes</span></td><td>ROW_NUMBER, LAG, RANK, OVER(...) all work.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">CTEs (WITH) / subqueries</td><td class="c"><span class="mk y">Yes</span></td><td>Standard GoogleSQL composition.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">UNION / INTERSECT / EXCEPT</td><td class="c"><span class="mk y">Yes</span></td><td>Set operators across external and native tables.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">CREATE TABLE AS SELECT</td><td class="c"><span class="mk y">Yes</span></td><td>The promotion pattern — external as source, native as destination.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">INSERT INTO native SELECT FROM external</td><td class="c"><span class="mk y">Yes</span></td><td>DML is allowed on the <b>native destination</b>, not on the external source.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/reference/standard-sql/data-manipulation-language" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">Logical views</td><td class="c"><span class="mk y">Yes</span></td><td>Create views over external tables; must be colocated.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/views-intro" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">Materialized views</td><td class="c"><span class="mk p">BigLake only</span></td><td>Requires metadata caching enabled; MV <span class="mono">max_staleness</span> must exceed the base table’s. Cannot be partitioned.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/materialized-views-create" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">_FILE_NAME pseudocolumn</td><td class="c"><span class="mk y">Yes</span></td><td>Identify which source file a row came from.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/query-cloud-storage-data" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">BigQuery ML (CREATE MODEL)</td><td class="c"><span class="mk y">Yes</span></td><td>Train on a SELECT that reads the external table.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/bqml-introduction" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">Scheduled queries</td><td class="c"><span class="mk y">Yes</span></td><td>Automate periodic reads/promotions.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/query-overview" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">Row / column security &amp; masking</td><td class="c"><span class="mk p">BigLake / Iceberg</span></td><td>Enforced on BigLake and Iceberg external tables, not on plain external tables.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/column-level-security-intro" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">Storage Read API (Spark)</td><td class="c"><span class="mk p">BigLake / Iceberg</span></td><td>Needs <span class="mono">bigquery.readsessions.create</span>; policies still enforced.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/query-iceberg-data" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="font-size:17px;margin:0 0 12px;color:var(--bq)">Not supported — and the workaround</h3>
+    <div class="scroll-hint">← scroll table →</div>
+    <div class="scroll">
+      <table class="dt">
+        <thead><tr><th style="width:26%">Operation</th><th style="width:14%" class="c">Status</th><th>Why / workaround</th><th style="width:11%" class="c">Source</th></tr></thead>
+        <tbody>
+          <tr><td class="op">INSERT / UPDATE / DELETE / MERGE</td><td class="c"><span class="mk n">No</span></td><td>External tables are read-only for BigQuery. Write to a native table instead, or use a managed Iceberg table.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">Export / extract job</td><td class="c"><span class="mk n">No</span></td><td>Save query results to a destination table, then run the extract job against that table.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">Copy table</td><td class="c"><span class="mk n">No</span></td><td>You cannot copy an external table. Recreate the definition, or materialise via CTAS.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">Wildcard table queries</td><td class="c"><span class="mk n">No</span></td><td>An external table cannot be referenced in a <span class="mono">table_*</span> wildcard query. Use multiple URIs in one definition instead.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">tabledata.list (TableDataList API)</td><td class="c"><span class="mk n">No</span></td><td>Cannot retrieve rows via this JSON API method. Save results to a table and list from there.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">CLUSTER BY (clustering)</td><td class="c"><span class="mk n">No</span></td><td>Not supported on external tables. Cluster the native table you promote into.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/clustered-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">Native PARTITION BY</td><td class="c"><span class="mk p">Limited</span></td><td>Only Hive-style path partitioning is supported, declared at table creation.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/hive-partitioned-queries" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">FOR SYSTEM_TIME AS OF (time travel)</td><td class="c"><span class="mk p">Iceberg only</span></td><td>No time travel on plain external tables; Iceberg external tables support it via retained snapshots.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/iceberg-external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">Table snapshots / clones</td><td class="c"><span class="mk n">No</span></td><td>Native-table features. Materialise first with CTAS.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/table-snapshots-intro" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">BI Engine acceleration</td><td class="c"><span class="mk n">No</span></td><td>External tables aren’t accelerated. Build a native table or materialized view for sub-second dashboards.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/bi-engine-intro" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">Result caching (non-GCS sources)</td><td class="c"><span class="mk n">No</span></td><td>When the external source isn’t Cloud Storage, query results are not cached.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="op">Consistency guarantee</td><td class="c"><span class="mk n">No</span></td><td>Changes to underlying files while a query runs can produce unexpected behaviour.</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">One pattern solves most of the “No” rows: <span class="mono">CREATE TABLE curated.x AS SELECT * FROM raw_zone.x_ext</span>. Once the data is native, export, copy, clustering, snapshots, time travel and BI Engine all become available.</p>
+  </div>
+</section>
+
+<!-- 05 ICEBERG VS EXTERNAL -->
+<section class="block" id="iceberg">
+  <div class="wrap">
+    <div class="sec-eyebrow"><span class="sec-num">05</span> — Format comparison</div>
+    <h2 class="sec-title">External Iceberg table vs external BigQuery table</h2>
+    <p class="sec-intro">Both are external and both are read-only, but they learn about your data in completely different ways. A plain external table <b>lists files</b>; an Iceberg external table <b>reads a table manifest</b>. That’s why Iceberg gets snapshots, schema evolution and consistent reads. A third option — <span class="term" data-old="BigLake tables for Apache Iceberg in BigQuery" data-new="Apache Iceberg tables managed by BigQuery">BigLake tables for Apache Iceberg in BigQuery</span> — is fully managed and <i>writable</i>, and is distinct from Iceberg external tables.</p>
+    <div class="scroll-hint">← scroll table →</div>
+    <div class="scroll">
+      <table class="dt">
+        <thead><tr>
+          <th style="width:18%">Aspect</th>
+          <th style="width:24%">External table (Parquet on GCS)</th>
+          <th style="width:24%">Apache Iceberg external table</th>
+          <th style="width:24%">Iceberg table managed by BigQuery</th>
+          <th style="width:10%" class="c">Source</th>
+        </tr></thead>
+        <tbody>
+          <tr><td class="lbl">What it points at</td><td>A list of file URIs / wildcards</td><td>Iceberg metadata — a catalog or a metadata JSON file</td><td>BigQuery-managed Iceberg metadata in your bucket</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/iceberg-external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Who manages the table</td><td>You (file layout)</td><td>You (customer-managed)</td><td>BigQuery (fully managed)</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/iceberg-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Write / DML from BigQuery</td><td><span class="mk n">Read-only</span></td><td><span class="mk n">Read-only</span></td><td><span class="mk y">Full GoogleSQL DML</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/iceberg-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Snapshot isolation</td><td><span class="mk n">No consistency guarantee</span></td><td><span class="mk i">Yes — Iceberg snapshots</span></td><td><span class="mk y">Yes</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/iceberg-external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Time travel</td><td><span class="mk n">No</span></td><td><span class="mk i">Yes — via snapshots</span></td><td><span class="mk y">Yes</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/iceberg-external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Schema evolution</td><td>Re-read / recreate definition</td><td><span class="mk i">Native to the Iceberg spec</span></td><td><span class="mk y">Managed</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/iceberg-external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Partitioning model</td><td>Hive-style paths, static</td><td>Iceberg partition spec incl. hidden partitioning &amp; evolution</td><td>Managed, with automatic storage optimisation</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/iceberg-external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Row-level deletes</td><td><span class="mk n">No</span></td><td><span class="mk i">Yes — v2 merge-on-read</span></td><td><span class="mk y">Yes via DML</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/iceberg-external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Spec version support</td><td>n/a (plain Parquet)</td><td>Iceberg v2 incl. merge-on-read; <b>v3 in Preview</b></td><td>Iceberg format for interoperability</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/iceberg-external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Catalog options</td><td>None — just URIs</td><td>BigLake metastore (GCP), AWS Glue (AWS), Iceberg JSON metadata file (Azure)</td><td>BigQuery itself</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/iceberg-external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Metadata freshness</td><td>File listing / metadata cache</td><td>Catalog is automatic; the JSON-file method needs manual metadata updates</td><td>Automatic</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/iceberg-external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Row/column security &amp; masking</td><td><span class="mk p">BigLake only</span></td><td><span class="mk i">Yes</span></td><td><span class="mk y">Yes</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/iceberg-external-tables" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Query syntax</td><td>GoogleSQL</td><td>GoogleSQL — same as a standard table</td><td>GoogleSQL</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/query-iceberg-data" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+          <tr><td class="lbl">Best for</td><td>Raw landing zone, quick exploration</td><td>Reading an existing Iceberg lake managed by Spark/Flink</td><td>Open-format lakehouse where BigQuery is the writer</td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-data-sources" target="_blank" rel="noopener">Docs ↗</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cards" style="margin-top:22px">
+      <div class="card"><div class="k lake">YOUR CASE</div><p>You write plain Parquet with PySpark, so a <b>BigLake external table over Parquet</b> is the right starting point — no Iceberg needed.</p></div>
+      <div class="card"><div class="k ice">MOVE TO ICEBERG IF…</div><p>You need row-level updates/deletes, snapshot isolation, or schema/partition evolution in the lake itself.</p></div>
+      <div class="card"><div class="k bq">GO MANAGED IF…</div><p>You want BigQuery to <b>write</b> the open-format table while Spark still reads it. That’s the managed Iceberg option.</p></div>
+    </div>
+
+    <div class="codewrap">
+      <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span><span class="code-file">iceberg_external_table.sql</span><button class="copy">copy</button></div>
+      <pre><code><span class="cmt">-- Read-only Iceberg external table from a metadata JSON file</span>
+<span class="kw">CREATE EXTERNAL TABLE</span> <span class="str">`myproject.raw_zone.events_iceberg`</span>
+<span class="kw">WITH CONNECTION</span> <span class="str">`myproject.us-central1.my_gcs_conn`</span>
+<span class="kw">OPTIONS</span> (
+  format = <span class="str">'ICEBERG'</span>,
+  uris   = [<span class="str">'gs://my-raw-bucket/warehouse/events/metadata/v2.metadata.json'</span>]
+);
+
+<span class="cmt">-- Query it exactly like a standard table</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="str">`myproject.raw_zone.events_iceberg`</span> <span class="kw">LIMIT</span> <span class="num">100</span>;</code></pre>
+    </div>
+    <p class="note lake">With the JSON-metadata method you must update the metadata file reference whenever the table changes. Using BigLake metastore as the catalog avoids that manual step — which is why Google recommends it on Google Cloud.</p>
+  </div>
+</section>
+
+<!-- 06 TERMINOLOGY -->
+<section class="block" id="terms">
+  <div class="wrap">
+    <div class="sec-eyebrow"><span class="sec-num">06</span> — Old ⇄ new</div>
+    <h2 class="sec-title">Terminology, classic vs current</h2>
+    <p class="sec-intro">Google renamed much of this surface during 2026. The switch in the top bar rewrites labels across the page; the full mapping is below. Crucially, <b>APIs, CLI commands and IAM identifiers still use the old names</b> — your scripts don’t need to change.</p>
+    <div class="scroll">
+      <table class="dt">
+        <thead><tr><th style="width:30%">Classic term</th><th style="width:34%">Current term</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td class="lbl">BigLake</td><td>Lakehouse for Apache Iceberg</td><td>DDL, CLI and IAM still reference <span class="mono">biglake</span> / <span class="mono">CLOUD_RESOURCE</span></td></tr>
+          <tr><td class="lbl">Apache Iceberg external tables</td><td>Iceberg external tables</td><td>Read-only, customer-managed</td></tr>
+          <tr><td class="lbl">BigLake tables for Apache Iceberg in BigQuery</td><td>Apache Iceberg tables managed by BigQuery</td><td>Fully managed and writable</td></tr>
+          <tr><td class="lbl">BigLake metastore</td><td>Lakehouse runtime catalog</td><td>Serverless Iceberg metadata catalog</td></tr>
+          <tr><td class="lbl">Data Catalog → Dataplex Universal Catalog</td><td>Knowledge Catalog</td><td>Data Catalog began a phased shutdown from 1 June 2026</td></tr>
+          <tr><td class="lbl">Cloud Composer</td><td>Managed Service for Apache Airflow</td><td>Orchestration rename</td></tr>
+          <tr><td class="lbl">Dataproc</td><td>Managed Service for Apache Spark</td><td>Covers cluster and serverless</td></tr>
+          <tr><td class="lbl">Analytics Hub</td><td>BigQuery sharing</td><td>Data exchange rename</td></tr>
+          <tr><td class="lbl">Cloud resource connection</td><td>Cloud resource connection</td><td>Unchanged</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Preview vs GA matters here: the Iceberg REST catalog and the <span class="mono">AI.GENERATE</span> family are GA, while Iceberg <b>v3</b> support and cross-cloud catalog features are in Preview. Check the release notes before relying on Preview features in production.</p>
+  </div>
+</section>
+
+<!-- 07 STEPS -->
 <section class="block" id="steps">
   <div class="wrap">
-    <div class="sec-eyebrow"><span class="sec-num">03</span> — Build it</div>
+    <div class="sec-eyebrow"><span class="sec-num">07</span> — Build it</div>
     <h2 class="sec-title">Step by step, with the entire code</h2>
-    <p class="sec-intro">Follow the spine top to bottom. Steps 1–2 are context (done in your PySpark project). Step 3 is the fastest path. Steps 4–7 upgrade it into a governed, cached <span class="term" data-old="BigLake" data-new="Lakehouse (BigLake)">BigLake</span> table. Every block has a copy button.</p>
+    <p class="sec-intro">Steps 1–2 are context (already done in your PySpark project). Step 3 is the fastest path. Steps 4–7 make it governed and cached. Steps 8–9 build the analysis layer. Every block has a copy button.</p>
 
     <div class="spine">
 
-      <!-- 1 -->
       <div class="step">
         <div class="node">1</div>
         <div class="step-card">
-          <div class="step-head"><div class="step-title">Land Parquet in the raw zone<small>already implemented in your project</small></div><span class="tag ctx">PySpark</span><span class="caret">▶</span></div>
+          <div class="step-head"><div class="step-title">Land Parquet in the raw zone<small>already implemented</small></div><span class="tag ctx">PySpark</span><span class="caret">▶</span></div>
           <div class="step-body"><div class="step-body-in">
-            <p>Your Spark job writes partitioned Parquet to the bucket. Partitioning by a date column enables pruning later.</p>
+            <p>Partition by a date column so BigQuery can prune later.</p>
             <div class="codewrap">
               <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span><span class="code-file">write_raw_zone.py</span><button class="copy">copy</button></div>
               <pre><code><span class="cmt"># PySpark — write on-prem data to the GCS raw zone as partitioned Parquet</span>
 (<span class="fn">df</span>.write
    .mode(<span class="str">"overwrite"</span>)
    .partitionBy(<span class="str">"dt"</span>)                 <span class="cmt"># yields dt=2026-01-01/ folders (Hive layout)</span>
-   .parquet(<span class="str">"gs://my-raw-zone-bucket/sales/"</span>))</code></pre>
+   .parquet(<span class="str">"gs://my-raw-bucket/events/"</span>))</code></pre>
             </div>
           </div></div>
         </div>
       </div>
 
-      <!-- 2 -->
       <div class="step">
         <div class="node">2</div>
         <div class="step-card">
-          <div class="step-head"><div class="step-title">Confirm the layout in Cloud Storage<small>sanity-check the URIs BigQuery will point at</small></div><span class="tag ctx">gcloud</span><span class="caret">▶</span></div>
+          <div class="step-head"><div class="step-title">Enable APIs, check location, create dataset<small>colocation is mandatory</small></div><span class="tag ctx">setup</span><span class="caret">▶</span></div>
           <div class="step-body"><div class="step-body-in">
-            <p>Verify files are Parquet and partition folders exist. Note the bucket <b>location</b> — it must match the BigQuery dataset location.</p>
+            <p>The bucket region and the dataset location <b>must</b> match — a bucket in <span class="mono">us-central1</span> needs a dataset in <span class="mono">us-central1</span> or the <span class="mono">US</span> multi-region. Dataset location is immutable afterwards.</p>
             <div class="codewrap">
               <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span><span class="code-file">shell</span><button class="copy">copy</button></div>
-              <pre><code><span class="cmt"># List what landed</span>
-gcloud storage ls <span class="str">"gs://my-raw-zone-bucket/sales/"</span>
-<span class="cmt"># dt=2026-01-01/  dt=2026-01-02/  ...</span>
+              <pre><code><span class="cmt"># Enable the required APIs</span>
+gcloud services enable \
+  bigquery.googleapis.com \
+  bigqueryconnection.googleapis.com \
+  storage.googleapis.com
 
-<span class="cmt"># Check the bucket region (dataset must be co-located)</span>
-gcloud storage buckets describe <span class="str">gs://my-raw-zone-bucket</span> \
-  --format=<span class="str">"value(location)"</span></code></pre>
+<span class="cmt"># Check the bucket region</span>
+gcloud storage buckets describe gs://my-raw-bucket --format=<span class="str">"value(location)"</span>
+
+<span class="cmt"># Create a colocated dataset</span>
+bq --location=us-central1 mk --dataset \
+  --description=<span class="str">"Raw zone external tables"</span> \
+  myproject:raw_zone</code></pre>
             </div>
           </div></div>
         </div>
       </div>
 
-      <!-- 3 -->
       <div class="step open">
         <div class="node">3</div>
         <div class="step-card">
           <div class="step-head"><div class="step-title">Create a plain external table<small>fastest path — no connection needed</small></div><span class="tag core">core</span><span class="caret">▶</span></div>
           <div class="step-body"><div class="step-body-in">
-            <p>Point BigQuery at the Parquet. Because Parquet is self-describing, <b>omit the schema</b> — it’s auto-detected. Switch between the SQL and CLI tabs.</p>
+            <p>Parquet is self-describing, so <b>omit the schema</b> — it’s auto-detected. Four ways to do the same thing:</p>
             <div class="codewrap">
               <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span>
-                <div class="code-tabs"><button class="code-tab active" data-tab="a1">GoogleSQL</button><button class="code-tab" data-tab="a2">bq CLI</button></div>
+                <div class="code-tabs">
+                  <button class="code-tab active" data-tab="a1">GoogleSQL</button>
+                  <button class="code-tab" data-tab="a2">bq CLI</button>
+                  <button class="code-tab" data-tab="a3">Python</button>
+                  <button class="code-tab" data-tab="a4">Terraform</button>
+                </div>
                 <button class="copy">copy</button></div>
               <pre data-pane="a1"><code><span class="cmt">-- Permanent external table over Parquet in the raw zone</span>
-<span class="kw">CREATE OR REPLACE EXTERNAL TABLE</span> <span class="str">`myproject.raw_zone.sales_ext`</span>
+<span class="kw">CREATE OR REPLACE EXTERNAL TABLE</span> <span class="str">`myproject.raw_zone.events_ext`</span>
 <span class="kw">OPTIONS</span> (
   format = <span class="str">'PARQUET'</span>,
-  uris   = [<span class="str">'gs://my-raw-zone-bucket/sales/*.parquet'</span>]
+  uris   = [<span class="str">'gs://my-raw-bucket/events/*.parquet'</span>]
 );
 
 <span class="cmt">-- Query it like any table</span>
-<span class="kw">SELECT</span> <span class="kw">COUNT</span>(*) <span class="kw">FROM</span> <span class="str">`myproject.raw_zone.sales_ext`</span>;</code></pre>
-              <pre data-pane="a2" style="display:none"><code><span class="cmt"># Equivalent with the bq command-line tool</span>
-bq mkdef \
-  --source_format=PARQUET \
-  <span class="str">"gs://my-raw-zone-bucket/sales/*.parquet"</span> &gt; /tmp/def.json
+<span class="kw">SELECT</span> <span class="kw">COUNT</span>(*) <span class="kw">FROM</span> <span class="str">`myproject.raw_zone.events_ext`</span>;</code></pre>
+              <pre data-pane="a2" style="display:none"><code><span class="cmt"># Build a table definition, then create the table</span>
+bq mkdef --source_format=PARQUET \
+  <span class="str">"gs://my-raw-bucket/events/*.parquet"</span> &gt; /tmp/def.json
 
 bq mk --table \
   --external_table_definition=/tmp/def.json \
-  <span class="str">myproject:raw_zone.sales_ext</span></code></pre>
+  <span class="str">myproject:raw_zone.events_ext</span>
+
+<span class="cmt"># Temporary (session) table — nothing stored in a dataset</span>
+bq query --external_table_definition=events::/tmp/def.json \
+  <span class="str">'SELECT COUNT(*) FROM events'</span></code></pre>
+              <pre data-pane="a3" style="display:none"><code><span class="kw">from</span> google.cloud <span class="kw">import</span> bigquery
+
+client = bigquery.<span class="fn">Client</span>()
+
+ec = bigquery.<span class="fn">ExternalConfig</span>(<span class="str">"PARQUET"</span>)
+ec.source_uris = [<span class="str">"gs://my-raw-bucket/events/*.parquet"</span>]
+ec.autodetect  = <span class="kw">True</span>
+
+table = bigquery.<span class="fn">Table</span>(<span class="str">"myproject.raw_zone.events_ext"</span>)
+table.external_data_configuration = ec
+client.<span class="fn">create_table</span>(table)</code></pre>
+              <pre data-pane="a4" style="display:none"><code><span class="kw">resource</span> <span class="str">"google_bigquery_table"</span> <span class="str">"events_ext"</span> {
+  dataset_id = <span class="str">"raw_zone"</span>
+  table_id   = <span class="str">"events_ext"</span>
+
+  external_data_configuration {
+    autodetect    = <span class="kw">true</span>
+    source_format = <span class="str">"PARQUET"</span>
+    source_uris   = [<span class="str">"gs://my-raw-bucket/events/*.parquet"</span>]
+  }
+}</code></pre>
             </div>
           </div></div>
         </div>
       </div>
 
-      <!-- 4 -->
       <div class="step">
         <div class="node">4</div>
         <div class="step-card">
-          <div class="step-head"><div class="step-title">Handle Hive partitions<small>prune by dt so queries don’t scan the whole lake</small></div><span class="tag core">core</span><span class="caret">▶</span></div>
+          <div class="step-head"><div class="step-title">Declare Hive partitions<small>prune by dt so queries don’t scan the whole lake</small></div><span class="tag core">core</span><span class="caret">▶</span></div>
           <div class="step-body"><div class="step-body-in">
-            <p>If you partitioned by <span class="mono">dt</span> in step 1, declare it so BigQuery skips irrelevant folders. Requiring a filter guards against full scans.</p>
+            <p>Declaring the partition column lets BigQuery skip irrelevant folders. Requiring a filter guards against accidental full scans.</p>
             <div class="codewrap">
               <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span><span class="code-file">GoogleSQL</span><button class="copy">copy</button></div>
-              <pre><code><span class="kw">CREATE OR REPLACE EXTERNAL TABLE</span> <span class="str">`myproject.raw_zone.sales_ext`</span>
+              <pre><code><span class="kw">CREATE OR REPLACE EXTERNAL TABLE</span> <span class="str">`myproject.raw_zone.events_ext`</span>
 <span class="kw">WITH PARTITION COLUMNS</span> (
   dt <span class="kw">DATE</span>                                <span class="cmt">-- parsed from dt=YYYY-MM-DD/ path</span>
 )
 <span class="kw">OPTIONS</span> (
   format = <span class="str">'PARQUET'</span>,
-  uris   = [<span class="str">'gs://my-raw-zone-bucket/sales/*'</span>],
-  hive_partition_uri_prefix     = <span class="str">'gs://my-raw-zone-bucket/sales'</span>,
+  uris   = [<span class="str">'gs://my-raw-bucket/events/*'</span>],
+  hive_partition_uri_prefix     = <span class="str">'gs://my-raw-bucket/events'</span>,
   require_hive_partition_filter = <span class="kw">true</span>
 );</code></pre>
             </div>
@@ -486,28 +657,27 @@ bq mk --table \
         </div>
       </div>
 
-      <!-- 5 -->
       <div class="step">
         <div class="node">5</div>
         <div class="step-card">
           <div class="step-head"><div class="step-title">Create a Cloud resource connection<small>prerequisite for the BigLake upgrade</small></div><span class="tag up">upgrade</span><span class="caret">▶</span></div>
           <div class="step-body"><div class="step-body-in">
-            <p>A connection carries a Google-managed service account. Grant <b>that account</b> read on the bucket, so users only need rights on the table — not the raw files.</p>
+            <p>The connection carries a Google-managed service account. Grant <b>that account</b> read on the bucket, so analysts need rights only on the table.</p>
             <div class="codewrap">
               <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span><span class="code-file">shell</span><button class="copy">copy</button></div>
               <pre><code><span class="cmt"># 1. Create the connection (location must match dataset + bucket)</span>
 bq mk --connection \
-  --location=US \
+  --location=us-central1 \
   --project_id=myproject \
   --connection_type=CLOUD_RESOURCE \
-  my-gcs-connection
+  my_gcs_conn
 
 <span class="cmt"># 2. Read back its service account id</span>
-bq show --connection <span class="str">myproject.US.my-gcs-connection</span>
+bq show --connection <span class="str">myproject.us-central1.my_gcs_conn</span>
 <span class="cmt"># -> bqcx-....@gcp-sa-bigquery-condel.iam.gserviceaccount.com</span>
 
 <span class="cmt"># 3. Let that service account read the raw zone</span>
-gcloud storage buckets add-iam-policy-binding gs://my-raw-zone-bucket \
+gcloud storage buckets add-iam-policy-binding gs://my-raw-bucket \
   --member=<span class="str">"serviceAccount:bqcx-....@gcp-sa-bigquery-condel.iam.gserviceaccount.com"</span> \
   --role=<span class="str">"roles/storage.objectViewer"</span></code></pre>
             </div>
@@ -515,45 +685,44 @@ gcloud storage buckets add-iam-policy-binding gs://my-raw-zone-bucket \
         </div>
       </div>
 
-      <!-- 6 -->
       <div class="step">
         <div class="node">6</div>
         <div class="step-card">
-          <div class="step-head"><div class="step-title">Create the BigLake table<small>adds WITH CONNECTION + metadata caching</small></div><span class="tag up">upgrade</span><span class="caret">▶</span></div>
+          <div class="step-head"><div class="step-title">Create the BigLake table<small>WITH CONNECTION + metadata caching</small></div><span class="tag up">upgrade</span><span class="caret">▶</span></div>
           <div class="step-body"><div class="step-body-in">
-            <p>Same Parquet, now with a connection and <b>metadata caching</b>. Staleness runs 30 minutes to 7 days — tune it to how often PySpark lands new files.</p>
+            <p>Same Parquet, now with access delegation and <b>metadata caching</b>. Staleness accepts an interval between 30 minutes and 7 days; <span class="mono">0</span> (the default) disables caching.</p>
             <div class="codewrap">
               <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span><span class="code-file">GoogleSQL</span><button class="copy">copy</button></div>
-              <pre><code><span class="kw">CREATE OR REPLACE EXTERNAL TABLE</span> <span class="str">`myproject.raw_zone.sales_biglake`</span>
-<span class="kw">WITH CONNECTION</span> <span class="str">`myproject.US.my-gcs-connection`</span>
+              <pre><code><span class="kw">CREATE OR REPLACE EXTERNAL TABLE</span> <span class="str">`myproject.raw_zone.events_biglake`</span>
+<span class="kw">WITH CONNECTION</span> <span class="str">`myproject.us-central1.my_gcs_conn`</span>
 <span class="kw">OPTIONS</span> (
   format = <span class="str">'PARQUET'</span>,
-  uris   = [<span class="str">'gs://my-raw-zone-bucket/sales/*.parquet'</span>],
-  max_staleness       = <span class="kw">INTERVAL</span> <span class="num">1</span> <span class="kw">HOUR</span>,   <span class="cmt">-- 30 min … 7 days</span>
+  uris   = [<span class="str">'gs://my-raw-bucket/events/*.parquet'</span>],
+  max_staleness       = <span class="kw">INTERVAL</span> <span class="num">4</span> <span class="kw">HOUR</span>,   <span class="cmt">-- 30 min … 7 days</span>
   metadata_cache_mode = <span class="str">'AUTOMATIC'</span>
 );
 
-<span class="cmt">-- Force a refresh on demand (e.g. right after a big load)</span>
-<span class="kw">CALL</span> <span class="fn">BQ.REFRESH_EXTERNAL_METADATA_CACHE</span>(<span class="str">'myproject.raw_zone.sales_biglake'</span>);</code></pre>
+<span class="cmt">-- Force a refresh on demand (needed for MANUAL mode)</span>
+<span class="kw">CALL</span> <span class="fn">BQ.REFRESH_EXTERNAL_METADATA_CACHE</span>(<span class="str">'myproject.raw_zone.events_biglake'</span>);</code></pre>
             </div>
           </div></div>
         </div>
       </div>
 
-      <!-- 7 -->
       <div class="step">
         <div class="node">7</div>
         <div class="step-card">
-          <div class="step-head"><div class="step-title">Query &amp; consume<small>same for external or BigLake — pruned &amp; aggregated</small></div><span class="tag core">core</span><span class="caret">▶</span></div>
+          <div class="step-head"><div class="step-title">Query the raw data<small>partition pruning + aggregation</small></div><span class="tag core">core</span><span class="caret">▶</span></div>
           <div class="step-body"><div class="step-body-in">
-            <p>Analysts use ordinary SQL. The <span class="mono">WHERE dt …</span> filter triggers partition pruning, so only relevant Parquet is scanned.</p>
+            <p>Ordinary GoogleSQL. The <span class="mono">WHERE dt …</span> filter triggers pruning so only relevant Parquet is scanned.</p>
             <div class="codewrap">
               <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span><span class="code-file">GoogleSQL</span><button class="copy">copy</button></div>
               <pre><code><span class="kw">SELECT</span>
   dt,
-  <span class="kw">SUM</span>(amount) <span class="kw">AS</span> total_sales,
-  <span class="kw">COUNT</span>(*)     <span class="kw">AS</span> orders
-<span class="kw">FROM</span> <span class="str">`myproject.raw_zone.sales_biglake`</span>
+  <span class="kw">COUNT</span>(*)          <span class="kw">AS</span> events,
+  <span class="kw">COUNT</span>(<span class="kw">DISTINCT</span> user_id) <span class="kw">AS</span> users,
+  <span class="kw">SUM</span>(amount)       <span class="kw">AS</span> revenue
+<span class="kw">FROM</span> <span class="str">`myproject.raw_zone.events_biglake`</span>
 <span class="kw">WHERE</span> dt <span class="kw">BETWEEN</span> <span class="str">'2026-01-01'</span> <span class="kw">AND</span> <span class="str">'2026-01-31'</span>   <span class="cmt">-- prunes partitions</span>
 <span class="kw">GROUP BY</span> dt
 <span class="kw">ORDER BY</span> dt;</code></pre>
@@ -562,75 +731,110 @@ gcloud storage buckets add-iam-policy-binding gs://my-raw-zone-bucket \
         </div>
       </div>
 
+      <div class="step">
+        <div class="node">8</div>
+        <div class="step-card">
+          <div class="step-head"><div class="step-title">Promote to a native curated table<small>unlocks DML, clustering, snapshots, BI Engine</small></div><span class="tag up">analysis</span><span class="caret">▶</span></div>
+          <div class="step-body"><div class="step-body-in">
+            <p>This single pattern removes almost every external-table limitation. Partition and cluster the destination for real performance.</p>
+            <div class="codewrap">
+              <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span><span class="code-file">GoogleSQL</span><button class="copy">copy</button></div>
+              <pre><code><span class="cmt">-- One-off build of the curated native table</span>
+<span class="kw">CREATE OR REPLACE TABLE</span> <span class="str">`myproject.curated.events`</span>
+<span class="kw">PARTITION BY</span> <span class="kw">DATE</span>(event_ts)
+<span class="kw">CLUSTER BY</span> user_id, region
+<span class="kw">AS</span> <span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="str">`myproject.raw_zone.events_biglake`</span>;
+
+<span class="cmt">-- Incremental top-up (schedule this)</span>
+<span class="kw">MERGE</span> <span class="str">`myproject.curated.events`</span> T
+<span class="kw">USING</span> <span class="str">`myproject.raw_zone.events_biglake`</span> S
+<span class="kw">ON</span> T.event_id = S.event_id
+<span class="kw">WHEN NOT MATCHED THEN</span> <span class="kw">INSERT</span> <span class="kw">ROW</span>;</code></pre>
+            </div>
+          </div></div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="node">9</div>
+        <div class="step-card">
+          <div class="step-head"><div class="step-title">Add a governed serving layer<small>views, materialized views, security</small></div><span class="tag up">analysis</span><span class="caret">▶</span></div>
+          <div class="step-body"><div class="step-body-in">
+            <p>Materialized views over a BigLake table require metadata caching enabled and a <span class="mono">max_staleness</span> greater than the base table’s.</p>
+            <div class="codewrap">
+              <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span><span class="code-file">GoogleSQL</span><button class="copy">copy</button></div>
+              <pre><code><span class="cmt">-- Materialized view over the BigLake table (base staleness = 4 HOUR)</span>
+<span class="kw">CREATE MATERIALIZED VIEW</span> <span class="str">`myproject.mart.events_daily`</span>
+<span class="kw">OPTIONS</span> (max_staleness = <span class="kw">INTERVAL</span> <span class="num">8</span> <span class="kw">HOUR</span>)
+<span class="kw">AS</span> <span class="kw">SELECT</span> dt, region, <span class="kw">COUNT</span>(*) <span class="kw">AS</span> events
+<span class="kw">FROM</span> <span class="str">`myproject.raw_zone.events_biglake`</span>
+<span class="kw">GROUP BY</span> dt, region;
+
+<span class="cmt">-- Row-level security on the curated table</span>
+<span class="kw">CREATE ROW ACCESS POLICY</span> eu_only
+<span class="kw">ON</span> <span class="str">`myproject.curated.events`</span>
+<span class="kw">GRANT TO</span> (<span class="str">"group:eu-analysts@example.com"</span>)
+<span class="kw">FILTER USING</span> (region = <span class="str">"EU"</span>);</code></pre>
+            </div>
+          </div></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </section>
 
-<!-- COMPARE -->
-<section class="block" id="compare">
-  <div class="wrap">
-    <div class="sec-eyebrow"><span class="sec-num">04</span> — Decide</div>
-    <h2 class="sec-title">Plain external vs <span class="term" data-old="BigLake" data-new="Lakehouse (BigLake)">BigLake</span></h2>
-    <p class="sec-intro">Both read Parquet in place. BigLake adds a connection and unlocks governance and caching. Google recommends BigLake for anything shared or production.</p>
-    <div class="scroll">
-    <table class="cmp">
-      <thead><tr><th>Capability</th><th>Plain external table</th><th class="big term" data-old="BigLake table" data-new="Lakehouse (BigLake) table">BigLake table</th></tr></thead>
-      <tbody>
-        <tr><td>Reads Parquet in place</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
-        <tr><td>Setup effort</td><td>None</td><td>Needs a connection</td></tr>
-        <tr><td>Access delegation</td><td class="no">User needs bucket rights</td><td class="yes">Table rights only</td></tr>
-        <tr><td>Metadata caching</td><td class="no">No</td><td class="yes">30 min – 7 days</td></tr>
-        <tr><td>Row / column security</td><td class="no">No</td><td class="yes">Yes</td></tr>
-        <tr><td>Dynamic data masking</td><td class="no">No</td><td class="yes">Yes</td></tr>
-        <tr><td>Hive partitioning</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
-        <tr><td>Writable (DML)</td><td class="no">No — read only</td><td class="no">No — read only</td></tr>
-        <tr><td>Best for</td><td>Quick exploration</td><td>Shared / production lake</td></tr>
-      </tbody>
-    </table>
-    </div>
-  </div>
-</section>
-
-<!-- DOCS TABLE -->
+<!-- 08 DOCS TABLE -->
 <section class="block" id="docs">
   <div class="wrap">
-    <div class="sec-eyebrow"><span class="sec-num">05</span> — Sources</div>
+    <div class="sec-eyebrow"><span class="sec-num">08</span> — Sources</div>
     <h2 class="sec-title">Official Google Cloud documentation</h2>
-    <p class="sec-intro">Every page behind the steps above, with a category and a working link. All open on <span class="mono">cloud.google.com</span>.</p>
+    <p class="sec-intro">Every page referenced above, with a category and a working link. All open on <span class="mono">cloud.google.com</span>.</p>
+    <div class="scroll-hint">← scroll table →</div>
     <div class="scroll">
-    <table class="doctable">
-      <thead>
-        <tr><th class="num">#</th><th>Document</th><th>What it covers</th><th>Category</th><th class="lnk">Link</th></tr>
-      </thead>
-      <tbody>
-        <tr><td class="num">1</td><td><span class="dtitle">Introduction to external tables</span></td><td><span class="ddesc">Query data in place; permanent vs temporary; limitations; colocation</span></td><td><span class="catpill overview">Overview</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">2</td><td><span class="dtitle">Introduction to external data sources</span></td><td><span class="ddesc">Compares external, BigLake, Omni, object tables &amp; federated queries</span></td><td><span class="catpill overview">Overview</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/external-data-sources" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">3</td><td><span class="dtitle">Create Cloud Storage external tables</span></td><td><span class="ddesc">CREATE EXTERNAL TABLE DDL, table def files, PARQUET, wildcards</span></td><td><span class="catpill create">Create</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/external-data-cloud-storage" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">4</td><td><span class="dtitle">Query Cloud Storage data in external tables</span></td><td><span class="ddesc">Querying permanent &amp; temporary GCS external tables in GoogleSQL</span></td><td><span class="catpill create">Create</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/query-cloud-storage-data" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">5</td><td><span class="dtitle">Using schema auto-detection</span></td><td><span class="ddesc">Why Parquet needs no manual schema; optional overrides</span></td><td><span class="catpill create">Create</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/schema-detect" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">6</td><td><span class="dtitle">Create a table definition file</span></td><td><span class="ddesc">bq mkdef, --autodetect, JSON schema for the bq tool / REST API</span></td><td><span class="catpill create">Create</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/external-table-definition" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">7</td><td><span class="dtitle">Loading Parquet data from Cloud Storage</span></td><td><span class="ddesc">Requirements &amp; type conversions when promoting raw data to native</span></td><td><span class="catpill create">Create</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">8</td><td><span class="dtitle">Introduction to BigLake tables</span></td><td><span class="ddesc">Access delegation, metadata caching, fine-grained security</span></td><td><span class="catpill biglake">BigLake</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/biglake-intro" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">9</td><td><span class="dtitle">Create Cloud Storage BigLake tables</span></td><td><span class="ddesc">WITH CONNECTION, metadata caching, schema options</span></td><td><span class="catpill biglake">BigLake</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/create-cloud-storage-table-biglake" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">10</td><td><span class="dtitle">Query Cloud Storage BigLake tables</span></td><td><span class="ddesc">Querying GCS BigLake tables; required roles; connectors</span></td><td><span class="catpill biglake">BigLake</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/query-cloud-storage-using-biglake" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">11</td><td><span class="dtitle">Use metadata caching for external data</span></td><td><span class="ddesc">Staleness (30 min–7 day), auto vs manual refresh, statistics</span></td><td><span class="catpill biglake">BigLake</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/metadata-caching-external-tables" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">12</td><td><span class="dtitle">Manage external Hive partitioned data</span></td><td><span class="ddesc">Partition pruning, layout, require_hive_partition_filter</span></td><td><span class="catpill create">Create</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/hive-partitioned-queries" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">13</td><td><span class="dtitle">Create a Cloud resource connection</span></td><td><span class="ddesc">The connection used by BigLake; grant its SA access to GCS</span></td><td><span class="catpill ref">Reference</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/create-cloud-resource-connection" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">14</td><td><span class="dtitle">Introduction to connections</span></td><td><span class="ddesc">Connection types (Cloud resource, Cloud SQL, AWS, Azure)</span></td><td><span class="catpill ref">Reference</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/connections-api-intro" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">15</td><td><span class="dtitle">Data definition language (DDL) reference</span></td><td><span class="ddesc">CREATE EXTERNAL TABLE syntax &amp; all OPTIONS</span></td><td><span class="catpill ref">Reference</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">16</td><td><span class="dtitle">Introduction to BigLake metastore</span></td><td><span class="ddesc">Unified runtime metastore for lakehouse (Iceberg) data</span></td><td><span class="catpill biglake">BigLake</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/about-blms" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">17</td><td><span class="dtitle">Optimize storage for query performance</span></td><td><span class="ddesc">Columnar storage, partitioning &amp; clustering best practices</span></td><td><span class="catpill ref">Reference</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/best-practices-storage" target="_blank" rel="noopener">Open ↗</a></td></tr>
-        <tr><td class="num">18</td><td><span class="dtitle">Introduction to BigQuery Omni</span></td><td><span class="ddesc">Only if a raw zone lands in AWS S3 / Azure instead of GCS</span></td><td><span class="catpill overview">Overview</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/omni-introduction" target="_blank" rel="noopener">Open ↗</a></td></tr>
-      </tbody>
-    </table>
+      <table class="dt">
+        <thead><tr><th style="width:42px" class="c">#</th><th>Document</th><th style="width:15%">Category</th><th style="width:90px" class="c">Link</th></tr></thead>
+        <tbody>
+          <tr><td class="c">1</td><td><span class="lbl">Introduction to external tables</span><span class="sub">Concepts, permanent vs temporary, colocation, all limitations</span></td><td><span class="pill overview">Overview</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">2</td><td><span class="lbl">Introduction to external data sources</span><span class="sub">Compares external, BigLake, Omni, object tables, federated queries</span></td><td><span class="pill overview">Overview</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-data-sources" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">3</td><td><span class="lbl">Create Cloud Storage external tables</span><span class="sub">CREATE EXTERNAL TABLE DDL, table def files, PARQUET, wildcards</span></td><td><span class="pill create">Create</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-data-cloud-storage" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">4</td><td><span class="lbl">Query Cloud Storage data in external tables</span><span class="sub">Querying permanent &amp; temporary tables, _FILE_NAME pseudocolumn</span></td><td><span class="pill create">Create</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/query-cloud-storage-data" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">5</td><td><span class="lbl">Using schema auto-detection</span><span class="sub">Why Parquet needs no manual schema; overrides</span></td><td><span class="pill create">Create</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/schema-detect" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">6</td><td><span class="lbl">Create a table definition file</span><span class="sub">bq mkdef, --autodetect, JSON schema for CLI / REST</span></td><td><span class="pill create">Create</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/external-table-definition" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">7</td><td><span class="lbl">Loading Parquet data from Cloud Storage</span><span class="sub">Native load, Parquet→BigQuery type conversion</span></td><td><span class="pill create">Create</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">8</td><td><span class="lbl">Manage external Hive partitioned data</span><span class="sub">AUTO/STRINGS/CUSTOM modes, pruning, require_hive_partition_filter</span></td><td><span class="pill create">Create</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/hive-partitioned-queries" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">9</td><td><span class="lbl">Introduction to BigLake tables</span><span class="sub">Access delegation, metadata caching, fine-grained security</span></td><td><span class="pill biglake">BigLake</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/biglake-intro" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">10</td><td><span class="lbl">Create Cloud Storage BigLake tables</span><span class="sub">WITH CONNECTION, max_staleness, metadata_cache_mode</span></td><td><span class="pill biglake">BigLake</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/create-cloud-storage-table-biglake" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">11</td><td><span class="lbl">Query Cloud Storage BigLake tables</span><span class="sub">Required roles, connectors</span></td><td><span class="pill biglake">BigLake</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/query-cloud-storage-using-biglake" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">12</td><td><span class="lbl">Use metadata caching for external data sources</span><span class="sub">Staleness 30 min–7 days, AUTOMATIC vs MANUAL, refresh procedure</span></td><td><span class="pill biglake">BigLake</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/metadata-caching-external-tables" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">13</td><td><span class="lbl">Create Apache Iceberg external tables</span><span class="sub">Read-only Iceberg; v2 merge-on-read, v3 Preview; catalog options</span></td><td><span class="pill ice">Iceberg</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/iceberg-external-tables" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">14</td><td><span class="lbl">Query Apache Iceberg external tables</span><span class="sub">Roles, permissions, GoogleSQL querying</span></td><td><span class="pill ice">Iceberg</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/query-iceberg-data" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">15</td><td><span class="lbl">BigLake tables for Apache Iceberg in BigQuery</span><span class="sub">Managed, writable Iceberg tables — distinct from Iceberg external</span></td><td><span class="pill ice">Iceberg</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/iceberg-tables" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">16</td><td><span class="lbl">Create object tables</span><span class="sub">Unstructured data over GCS for AI/ML inference</span></td><td><span class="pill create">Create</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/object-tables" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">17</td><td><span class="lbl">Create and set up a Cloud resource connection</span><span class="sub">Connection creation + service account grant</span></td><td><span class="pill ref">Reference</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/create-cloud-resource-connection" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">18</td><td><span class="lbl">Data definition language (DDL) reference</span><span class="sub">CREATE EXTERNAL TABLE syntax &amp; all OPTIONS</span></td><td><span class="pill ref">Reference</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">19</td><td><span class="lbl">Data manipulation language (DML) reference</span><span class="sub">INSERT/UPDATE/DELETE/MERGE — what external tables can’t do</span></td><td><span class="pill ref">Reference</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/reference/standard-sql/data-manipulation-language" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">20</td><td><span class="lbl">Query syntax reference</span><span class="sub">JOIN, GROUP BY, window functions, set operators, CTEs</span></td><td><span class="pill ref">Reference</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">21</td><td><span class="lbl">Introduction to views</span><span class="sub">Logical and authorized views over external tables</span></td><td><span class="pill ref">Reference</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/views-intro" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">22</td><td><span class="lbl">Create materialized views</span><span class="sub">MV over BigLake requirements and limitations</span></td><td><span class="pill biglake">BigLake</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/materialized-views-create" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">23</td><td><span class="lbl">Introduction to clustered tables</span><span class="sub">CLUSTER BY — native only</span></td><td><span class="pill ref">Reference</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/clustered-tables" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">24</td><td><span class="lbl">Exporting table data</span><span class="sub">Why external tables can’t be exported directly</span></td><td><span class="pill ref">Reference</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/exporting-data" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">25</td><td><span class="lbl">Introduction to BI Engine</span><span class="sub">Acceleration — does not apply to external tables</span></td><td><span class="pill ref">Reference</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/bi-engine-intro" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">26</td><td><span class="lbl">Introduction to row-level security</span><span class="sub">Row access policies</span></td><td><span class="pill ref">Reference</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/row-level-security-intro" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">27</td><td><span class="lbl">Introduction to column-level access control</span><span class="sub">Policy tags on sensitive columns</span></td><td><span class="pill ref">Reference</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/column-level-security-intro" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">28</td><td><span class="lbl">Introduction to BigQuery ML</span><span class="sub">CREATE MODEL on a SELECT over external data</span></td><td><span class="pill ref">Reference</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/bqml-introduction" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">29</td><td><span class="lbl">Estimate and control costs</span><span class="sub">maximum_bytes_billed, dry runs, best practices</span></td><td><span class="pill ref">Reference</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/best-practices-costs" target="_blank" rel="noopener">Open ↗</a></td></tr>
+          <tr><td class="c">30</td><td><span class="lbl">BigQuery release notes</span><span class="sub">2026 renames, Preview vs GA status</span></td><td><span class="pill overview">Overview</span></td><td class="c"><a class="src-btn" href="https://cloud.google.com/bigquery/docs/release-notes" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </section>
 
 <footer>
   <div class="wrap">
-    <div>Built for a GCP raw-zone → BigQuery workflow. Identifiers like <span class="mono">myproject</span>, <span class="mono">my-raw-zone-bucket</span> and <span class="mono">US</span> are placeholders — swap in yours, and keep bucket + dataset co-located.</div>
-    <div class="mono">VERIFY BEFORE PROD · TERMS EVOLVING 2026 · SOURCES: CLOUD.GOOGLE.COM/BIGQUERY/DOCS</div>
+    <div>Identifiers like <span class="mono">myproject</span>, <span class="mono">my-raw-bucket</span> and <span class="mono">us-central1</span> are placeholders — swap in yours, and keep bucket + dataset colocated. Verify DDL options and CLI flags against the linked docs before production; Google updates these pages frequently.</div>
+    <div class="mono">READ-ONLY EXTERNAL · TERMS EVOLVING 2026 · SOURCES: CLOUD.GOOGLE.COM/BIGQUERY/DOCS</div>
   </div>
 </footer>
 
@@ -652,8 +856,7 @@ gcloud storage buckets add-iam-policy-binding gs://my-raw-zone-bucket \
 
   document.querySelectorAll('.stage-card').forEach(card=>{
     card.addEventListener('click',()=>{
-      const id=card.dataset.stage;
-      const panel=document.getElementById('d-'+id);
+      const panel=document.getElementById('d-'+card.dataset.stage);
       const open=panel.classList.contains('show');
       document.querySelectorAll('.flow-detail').forEach(p=>p.classList.remove('show'));
       if(!open) panel.classList.add('show');
