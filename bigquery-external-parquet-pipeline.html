@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Raw Zone → BigQuery · Parquet External &amp; BigLake Tables</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F7F9;
+    --paper:#FFFFFF;
+    --ink:#0E1726;
+    --ink-soft:#26324A;
+    --muted:#5B6472;
+    --muted-2:#8A93A3;
+    --line:#E5E8EE;
+    --line-2:#D6DBE4;
+    --lake:#0E7490;      /* teal — parquet / lake */
+    --lake-soft:#E0F2F7;
+    --bq:#B45309;        /* amber — bigquery */
+    --bq-soft:#FBEAD7;
+    --src:#4F46E5;       /* indigo — on-prem source */
+    --src-soft:#E7E6FB;
+    --code:#0E1726;
+    --code-line:#26324A;
+    --ok:#0E7490;
+    --sh-sm:0 1px 2px rgba(14,23,38,.06);
+    --sh-md:0 6px 24px rgba(14,23,38,.08);
+    --sh-lg:0 18px 48px rgba(14,23,38,.12);
+    --r:14px;
+    --maxw:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Inter",system-ui,sans-serif;line-height:1.62;-webkit-font-smoothing:antialiased;
+    font-size:16px;
+  }
+  h1,h2,h3,h4{font-family:"Archivo",sans-serif;margin:0;line-height:1.08;letter-spacing:-.02em}
+  a{color:var(--lake);text-decoration:none}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  .mono{font-family:"JetBrains Mono",monospace}
+
+  /* ---------- header ---------- */
+  header.bar{position:sticky;top:0;z-index:60;background:rgba(246,247,249,.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .bar-in{display:flex;align-items:center;gap:20px;height:60px}
+  .brand{font-family:"Archivo";font-weight:800;font-size:14px;letter-spacing:-.02em;display:flex;align-items:center;gap:9px;color:var(--ink)}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--lake)}
+  .brand .dot.b{background:var(--bq);margin-left:-4px}
+  nav.links{margin-left:auto;display:flex;gap:24px}
+  nav.links a{color:var(--muted);font-size:13.5px;font-weight:500}
+  nav.links a:hover{color:var(--ink)}
+  @media(max-width:860px){nav.links{display:none}}
+
+  .termswitch{display:flex;align-items:center;gap:9px;font-family:"JetBrains Mono";font-size:10.5px;letter-spacing:.4px}
+  .termswitch .lbl{color:var(--muted-2);text-transform:uppercase;transition:color .3s;font-weight:600}
+  .termswitch .lbl.active{color:var(--ink)}
+  .toggle{width:48px;height:25px;border-radius:20px;border:1px solid var(--line-2);background:var(--paper);position:relative;cursor:pointer;padding:0;flex:0 0 auto;box-shadow:var(--sh-sm)}
+  .toggle .knob{position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:var(--lake);transition:transform .32s cubic-bezier(.6,.1,.2,1),background .3s}
+  .toggle[data-on="new"] .knob{transform:translateX(23px);background:var(--bq)}
+
+  /* ---------- hero ---------- */
+  .hero{padding:70px 0 34px}
+  .eyebrow{font-family:"JetBrains Mono";font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--lake);font-weight:600;margin-bottom:20px}
+  .hero h1{font-size:clamp(32px,5.6vw,60px);font-weight:900}
+  .hero h1 .g{color:var(--bq)}
+  .hero p.lede{max-width:620px;margin:22px 0 0;color:var(--muted);font-size:18px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:28px}
+  .chip{font-family:"JetBrains Mono";font-size:11px;padding:6px 12px;border:1px solid var(--line);border-radius:30px;color:var(--muted);background:var(--paper);box-shadow:var(--sh-sm)}
+  .chip b{color:var(--ink);font-weight:600}
+
+  /* ---------- section scaffold ---------- */
+  section.block{padding:60px 0}
+  .sec-eyebrow{font-family:"JetBrains Mono";font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2);font-weight:600}
+  .sec-num{color:var(--lake)}
+  h2.sec-title{font-size:clamp(26px,4vw,38px);font-weight:800;margin:10px 0 10px}
+  .sec-intro{color:var(--muted);max-width:660px;margin-bottom:32px;font-size:16.5px}
+
+  .panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh-md)}
+
+  /* ---------- flow diagram ---------- */
+  .flow-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px;padding:22px 24px 0}
+  .flow-head h3{font-size:20px;font-weight:800}
+  .flow-head .hint{color:var(--muted-2);font-size:12.5px;font-family:"JetBrains Mono"}
+  .diagram{padding:14px 18px 6px}
+  svg.pipe{width:100%;height:auto;display:block}
+  .stage-card{cursor:pointer}
+  .stage-box{transition:transform .2s ease, filter .2s ease}
+  .stage-card:hover .stage-box{transform:translateY(-4px)}
+  .stage-label{font-family:"Archivo";font-weight:800;font-size:15px;fill:var(--ink)}
+  .stage-sub{font-family:"JetBrains Mono";font-size:10px;fill:var(--muted)}
+  .flow-detail-wrap{padding:6px 24px 22px}
+  .flow-detail{display:none;font-size:14.5px;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:15px 18px}
+  .flow-detail.show{display:block;animation:fade .32s ease}
+  .flow-detail b{color:var(--ink)}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .legend{display:flex;gap:20px;flex-wrap:wrap;padding:0 24px 22px;font-family:"JetBrains Mono";font-size:11px;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:7px}
+  .legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  /* ---------- concept cards ---------- */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:20px;box-shadow:var(--sh-sm)}
+  .card .k{font-family:"JetBrains Mono";font-size:11px;letter-spacing:.08em;font-weight:600}
+  .card p{margin:9px 0 0;color:var(--muted);font-size:14px}
+  .k.lake{color:var(--lake)} .k.bq{color:var(--bq)} .k.src{color:var(--src)}
+
+  /* ---------- terminology table ---------- */
+  .ttable{width:100%;border-collapse:separate;border-spacing:0;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-sm)}
+  .ttable th{font-family:"Archivo";font-size:12px;text-transform:uppercase;letter-spacing:.06em;text-align:left;padding:13px 18px;color:var(--muted);background:var(--bg);border-bottom:1px solid var(--line)}
+  .ttable td{padding:14px 18px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
+  .ttable tr:last-child td{border-bottom:none}
+  .ttable .cat{font-size:12.5px;color:var(--muted)}
+  .ttable .old{font-family:"JetBrains Mono";font-size:13px;color:var(--muted)}
+  .ttable .new{font-family:"JetBrains Mono";font-size:13px;color:var(--ink);font-weight:500}
+  .ttable .unchanged{color:var(--muted-2);font-weight:400}
+  .term-note{margin-top:16px;font-size:13.5px;color:var(--muted);border-left:3px solid var(--bq);padding-left:14px}
+  @media(max-width:680px){
+    .ttable thead{display:none}
+    .ttable,.ttable tbody,.ttable tr,.ttable td{display:block;width:100%}
+    .ttable tr{border-bottom:1px solid var(--line);padding:6px 0}
+    .ttable td{border:none;padding:5px 18px}
+    .ttable td.old::before{content:"classic — ";color:var(--muted-2);font-family:"Inter"}
+    .ttable td.new::before{content:"current — ";color:var(--muted-2);font-family:"Inter"}
+  }
+
+  /* ---------- steps: pipeline spine ---------- */
+  .spine{position:relative;margin-top:6px}
+  .spine::before{content:"";position:absolute;left:19px;top:8px;bottom:8px;width:2px;background:linear-gradient(180deg,var(--src),var(--lake) 45%,var(--bq));border-radius:2px}
+  .step{position:relative;padding-left:56px;margin-bottom:16px}
+  .node{position:absolute;left:0;top:2px;width:40px;height:40px;border-radius:11px;background:var(--paper);border:2px solid var(--line-2);display:grid;place-items:center;font-family:"Archivo";font-weight:800;font-size:16px;color:var(--muted);z-index:2;box-shadow:var(--sh-sm);transition:all .25s}
+  .step.open .node{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .step-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh-sm);overflow:hidden}
+  .step-head{display:flex;align-items:center;gap:14px;padding:16px 20px;cursor:pointer;user-select:none}
+  .step-head:hover{background:var(--bg)}
+  .step-title{font-family:"Archivo";font-weight:700;font-size:16.5px;flex:1;color:var(--ink)}
+  .step-title small{display:block;font-family:"JetBrains Mono";font-weight:500;font-size:10.5px;color:var(--muted-2);letter-spacing:.03em;margin-top:4px;text-transform:uppercase}
+  .tag{font-family:"JetBrains Mono";font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px;letter-spacing:.03em;flex:0 0 auto}
+  .tag.ctx{background:var(--src-soft);color:var(--src)}
+  .tag.core{background:var(--lake-soft);color:var(--lake)}
+  .tag.up{background:var(--bq-soft);color:var(--bq)}
+  .caret{color:var(--muted-2);transition:transform .3s;flex:0 0 auto}
+  .step.open .caret{transform:rotate(90deg);color:var(--ink)}
+  .step-body{max-height:0;overflow:hidden;transition:max-height .4s ease}
+  .step-body-in{padding:2px 20px 20px;color:var(--muted);font-size:14.5px}
+  .step-body-in p{margin:0 0 12px}
+  .step-body-in b{color:var(--ink)}
+
+  /* ---------- code blocks ---------- */
+  .codewrap{position:relative;margin:12px 0 0;border-radius:11px;overflow:hidden;border:1px solid var(--code-line);background:var(--code)}
+  .code-top{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#0A121F;border-bottom:1px solid var(--code-line)}
+  .win-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .win-dot.r{background:#FF5F57}.win-dot.y{background:#FEBC2E}.win-dot.g{background:#28C840}
+  .code-file{font-family:"JetBrains Mono";font-size:11px;color:#7E8AA0;margin-left:6px}
+  .code-tabs{display:flex;gap:6px;margin-left:auto}
+  .code-tab{font-family:"JetBrains Mono";font-size:11px;padding:4px 10px;border-radius:6px;background:transparent;color:#7E8AA0;border:1px solid transparent;cursor:pointer}
+  .code-tab.active{background:#1A2536;color:#8FE3F2;border-color:var(--code-line)}
+  .copy{font-family:"JetBrains Mono";font-size:10.5px;letter-spacing:.03em;background:#1A2536;border:1px solid var(--code-line);color:#9AA6BC;padding:4px 10px;border-radius:6px;cursor:pointer;transition:all .2s;margin-left:6px}
+  .copy:hover{color:#fff}
+  .copy.done{color:#0A121F;background:#28C840;border-color:#28C840}
+  pre{margin:0;padding:16px 18px;overflow-x:auto;font-family:"JetBrains Mono";font-size:13px;line-height:1.72;color:#D6DEEC}
+  code{font-family:"JetBrains Mono"}
+  .cmt{color:#5C6B85}
+  .kw{color:#F6A94A}
+  .str{color:#5FD3BF}
+  .fn{color:#A99CFF}
+  .num{color:#FF8A8A}
+
+  /* ---------- comparison ---------- */
+  .cmp{width:100%;border-collapse:separate;border-spacing:0;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-sm);font-size:14px}
+  .cmp th,.cmp td{padding:13px 16px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  .cmp thead th{font-family:"Archivo";font-size:13px;background:var(--bg)}
+  .cmp thead th.big{color:var(--lake)}
+  .cmp tbody tr:last-child td{border-bottom:none}
+  .cmp td:first-child{font-family:"JetBrains Mono";font-size:12.5px;color:var(--muted)}
+  .cmp tbody tr:hover{background:var(--bg)}
+  .yes{color:var(--lake);font-weight:600}.no{color:var(--muted-2)}
+  .scroll{overflow-x:auto}
+
+  /* ---------- DOCS TABLE ---------- */
+  .doctable{width:100%;border-collapse:separate;border-spacing:0;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-md)}
+  .doctable thead th{font-family:"Archivo";font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--ink);color:#C7D0E0;text-align:left;padding:13px 16px}
+  .doctable thead th.num{width:44px;text-align:center}
+  .doctable thead th.lnk{width:96px;text-align:center}
+  .doctable td{padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+  .doctable tbody tr:last-child td{border-bottom:none}
+  .doctable tbody tr:hover{background:var(--bg)}
+  .doctable td.num{text-align:center;font-family:"JetBrains Mono";font-size:12px;color:var(--muted-2)}
+  .doctable .dtitle{font-weight:600;color:var(--ink);font-size:14px;display:block}
+  .doctable .ddesc{color:var(--muted);font-size:12.5px;margin-top:2px;display:block}
+  .catpill{font-family:"JetBrains Mono";font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .catpill.overview{background:#EEF1F6;color:#475569}
+  .catpill.create{background:var(--lake-soft);color:var(--lake)}
+  .catpill.biglake{background:var(--bq-soft);color:var(--bq)}
+  .catpill.ref{background:var(--src-soft);color:var(--src)}
+  .doctable td.lnk{text-align:center}
+  .openbtn{display:inline-flex;align-items:center;gap:5px;font-family:"JetBrains Mono";font-size:11px;font-weight:600;color:var(--lake);border:1px solid var(--line-2);border-radius:7px;padding:5px 10px;transition:all .18s;white-space:nowrap}
+  .openbtn:hover{background:var(--lake);color:#fff;border-color:var(--lake);text-decoration:none}
+  @media(max-width:720px){
+    .doctable .ddesc{display:none}
+    .doctable thead th:nth-child(3){display:none}
+    .doctable td:nth-child(3){display:none}
+  }
+
+  footer{border-top:1px solid var(--line);padding:34px 0 60px;color:var(--muted);font-size:13.5px;margin-top:20px}
+  footer .mono{font-size:11px;letter-spacing:.04em;color:var(--muted-2);margin-top:10px}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+    .packet{display:none!important}
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap bar-in">
+    <div class="brand"><span class="dot"></span><span class="dot b"></span>&nbsp;RAW&nbsp;ZONE&nbsp;→&nbsp;BIGQUERY</div>
+    <nav class="links">
+      <a href="#flow">Flow</a>
+      <a href="#terms">Terminology</a>
+      <a href="#steps">Steps &amp; code</a>
+      <a href="#compare">Compare</a>
+      <a href="#docs">Docs table</a>
+    </nav>
+    <div class="termswitch" title="Switch labels between classic and current Google Cloud terms">
+      <span class="lbl active" id="lblOld">Classic</span>
+      <button class="toggle" id="termToggle" data-on="old" aria-label="Toggle classic / current terminology"><span class="knob"></span></button>
+      <span class="lbl" id="lblNew">Current</span>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">On-prem · Parquet · Cloud Storage · BigQuery</div>
+    <h1>Query your Parquet <span class="g">raw zone</span><br>without moving a byte.</h1>
+    <p class="lede">Your PySpark job already lands on-prem data as Parquet in a Cloud Storage raw zone. A BigQuery
+      <span class="term" data-old="external table" data-new="external table">external table</span> reads those files
+      <b>in place</b> — no load, no copy. Here’s the flow, the exact DDL, the terminology that changed in 2026, and every official doc in one table.</p>
+    <div class="chips">
+      <span class="chip"><b>Source:</b> on-prem</span>
+      <span class="chip"><b>Format:</b> Parquet</span>
+      <span class="chip"><b>Store:</b> gs:// raw zone</span>
+      <span class="chip"><b>Engine:</b> BigQuery GoogleSQL</span>
+      <span class="chip"><b>Access:</b> read-in-place</span>
+    </div>
+  </div>
+</section>
+
+<!-- FLOW -->
+<section class="block" id="flow" style="padding-top:20px">
+  <div class="wrap">
+    <div class="panel">
+      <div class="flow-head">
+        <h3>The pipeline, end to end</h3>
+        <span class="hint">// click any stage · packets show flow direction</span>
+      </div>
+      <div class="diagram">
+        <svg class="pipe" viewBox="0 0 1000 210" role="img" aria-label="Data flows from on-premises sources to a Cloud Storage raw zone of Parquet files, into a BigQuery external or BigLake table, then queried with GoogleSQL.">
+          <defs>
+            <marker id="arw" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9AA6BC"/></marker>
+          </defs>
+
+          <!-- connectors -->
+          <line x1="196" y1="105" x2="292" y2="105" stroke="#C7CEDA" stroke-width="2" marker-end="url(#arw)"/>
+          <line x1="452" y1="105" x2="548" y2="105" stroke="#C7CEDA" stroke-width="2" marker-end="url(#arw)"/>
+          <line x1="708" y1="105" x2="804" y2="105" stroke="#C7CEDA" stroke-width="2" marker-end="url(#arw)"/>
+
+          <!-- flowing packets -->
+          <g class="packets">
+            <rect class="packet" x="-5" y="100" width="10" height="10" rx="2" fill="#4F46E5"><animateMotion dur="2.4s" repeatCount="indefinite" path="M196,105 H292"/></rect>
+            <rect class="packet" x="-5" y="100" width="10" height="10" rx="2" fill="#0E7490"><animateMotion dur="2.4s" begin="0.3s" repeatCount="indefinite" path="M452,105 H548"/></rect>
+            <rect class="packet" x="-5" y="100" width="10" height="10" rx="2" fill="#B45309"><animateMotion dur="2.4s" begin="0.6s" repeatCount="indefinite" path="M708,105 H804"/></rect>
+          </g>
+
+          <!-- STAGE 1 on-prem -->
+          <g class="stage-card" data-stage="s1">
+            <g class="stage-box">
+              <rect x="20" y="58" width="176" height="94" rx="14" fill="#fff" stroke="#4F46E5" stroke-width="1.6"/>
+              <rect x="44" y="82" width="128" height="12" rx="3" fill="none" stroke="#4F46E5" stroke-width="1.4"/>
+              <rect x="44" y="100" width="128" height="12" rx="3" fill="none" stroke="#4F46E5" stroke-width="1.4"/>
+              <rect x="44" y="118" width="80" height="8" rx="2" fill="#4F46E5" opacity=".45"/>
+            </g>
+            <text class="stage-label" x="108" y="46" text-anchor="middle">On-prem sources</text>
+            <text class="stage-sub" x="108" y="172" text-anchor="middle">databases · files · logs</text>
+          </g>
+
+          <!-- STAGE 2 raw zone -->
+          <g class="stage-card" data-stage="s2">
+            <g class="stage-box">
+              <rect x="292" y="58" width="160" height="94" rx="14" fill="#fff" stroke="#0E7490" stroke-width="1.6"/>
+              <path d="M330,80 q42,-14 84,0 v46 q-42,14 -84,0 z" fill="none" stroke="#0E7490" stroke-width="1.5"/>
+              <path d="M330,96 q42,14 84,0" fill="none" stroke="#0E7490" stroke-width="1.3" opacity=".7"/>
+              <path d="M330,110 q42,14 84,0" fill="none" stroke="#0E7490" stroke-width="1.3" opacity=".45"/>
+            </g>
+            <text class="stage-label" x="372" y="46" text-anchor="middle">Raw zone (GCS)</text>
+            <text class="stage-sub" x="372" y="172" text-anchor="middle">gs:// · *.parquet</text>
+          </g>
+
+          <!-- STAGE 3 table -->
+          <g class="stage-card" data-stage="s3">
+            <g class="stage-box">
+              <rect x="548" y="58" width="160" height="94" rx="14" fill="#fff" stroke="#B45309" stroke-width="1.6"/>
+              <rect x="576" y="80" width="104" height="12" rx="2" fill="#B45309" opacity=".85"/>
+              <rect x="576" y="98" width="104" height="9" rx="2" fill="none" stroke="#B45309" stroke-width="1.3"/>
+              <rect x="576" y="112" width="104" height="9" rx="2" fill="none" stroke="#B45309" stroke-width="1.3"/>
+              <rect x="576" y="126" width="104" height="9" rx="2" fill="none" stroke="#B45309" stroke-width="1.3"/>
+            </g>
+            <text class="stage-label term" x="628" y="46" text-anchor="middle" data-old="External / BigLake table" data-new="External / Lakehouse table">External / BigLake table</text>
+            <text class="stage-sub" x="628" y="172" text-anchor="middle">metadata only · reads in place</text>
+          </g>
+
+          <!-- STAGE 4 query -->
+          <g class="stage-card" data-stage="s4">
+            <g class="stage-box">
+              <rect x="804" y="58" width="176" height="94" rx="14" fill="#fff" stroke="#0E1726" stroke-width="1.6"/>
+              <text x="892" y="118" text-anchor="middle" font-family="JetBrains Mono" font-size="30" fill="#0E1726">{ }</text>
+            </g>
+            <text class="stage-label" x="892" y="46" text-anchor="middle">Query &amp; BI</text>
+            <text class="stage-sub" x="892" y="172" text-anchor="middle">GoogleSQL · dashboards</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="flow-detail-wrap">
+        <div class="flow-detail" id="d-s1"><b>On-premises sources.</b> Databases, flat files and logs are extracted and moved to Google Cloud. Your PySpark job is the mover — it reads the source and writes partitioned Parquet.</div>
+        <div class="flow-detail" id="d-s2"><b>Raw zone (Cloud Storage).</b> A <span class="mono">gs://</span> bucket holds the landed Parquet as ingested. Parquet is columnar and <b>self-describing</b>, so BigQuery reads its schema directly — no hand-written types. Use Hive-style paths like <span class="mono">dt=2026-01-01/</span> for partition pruning.</div>
+        <div class="flow-detail" id="d-s3"><b>External / BigLake table.</b> A metadata-only object pointing at the Parquet URIs. Querying reads files in place — nothing is copied into BigQuery. Upgrade to a <span class="term" data-old="BigLake table" data-new="Lakehouse (BigLake) table">BigLake table</span> for access delegation, metadata caching and row/column security.</div>
+        <div class="flow-detail" id="d-s4"><b>Query &amp; consume.</b> Analysts and BI tools use ordinary GoogleSQL. Read-only — no DML on external data; the raw files stay the source of truth.</div>
+      </div>
+
+      <div class="legend">
+        <span><i style="background:var(--src)"></i> On-prem source</span>
+        <span><i style="background:var(--lake)"></i> Parquet raw zone</span>
+        <span><i style="background:var(--bq)"></i> BigQuery table layer</span>
+        <span><i style="background:var(--ink)"></i> Query surface</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONCEPT -->
+<section class="block" id="what">
+  <div class="wrap">
+    <div class="sec-eyebrow"><span class="sec-num">01</span> — Concept</div>
+    <h2 class="sec-title">What “external” actually means</h2>
+    <p class="sec-intro">A native BigQuery table stores its data inside BigQuery’s managed storage. An <b>external table</b> stores only the <i>definition</i> — format, schema hints and the list of Cloud Storage URIs. The bytes never leave your bucket; BigQuery reads them at query time.</p>
+    <div class="cards">
+      <div class="card"><div class="k lake">IN&nbsp;PLACE</div><p>Data stays as Parquet in <span class="mono">gs://</span>. No ingestion job, no duplication, no BigQuery storage cost.</p></div>
+      <div class="card"><div class="k lake">SCHEMA-ON-READ</div><p>Parquet carries its own schema, so columns and types are auto-detected. Override only if you must.</p></div>
+      <div class="card"><div class="k src">READ-ONLY</div><p>Query it like any table, but no DML. Files change → the table reflects them on the next read.</p></div>
+      <div class="card"><div class="k bq">TRADE-OFF</div><p>Slower and less consistent than native tables. Ideal for a raw/exploration zone; promote hot data later.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- TERMINOLOGY -->
+<section class="block" id="terms">
+  <div class="wrap">
+    <div class="sec-eyebrow"><span class="sec-num">02</span> — Old ⇄ new</div>
+    <h2 class="sec-title">Terminology, classic vs current</h2>
+    <p class="sec-intro">Google has been consolidating the lakehouse story under Iceberg and Dataplex. The switch in the top bar rewrites labels across the page; the full mapping is below.</p>
+    <table class="ttable">
+      <thead><tr><th style="width:38%">What it is</th><th>Classic term</th><th>Current term (2026)</th></tr></thead>
+      <tbody>
+        <tr><td class="cat">Read-in-place table over GCS files</td><td class="old">Federated / permanent external table</td><td class="new">External table</td></tr>
+        <tr><td class="cat">External table + governance &amp; caching</td><td class="old">BigLake table</td><td class="new">Lakehouse for Apache Iceberg (BigLake)</td></tr>
+        <tr><td class="cat">Managed, writable open-format table</td><td class="old">BigLake managed table</td><td class="new">BigQuery table for Apache Iceberg</td></tr>
+        <tr><td class="cat">Open-source metadata runtime</td><td class="old">BigLake Metastore (classic)</td><td class="new">BigLake metastore (unified)</td></tr>
+        <tr><td class="cat">Metadata &amp; governance catalog</td><td class="old">Data Catalog</td><td class="new">Dataplex Universal Catalog</td></tr>
+        <tr><td class="cat">Service account binding to read GCS</td><td class="old">Cloud resource connection</td><td class="new unchanged">Cloud resource connection (unchanged)</td></tr>
+      </tbody>
+    </table>
+    <p class="term-note">Terminology is still shifting. Some names — the connection resource, the <span class="mono">CREATE EXTERNAL TABLE</span> DDL — are unchanged, while the “BigLake” umbrella is folding into “Lakehouse for Apache Iceberg.” Confirm against the live docs in the table below before standardizing names in your runbooks.</p>
+  </div>
+</section>
+
+<!-- STEPS -->
+<section class="block" id="steps">
+  <div class="wrap">
+    <div class="sec-eyebrow"><span class="sec-num">03</span> — Build it</div>
+    <h2 class="sec-title">Step by step, with the entire code</h2>
+    <p class="sec-intro">Follow the spine top to bottom. Steps 1–2 are context (done in your PySpark project). Step 3 is the fastest path. Steps 4–7 upgrade it into a governed, cached <span class="term" data-old="BigLake" data-new="Lakehouse (BigLake)">BigLake</span> table. Every block has a copy button.</p>
+
+    <div class="spine">
+
+      <!-- 1 -->
+      <div class="step">
+        <div class="node">1</div>
+        <div class="step-card">
+          <div class="step-head"><div class="step-title">Land Parquet in the raw zone<small>already implemented in your project</small></div><span class="tag ctx">PySpark</span><span class="caret">▶</span></div>
+          <div class="step-body"><div class="step-body-in">
+            <p>Your Spark job writes partitioned Parquet to the bucket. Partitioning by a date column enables pruning later.</p>
+            <div class="codewrap">
+              <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span><span class="code-file">write_raw_zone.py</span><button class="copy">copy</button></div>
+              <pre><code><span class="cmt"># PySpark — write on-prem data to the GCS raw zone as partitioned Parquet</span>
+(<span class="fn">df</span>.write
+   .mode(<span class="str">"overwrite"</span>)
+   .partitionBy(<span class="str">"dt"</span>)                 <span class="cmt"># yields dt=2026-01-01/ folders (Hive layout)</span>
+   .parquet(<span class="str">"gs://my-raw-zone-bucket/sales/"</span>))</code></pre>
+            </div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- 2 -->
+      <div class="step">
+        <div class="node">2</div>
+        <div class="step-card">
+          <div class="step-head"><div class="step-title">Confirm the layout in Cloud Storage<small>sanity-check the URIs BigQuery will point at</small></div><span class="tag ctx">gcloud</span><span class="caret">▶</span></div>
+          <div class="step-body"><div class="step-body-in">
+            <p>Verify files are Parquet and partition folders exist. Note the bucket <b>location</b> — it must match the BigQuery dataset location.</p>
+            <div class="codewrap">
+              <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span><span class="code-file">shell</span><button class="copy">copy</button></div>
+              <pre><code><span class="cmt"># List what landed</span>
+gcloud storage ls <span class="str">"gs://my-raw-zone-bucket/sales/"</span>
+<span class="cmt"># dt=2026-01-01/  dt=2026-01-02/  ...</span>
+
+<span class="cmt"># Check the bucket region (dataset must be co-located)</span>
+gcloud storage buckets describe <span class="str">gs://my-raw-zone-bucket</span> \
+  --format=<span class="str">"value(location)"</span></code></pre>
+            </div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- 3 -->
+      <div class="step open">
+        <div class="node">3</div>
+        <div class="step-card">
+          <div class="step-head"><div class="step-title">Create a plain external table<small>fastest path — no connection needed</small></div><span class="tag core">core</span><span class="caret">▶</span></div>
+          <div class="step-body"><div class="step-body-in">
+            <p>Point BigQuery at the Parquet. Because Parquet is self-describing, <b>omit the schema</b> — it’s auto-detected. Switch between the SQL and CLI tabs.</p>
+            <div class="codewrap">
+              <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span>
+                <div class="code-tabs"><button class="code-tab active" data-tab="a1">GoogleSQL</button><button class="code-tab" data-tab="a2">bq CLI</button></div>
+                <button class="copy">copy</button></div>
+              <pre data-pane="a1"><code><span class="cmt">-- Permanent external table over Parquet in the raw zone</span>
+<span class="kw">CREATE OR REPLACE EXTERNAL TABLE</span> <span class="str">`myproject.raw_zone.sales_ext`</span>
+<span class="kw">OPTIONS</span> (
+  format = <span class="str">'PARQUET'</span>,
+  uris   = [<span class="str">'gs://my-raw-zone-bucket/sales/*.parquet'</span>]
+);
+
+<span class="cmt">-- Query it like any table</span>
+<span class="kw">SELECT</span> <span class="kw">COUNT</span>(*) <span class="kw">FROM</span> <span class="str">`myproject.raw_zone.sales_ext`</span>;</code></pre>
+              <pre data-pane="a2" style="display:none"><code><span class="cmt"># Equivalent with the bq command-line tool</span>
+bq mkdef \
+  --source_format=PARQUET \
+  <span class="str">"gs://my-raw-zone-bucket/sales/*.parquet"</span> &gt; /tmp/def.json
+
+bq mk --table \
+  --external_table_definition=/tmp/def.json \
+  <span class="str">myproject:raw_zone.sales_ext</span></code></pre>
+            </div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- 4 -->
+      <div class="step">
+        <div class="node">4</div>
+        <div class="step-card">
+          <div class="step-head"><div class="step-title">Handle Hive partitions<small>prune by dt so queries don’t scan the whole lake</small></div><span class="tag core">core</span><span class="caret">▶</span></div>
+          <div class="step-body"><div class="step-body-in">
+            <p>If you partitioned by <span class="mono">dt</span> in step 1, declare it so BigQuery skips irrelevant folders. Requiring a filter guards against full scans.</p>
+            <div class="codewrap">
+              <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span><span class="code-file">GoogleSQL</span><button class="copy">copy</button></div>
+              <pre><code><span class="kw">CREATE OR REPLACE EXTERNAL TABLE</span> <span class="str">`myproject.raw_zone.sales_ext`</span>
+<span class="kw">WITH PARTITION COLUMNS</span> (
+  dt <span class="kw">DATE</span>                                <span class="cmt">-- parsed from dt=YYYY-MM-DD/ path</span>
+)
+<span class="kw">OPTIONS</span> (
+  format = <span class="str">'PARQUET'</span>,
+  uris   = [<span class="str">'gs://my-raw-zone-bucket/sales/*'</span>],
+  hive_partition_uri_prefix     = <span class="str">'gs://my-raw-zone-bucket/sales'</span>,
+  require_hive_partition_filter = <span class="kw">true</span>
+);</code></pre>
+            </div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- 5 -->
+      <div class="step">
+        <div class="node">5</div>
+        <div class="step-card">
+          <div class="step-head"><div class="step-title">Create a Cloud resource connection<small>prerequisite for the BigLake upgrade</small></div><span class="tag up">upgrade</span><span class="caret">▶</span></div>
+          <div class="step-body"><div class="step-body-in">
+            <p>A connection carries a Google-managed service account. Grant <b>that account</b> read on the bucket, so users only need rights on the table — not the raw files.</p>
+            <div class="codewrap">
+              <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span><span class="code-file">shell</span><button class="copy">copy</button></div>
+              <pre><code><span class="cmt"># 1. Create the connection (location must match dataset + bucket)</span>
+bq mk --connection \
+  --location=US \
+  --project_id=myproject \
+  --connection_type=CLOUD_RESOURCE \
+  my-gcs-connection
+
+<span class="cmt"># 2. Read back its service account id</span>
+bq show --connection <span class="str">myproject.US.my-gcs-connection</span>
+<span class="cmt"># -> bqcx-....@gcp-sa-bigquery-condel.iam.gserviceaccount.com</span>
+
+<span class="cmt"># 3. Let that service account read the raw zone</span>
+gcloud storage buckets add-iam-policy-binding gs://my-raw-zone-bucket \
+  --member=<span class="str">"serviceAccount:bqcx-....@gcp-sa-bigquery-condel.iam.gserviceaccount.com"</span> \
+  --role=<span class="str">"roles/storage.objectViewer"</span></code></pre>
+            </div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- 6 -->
+      <div class="step">
+        <div class="node">6</div>
+        <div class="step-card">
+          <div class="step-head"><div class="step-title">Create the BigLake table<small>adds WITH CONNECTION + metadata caching</small></div><span class="tag up">upgrade</span><span class="caret">▶</span></div>
+          <div class="step-body"><div class="step-body-in">
+            <p>Same Parquet, now with a connection and <b>metadata caching</b>. Staleness runs 30 minutes to 7 days — tune it to how often PySpark lands new files.</p>
+            <div class="codewrap">
+              <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span><span class="code-file">GoogleSQL</span><button class="copy">copy</button></div>
+              <pre><code><span class="kw">CREATE OR REPLACE EXTERNAL TABLE</span> <span class="str">`myproject.raw_zone.sales_biglake`</span>
+<span class="kw">WITH CONNECTION</span> <span class="str">`myproject.US.my-gcs-connection`</span>
+<span class="kw">OPTIONS</span> (
+  format = <span class="str">'PARQUET'</span>,
+  uris   = [<span class="str">'gs://my-raw-zone-bucket/sales/*.parquet'</span>],
+  max_staleness       = <span class="kw">INTERVAL</span> <span class="num">1</span> <span class="kw">HOUR</span>,   <span class="cmt">-- 30 min … 7 days</span>
+  metadata_cache_mode = <span class="str">'AUTOMATIC'</span>
+);
+
+<span class="cmt">-- Force a refresh on demand (e.g. right after a big load)</span>
+<span class="kw">CALL</span> <span class="fn">BQ.REFRESH_EXTERNAL_METADATA_CACHE</span>(<span class="str">'myproject.raw_zone.sales_biglake'</span>);</code></pre>
+            </div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- 7 -->
+      <div class="step">
+        <div class="node">7</div>
+        <div class="step-card">
+          <div class="step-head"><div class="step-title">Query &amp; consume<small>same for external or BigLake — pruned &amp; aggregated</small></div><span class="tag core">core</span><span class="caret">▶</span></div>
+          <div class="step-body"><div class="step-body-in">
+            <p>Analysts use ordinary SQL. The <span class="mono">WHERE dt …</span> filter triggers partition pruning, so only relevant Parquet is scanned.</p>
+            <div class="codewrap">
+              <div class="code-top"><span class="win-dot r"></span><span class="win-dot y"></span><span class="win-dot g"></span><span class="code-file">GoogleSQL</span><button class="copy">copy</button></div>
+              <pre><code><span class="kw">SELECT</span>
+  dt,
+  <span class="kw">SUM</span>(amount) <span class="kw">AS</span> total_sales,
+  <span class="kw">COUNT</span>(*)     <span class="kw">AS</span> orders
+<span class="kw">FROM</span> <span class="str">`myproject.raw_zone.sales_biglake`</span>
+<span class="kw">WHERE</span> dt <span class="kw">BETWEEN</span> <span class="str">'2026-01-01'</span> <span class="kw">AND</span> <span class="str">'2026-01-31'</span>   <span class="cmt">-- prunes partitions</span>
+<span class="kw">GROUP BY</span> dt
+<span class="kw">ORDER BY</span> dt;</code></pre>
+            </div>
+          </div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- COMPARE -->
+<section class="block" id="compare">
+  <div class="wrap">
+    <div class="sec-eyebrow"><span class="sec-num">04</span> — Decide</div>
+    <h2 class="sec-title">Plain external vs <span class="term" data-old="BigLake" data-new="Lakehouse (BigLake)">BigLake</span></h2>
+    <p class="sec-intro">Both read Parquet in place. BigLake adds a connection and unlocks governance and caching. Google recommends BigLake for anything shared or production.</p>
+    <div class="scroll">
+    <table class="cmp">
+      <thead><tr><th>Capability</th><th>Plain external table</th><th class="big term" data-old="BigLake table" data-new="Lakehouse (BigLake) table">BigLake table</th></tr></thead>
+      <tbody>
+        <tr><td>Reads Parquet in place</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+        <tr><td>Setup effort</td><td>None</td><td>Needs a connection</td></tr>
+        <tr><td>Access delegation</td><td class="no">User needs bucket rights</td><td class="yes">Table rights only</td></tr>
+        <tr><td>Metadata caching</td><td class="no">No</td><td class="yes">30 min – 7 days</td></tr>
+        <tr><td>Row / column security</td><td class="no">No</td><td class="yes">Yes</td></tr>
+        <tr><td>Dynamic data masking</td><td class="no">No</td><td class="yes">Yes</td></tr>
+        <tr><td>Hive partitioning</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+        <tr><td>Writable (DML)</td><td class="no">No — read only</td><td class="no">No — read only</td></tr>
+        <tr><td>Best for</td><td>Quick exploration</td><td>Shared / production lake</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- DOCS TABLE -->
+<section class="block" id="docs">
+  <div class="wrap">
+    <div class="sec-eyebrow"><span class="sec-num">05</span> — Sources</div>
+    <h2 class="sec-title">Official Google Cloud documentation</h2>
+    <p class="sec-intro">Every page behind the steps above, with a category and a working link. All open on <span class="mono">cloud.google.com</span>.</p>
+    <div class="scroll">
+    <table class="doctable">
+      <thead>
+        <tr><th class="num">#</th><th>Document</th><th>What it covers</th><th>Category</th><th class="lnk">Link</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="num">1</td><td><span class="dtitle">Introduction to external tables</span></td><td><span class="ddesc">Query data in place; permanent vs temporary; limitations; colocation</span></td><td><span class="catpill overview">Overview</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/external-tables" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">2</td><td><span class="dtitle">Introduction to external data sources</span></td><td><span class="ddesc">Compares external, BigLake, Omni, object tables &amp; federated queries</span></td><td><span class="catpill overview">Overview</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/external-data-sources" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">3</td><td><span class="dtitle">Create Cloud Storage external tables</span></td><td><span class="ddesc">CREATE EXTERNAL TABLE DDL, table def files, PARQUET, wildcards</span></td><td><span class="catpill create">Create</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/external-data-cloud-storage" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">4</td><td><span class="dtitle">Query Cloud Storage data in external tables</span></td><td><span class="ddesc">Querying permanent &amp; temporary GCS external tables in GoogleSQL</span></td><td><span class="catpill create">Create</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/query-cloud-storage-data" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">5</td><td><span class="dtitle">Using schema auto-detection</span></td><td><span class="ddesc">Why Parquet needs no manual schema; optional overrides</span></td><td><span class="catpill create">Create</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/schema-detect" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">6</td><td><span class="dtitle">Create a table definition file</span></td><td><span class="ddesc">bq mkdef, --autodetect, JSON schema for the bq tool / REST API</span></td><td><span class="catpill create">Create</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/external-table-definition" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">7</td><td><span class="dtitle">Loading Parquet data from Cloud Storage</span></td><td><span class="ddesc">Requirements &amp; type conversions when promoting raw data to native</span></td><td><span class="catpill create">Create</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">8</td><td><span class="dtitle">Introduction to BigLake tables</span></td><td><span class="ddesc">Access delegation, metadata caching, fine-grained security</span></td><td><span class="catpill biglake">BigLake</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/biglake-intro" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">9</td><td><span class="dtitle">Create Cloud Storage BigLake tables</span></td><td><span class="ddesc">WITH CONNECTION, metadata caching, schema options</span></td><td><span class="catpill biglake">BigLake</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/create-cloud-storage-table-biglake" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">10</td><td><span class="dtitle">Query Cloud Storage BigLake tables</span></td><td><span class="ddesc">Querying GCS BigLake tables; required roles; connectors</span></td><td><span class="catpill biglake">BigLake</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/query-cloud-storage-using-biglake" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">11</td><td><span class="dtitle">Use metadata caching for external data</span></td><td><span class="ddesc">Staleness (30 min–7 day), auto vs manual refresh, statistics</span></td><td><span class="catpill biglake">BigLake</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/metadata-caching-external-tables" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">12</td><td><span class="dtitle">Manage external Hive partitioned data</span></td><td><span class="ddesc">Partition pruning, layout, require_hive_partition_filter</span></td><td><span class="catpill create">Create</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/hive-partitioned-queries" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">13</td><td><span class="dtitle">Create a Cloud resource connection</span></td><td><span class="ddesc">The connection used by BigLake; grant its SA access to GCS</span></td><td><span class="catpill ref">Reference</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/create-cloud-resource-connection" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">14</td><td><span class="dtitle">Introduction to connections</span></td><td><span class="ddesc">Connection types (Cloud resource, Cloud SQL, AWS, Azure)</span></td><td><span class="catpill ref">Reference</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/connections-api-intro" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">15</td><td><span class="dtitle">Data definition language (DDL) reference</span></td><td><span class="ddesc">CREATE EXTERNAL TABLE syntax &amp; all OPTIONS</span></td><td><span class="catpill ref">Reference</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">16</td><td><span class="dtitle">Introduction to BigLake metastore</span></td><td><span class="ddesc">Unified runtime metastore for lakehouse (Iceberg) data</span></td><td><span class="catpill biglake">BigLake</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/about-blms" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">17</td><td><span class="dtitle">Optimize storage for query performance</span></td><td><span class="ddesc">Columnar storage, partitioning &amp; clustering best practices</span></td><td><span class="catpill ref">Reference</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/best-practices-storage" target="_blank" rel="noopener">Open ↗</a></td></tr>
+        <tr><td class="num">18</td><td><span class="dtitle">Introduction to BigQuery Omni</span></td><td><span class="ddesc">Only if a raw zone lands in AWS S3 / Azure instead of GCS</span></td><td><span class="catpill overview">Overview</span></td><td class="lnk"><a class="openbtn" href="https://cloud.google.com/bigquery/docs/omni-introduction" target="_blank" rel="noopener">Open ↗</a></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>Built for a GCP raw-zone → BigQuery workflow. Identifiers like <span class="mono">myproject</span>, <span class="mono">my-raw-zone-bucket</span> and <span class="mono">US</span> are placeholders — swap in yours, and keep bucket + dataset co-located.</div>
+    <div class="mono">VERIFY BEFORE PROD · TERMS EVOLVING 2026 · SOURCES: CLOUD.GOOGLE.COM/BIGQUERY/DOCS</div>
+  </div>
+</footer>
+
+<script>
+  const toggle=document.getElementById('termToggle');
+  const lblOld=document.getElementById('lblOld');
+  const lblNew=document.getElementById('lblNew');
+  let mode='old';
+  function applyTerms(){
+    document.querySelectorAll('.term').forEach(el=>{
+      const t=mode==='old'?el.dataset.old:el.dataset.new;
+      if(t!==undefined) el.textContent=t;
+    });
+    lblOld.classList.toggle('active',mode==='old');
+    lblNew.classList.toggle('active',mode==='new');
+  }
+  toggle.addEventListener('click',()=>{mode=mode==='old'?'new':'old';toggle.dataset.on=mode;applyTerms();});
+  applyTerms();
+
+  document.querySelectorAll('.stage-card').forEach(card=>{
+    card.addEventListener('click',()=>{
+      const id=card.dataset.stage;
+      const panel=document.getElementById('d-'+id);
+      const open=panel.classList.contains('show');
+      document.querySelectorAll('.flow-detail').forEach(p=>p.classList.remove('show'));
+      if(!open) panel.classList.add('show');
+    });
+  });
+
+  document.querySelectorAll('.step').forEach(step=>{
+    const head=step.querySelector('.step-head');
+    const body=step.querySelector('.step-body');
+    function setOpen(o){step.classList.toggle('open',o);body.style.maxHeight=o?(body.scrollHeight+40)+'px':'0px';}
+    setOpen(step.classList.contains('open'));
+    head.addEventListener('click',()=>setOpen(!step.classList.contains('open')));
+    step.addEventListener('recalc',()=>{if(step.classList.contains('open'))body.style.maxHeight=(body.scrollHeight+40)+'px';});
+  });
+
+  document.querySelectorAll('.code-tabs').forEach(tabs=>{
+    const wrap=tabs.closest('.codewrap');
+    tabs.querySelectorAll('.code-tab').forEach(tab=>{
+      tab.addEventListener('click',()=>{
+        tabs.querySelectorAll('.code-tab').forEach(t=>t.classList.remove('active'));
+        tab.classList.add('active');
+        wrap.querySelectorAll('pre[data-pane]').forEach(p=>{p.style.display=(p.dataset.pane===tab.dataset.tab)?'':'none';});
+        const step=wrap.closest('.step'); if(step) step.dispatchEvent(new Event('recalc'));
+      });
+    });
+  });
+
+  document.querySelectorAll('.copy').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const wrap=btn.closest('.codewrap');
+      const vis=[...wrap.querySelectorAll('pre')].find(p=>p.style.display!=='none')||wrap.querySelector('pre');
+      navigator.clipboard.writeText(vis.innerText).then(()=>{
+        btn.textContent='copied';btn.classList.add('done');
+        setTimeout(()=>{btn.textContent='copy';btn.classList.remove('done');},1400);
+      });
+    });
+  });
+</script>
+</body>
+</html>
